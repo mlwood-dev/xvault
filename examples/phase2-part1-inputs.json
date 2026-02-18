@@ -1,0 +1,57 @@
+{
+  "createVault": {
+    "type": "createVault",
+    "payload": {
+      "type": "individual",
+      "owner": "rExampleOwnerClassicAddress",
+      "salt": "9f86d081884c7d659a2feaa0c55ad015",
+      "metadata": {
+        "label": "personal"
+      },
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "addEntry": {
+    "type": "addEntry",
+    "payload": {
+      "vaultId": "vault-id-from-createVault",
+      "owner": "rExampleOwnerClassicAddress",
+      "encryptedBlob": "QmFzZTY0RW5jcnlwdGVkQmxvYg==",
+      "cid": "bafybeigdyrztf4f6xsl54n4xq4m5gxezm5q4za2ojx6x7lf5y3w4f4xhqy",
+      "entryMetadata": {
+        "service": "github.com",
+        "username": "alice",
+        "notes": "MFA enabled"
+      },
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "getEntryByIndex": {
+    "type": "getEntry",
+    "payload": {
+      "vaultId": "vault-id-from-createVault",
+      "owner": "rExampleOwnerClassicAddress",
+      "entryIndex": 0,
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "getEntryByTokenId": {
+    "type": "getEntry",
+    "payload": {
+      "vaultId": "vault-id-from-createVault",
+      "owner": "rExampleOwnerClassicAddress",
+      "tokenId": "uritoken-id-from-addEntry",
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "getMyVaults": {
+    "type": "getMyVaults",
+    "payload": {
+      "owner": "rExampleOwnerClassicAddress"
+    }
+  }
+}

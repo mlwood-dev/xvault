@@ -1,0 +1,109 @@
+{
+  "createTeamVault": {
+    "type": "createTeamVault",
+    "payload": {
+      "type": "team",
+      "owner": "rExampleOwnerClassicAddress",
+      "salt": "aabbccddeeff00112233445566778899",
+      "metadata": {
+        "label": "eng-team"
+      },
+      "initialAuthorized": [
+        "rExampleMemberClassicAddress1",
+        "rExampleMemberClassicAddress2"
+      ],
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "inviteToVault": {
+    "type": "inviteToVault",
+    "payload": {
+      "vaultId": "vault-id-from-createTeamVault",
+      "invitee": "rExampleInviteeClassicAddress",
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "acceptInvite": {
+    "type": "acceptInvite",
+    "payload": {
+      "vaultId": "vault-id-from-createTeamVault",
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "getPendingInvites": {
+    "type": "getPendingInvites",
+    "payload": {
+      "vaultId": "vault-id-from-createTeamVault",
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "removeMember": {
+    "type": "removeMember",
+    "payload": {
+      "vaultId": "vault-id-from-createTeamVault",
+      "memberToRemove": "rExampleMemberClassicAddress1",
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "revokeInvite": {
+    "type": "revokeInvite",
+    "payload": {
+      "vaultId": "vault-id-from-createTeamVault",
+      "pendingAddress": "rExampleInviteeClassicAddress",
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "updateVaultManifest": {
+    "type": "updateVaultManifest",
+    "payload": {
+      "vaultId": "vault-id-from-createTeamVault",
+      "newUri": "ipfs://bafyupdatedpolicycid",
+      "newBlobHex": "a1b2c3d4",
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "listVaultURITokens": {
+    "type": "listVaultURITokens",
+    "payload": {
+      "vaultId": "vault-id-from-createTeamVault",
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "revokeVault": {
+    "type": "revokeVault",
+    "payload": {
+      "vaultId": "vault-id-from-createTeamVault",
+      "confirm": true,
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  },
+  "teamAddEntryWithWrappedKeys": {
+    "type": "addEntry",
+    "payload": {
+      "vaultId": "vault-id-from-createTeamVault",
+      "actor": "rExampleAuthorizedMemberAddress",
+      "encryptedBlob": "QmFzZTY0Q2lwaGVyVGV4dA==",
+      "cid": "bafybeigdyrztf4f6xsl54n4xq4m5gxezm5q4za2ojx6x7lf5y3w4f4xhqy",
+      "entryMetadata": {
+        "service": "internal-tool"
+      },
+      "wrappedKeys": [
+        {
+          "address": "rExampleMemberClassicAddress1",
+          "encryptedKey": "QmFzZTY0V3JhcHBlZEtleQ=="
+        }
+      ],
+      "signerPublicKey": "EDPUBLICKEYHEX",
+      "signature": "SIGNATUREHEX"
+    }
+  }
+}

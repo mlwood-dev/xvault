@@ -1,0 +1,37 @@
+{
+  "name": "xvault",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "XVault decentralized key locker on Evernode/HotPocket + Xahau",
+  "type": "module",
+  "bin": {
+    "xvault": "./bin/xvault-cli.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "npx ncc build src/contract/index.js -o dist",
+    "build:prod": "npx ncc build src/contract/index.js --minify -o dist",
+    "start": "npm run build && hpdevkit deploy dist",
+    "test": "vitest run --exclude \"test/**/*.jest.test.js\"",
+    "test:watch": "vitest",
+    "test:jest": "NODE_OPTIONS='--experimental-vm-modules --max-old-space-size=8192' jest --runInBand --watchman=false"
+  },
+  "dependencies": {
+    "@noble/curves": "latest",
+    "argon2": "latest",
+    "argon2-browser": "latest",
+    "commander": "latest",
+    "@vercel/ncc": "0.34.0",
+    "hotpocket-nodejs-contract": "^0.7.0",
+    "ripple-keypairs": "latest",
+    "secrets.js-grempe": "latest",
+    "xrpl": "^4.6.0"
+  },
+  "devDependencies": {
+    "jest": "latest",
+    "vitest": "latest"
+  }
+}
