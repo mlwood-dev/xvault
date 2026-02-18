@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 ![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)
 ![Evernode HotPocket](https://img.shields.io/badge/Evernode-HotPocket-blue)
-[![CI](https://img.shields.io/github/actions/workflow/status/mlwood-dev/xvault/ci.yml?label=ci)](https://github.com/OWNER/REPO/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/mlwood-dev/xvault/ci.yml?label=ci)](https://github.com/mlwood-dev/xvault/actions)
 [![Coverage](https://img.shields.io/badge/coverage-jest%20reported-informational)](https://github.com/mlwood-dev/xvault/actions)
 ![GitHub stars](https://img.shields.io/github/stars/mlwood-dev/xvault?style=social)
 ![GitHub forks](https://img.shields.io/github/forks/mlwood-dev/xvault?style=social)
