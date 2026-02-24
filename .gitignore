@@ -1,6 +1,6 @@
 .env
 .cursorignore
-
+/dist
 /bin
 /node_modules
 CHECKLIST.md
