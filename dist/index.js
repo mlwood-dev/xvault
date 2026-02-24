@@ -9751,195 +9751,6 @@ exports["default"] = Socket;
 
 /***/ }),
 
-/***/ 3497:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-__exportStar(__nccwpck_require__(1692), exports);
-__exportStar(__nccwpck_require__(1141), exports);
-//# sourceMappingURL=index.js.map
-
-/***/ }),
-
-/***/ 1692:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Account = void 0;
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-const utils_1 = __nccwpck_require__(1141);
-class Account {
-    constructor(secretNumbers) {
-        this._account = {
-            familySeed: '',
-            address: '',
-            keypair: {
-                publicKey: '',
-                privateKey: '',
-            },
-        };
-        if (typeof secretNumbers === 'string') {
-            this._secret = (0, utils_1.parseSecretString)(secretNumbers);
-        }
-        else if (Array.isArray(secretNumbers)) {
-            this._secret = secretNumbers;
-        }
-        else if (secretNumbers instanceof Uint8Array) {
-            this._secret = (0, utils_1.entropyToSecret)(secretNumbers);
-        }
-        else {
-            this._secret = (0, utils_1.randomSecret)();
-        }
-        validateLengths(this._secret);
-        this.derive();
-    }
-    getSecret() {
-        return this._secret;
-    }
-    getSecretString() {
-        return this._secret.join(' ');
-    }
-    getAddress() {
-        return this._account.address;
-    }
-    getFamilySeed() {
-        return this._account.familySeed;
-    }
-    getKeypair() {
-        return this._account.keypair;
-    }
-    toString() {
-        return this.getSecretString();
-    }
-    derive() {
-        try {
-            const entropy = (0, utils_1.secretToEntropy)(this._secret);
-            this._account.familySeed = (0, ripple_keypairs_1.generateSeed)({ entropy });
-            this._account.keypair = (0, ripple_keypairs_1.deriveKeypair)(this._account.familySeed);
-            this._account.address = (0, ripple_keypairs_1.deriveAddress)(this._account.keypair.publicKey);
-        }
-        catch (error) {
-            let message = 'Unknown Error';
-            if (error instanceof Error) {
-                message = error.message;
-            }
-            throw new Error(message);
-        }
-    }
-}
-exports.Account = Account;
-function validateLengths(secretNumbers) {
-    if (secretNumbers.length !== 8) {
-        throw new Error('Secret must have 8 numbers');
-    }
-    secretNumbers.forEach((num) => {
-        if (num.length !== 6) {
-            throw new Error('Each secret number must be 6 digits');
-        }
-    });
-}
-//# sourceMappingURL=Account.js.map
-
-/***/ }),
-
-/***/ 1141:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.parseSecretString = exports.checkChecksum = exports.calculateChecksum = exports.secretToEntropy = exports.entropyToSecret = exports.randomSecret = exports.randomEntropy = void 0;
-const utils_1 = __nccwpck_require__(3617);
-function randomEntropy() {
-    return (0, utils_1.randomBytes)(16);
-}
-exports.randomEntropy = randomEntropy;
-function calculateChecksum(position, value) {
-    return (value * (position * 2 + 1)) % 9;
-}
-exports.calculateChecksum = calculateChecksum;
-function checkChecksum(position, value, checksum) {
-    let normalizedChecksum;
-    let normalizedValue;
-    if (typeof value === 'string') {
-        if (value.length !== 6) {
-            throw new Error('value must have a length of 6');
-        }
-        normalizedChecksum = parseInt(value.slice(5), 10);
-        normalizedValue = parseInt(value.slice(0, 5), 10);
-    }
-    else {
-        if (typeof checksum !== 'number') {
-            throw new Error('checksum must be a number when value is a number');
-        }
-        normalizedChecksum = checksum;
-        normalizedValue = value;
-    }
-    return (normalizedValue * (position * 2 + 1)) % 9 === normalizedChecksum;
-}
-exports.checkChecksum = checkChecksum;
-function entropyToSecret(entropy) {
-    const len = new Array(Math.ceil(entropy.length / 2));
-    const chunks = Array.from(len, (_a, chunk) => {
-        const buffChunk = entropy.slice(chunk * 2, (chunk + 1) * 2);
-        const no = parseInt((0, utils_1.bytesToHex)(buffChunk), 16);
-        const fill = '0'.repeat(5 - String(no).length);
-        return fill + String(no) + String(calculateChecksum(chunk, no));
-    });
-    if (chunks.length !== 8) {
-        throw new Error('Chucks must have 8 digits');
-    }
-    return chunks;
-}
-exports.entropyToSecret = entropyToSecret;
-function randomSecret() {
-    return entropyToSecret(randomEntropy());
-}
-exports.randomSecret = randomSecret;
-function secretToEntropy(secret) {
-    return (0, utils_1.concat)(secret.map((chunk, i) => {
-        const no = Number(chunk.slice(0, 5));
-        const checksum = Number(chunk.slice(5));
-        if (chunk.length !== 6) {
-            throw new Error('Invalid secret: number invalid');
-        }
-        if (!checkChecksum(i, no, checksum)) {
-            throw new Error('Invalid secret part: checksum invalid');
-        }
-        const hex = `0000${no.toString(16)}`.slice(-4);
-        return (0, utils_1.hexToBytes)(hex);
-    }));
-}
-exports.secretToEntropy = secretToEntropy;
-function parseSecretString(secret) {
-    const normalizedSecret = secret.replace(/[^0-9]/gu, '');
-    if (normalizedSecret.length !== 48) {
-        throw new Error('Invalid secret string (should contain 8 blocks of 6 digits');
-    }
-    return Array.from(new Array(8), (_a, index) => {
-        return normalizedSecret.slice(index * 6, (index + 1) * 6);
-    });
-}
-exports.parseSecretString = parseSecretString;
-//# sourceMappingURL=index.js.map
-
-/***/ }),
-
 /***/ 7558:
 /***/ (function(module) {
 
@@ -12869,6 +12680,61 @@ exports.parseSecretString = parseSecretString;
 
 /***/ }),
 
+/***/ 7218:
+/***/ ((module) => {
+
+
+
+/**
+ * Masks a buffer using the given mask.
+ *
+ * @param {Buffer} source The buffer to mask
+ * @param {Buffer} mask The mask to use
+ * @param {Buffer} output The buffer where to store the result
+ * @param {Number} offset The offset at which to start writing
+ * @param {Number} length The number of bytes to mask.
+ * @public
+ */
+const mask = (source, mask, output, offset, length) => {
+  for (var i = 0; i < length; i++) {
+    output[offset + i] = source[i] ^ mask[i & 3];
+  }
+};
+
+/**
+ * Unmasks a buffer using the given mask.
+ *
+ * @param {Buffer} buffer The buffer to unmask
+ * @param {Buffer} mask The mask to use
+ * @public
+ */
+const unmask = (buffer, mask) => {
+  // Required until https://github.com/nodejs/node/issues/9006 is resolved.
+  const length = buffer.length;
+  for (var i = 0; i < length; i++) {
+    buffer[i] ^= mask[i & 3];
+  }
+};
+
+module.exports = { mask, unmask };
+
+
+/***/ }),
+
+/***/ 3352:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+
+
+try {
+  module.exports = __nccwpck_require__(4090)(__dirname);
+} catch (e) {
+  module.exports = __nccwpck_require__(7218);
+}
+
+
+/***/ }),
+
 /***/ 1848:
 /***/ ((module) => {
 
@@ -13212,73 +13078,234 @@ if (true) {
 
 /***/ }),
 
-/***/ 969:
-/***/ ((module) => {
+/***/ 4090:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-
-
-module.exports = function (data, opts) {
-    if (!opts) opts = {};
-    if (typeof opts === 'function') opts = { cmp: opts };
-    var cycles = (typeof opts.cycles === 'boolean') ? opts.cycles : false;
-
-    var cmp = opts.cmp && (function (f) {
-        return function (node) {
-            return function (a, b) {
-                var aobj = { key: a, value: node[a] };
-                var bobj = { key: b, value: node[b] };
-                return f(aobj, bobj);
-            };
-        };
-    })(opts.cmp);
-
-    var seen = [];
-    return (function stringify (node) {
-        if (node && node.toJSON && typeof node.toJSON === 'function') {
-            node = node.toJSON();
-        }
-
-        if (node === undefined) return;
-        if (typeof node == 'number') return isFinite(node) ? '' + node : 'null';
-        if (typeof node !== 'object') return JSON.stringify(node);
-
-        var i, out;
-        if (Array.isArray(node)) {
-            out = '[';
-            for (i = 0; i < node.length; i++) {
-                if (i) out += ',';
-                out += stringify(node[i]) || 'null';
-            }
-            return out + ']';
-        }
-
-        if (node === null) return 'null';
-
-        if (seen.indexOf(node) !== -1) {
-            if (cycles) return JSON.stringify('__cycle__');
-            throw new TypeError('Converting circular structure to JSON');
-        }
-
-        var seenIndex = seen.push(node) - 1;
-        var keys = Object.keys(node).sort(cmp && cmp(node));
-        out = '';
-        for (i = 0; i < keys.length; i++) {
-            var key = keys[i];
-            var value = stringify(node[key]);
-
-            if (!value) continue;
-            if (out) out += ',';
-            out += JSON.stringify(key) + ':' + value;
-        }
-        seen.splice(seenIndex, 1);
-        return '{' + out + '}';
-    })(data);
-};
+const runtimeRequire =  true ? eval("require") : 0 // eslint-disable-line
+if (typeof runtimeRequire.addon === 'function') { // if the platform supports native resolving prefer that
+  module.exports = runtimeRequire.addon.bind(runtimeRequire)
+} else { // else use the runtime version here
+  module.exports = __nccwpck_require__(3403)
+}
 
 
 /***/ }),
 
-/***/ 3996:
+/***/ 3403:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+var fs = __nccwpck_require__(7147)
+var path = __nccwpck_require__(1017)
+var os = __nccwpck_require__(9563)
+
+// Workaround to fix webpack's build warnings: 'the request of a dependency is an expression'
+var runtimeRequire =  true ? eval("require") : 0 // eslint-disable-line
+
+var vars = (process.config && process.config.variables) || {}
+var prebuildsOnly = !!process.env.PREBUILDS_ONLY
+var abi = process.versions.modules // TODO: support old node where this is undef
+var runtime = isElectron() ? 'electron' : (isNwjs() ? 'node-webkit' : 'node')
+
+var arch = process.env.npm_config_arch || os.arch()
+var platform = process.env.npm_config_platform || os.platform()
+var libc = process.env.LIBC || (isAlpine(platform) ? 'musl' : 'glibc')
+var armv = process.env.ARM_VERSION || (arch === 'arm64' ? '8' : vars.arm_version) || ''
+var uv = (process.versions.uv || '').split('.')[0]
+
+module.exports = load
+
+function load (dir) {
+  return runtimeRequire(load.resolve(dir))
+}
+
+load.resolve = load.path = function (dir) {
+  dir = path.resolve(dir || '.')
+
+  try {
+    var name = runtimeRequire(path.join(dir, 'package.json')).name.toUpperCase().replace(/-/g, '_')
+    if (process.env[name + '_PREBUILD']) dir = process.env[name + '_PREBUILD']
+  } catch (err) {}
+
+  if (!prebuildsOnly) {
+    var release = getFirst(path.join(dir, 'build/Release'), matchBuild)
+    if (release) return release
+
+    var debug = getFirst(path.join(dir, 'build/Debug'), matchBuild)
+    if (debug) return debug
+  }
+
+  var prebuild = resolve(dir)
+  if (prebuild) return prebuild
+
+  var nearby = resolve(path.dirname(process.execPath))
+  if (nearby) return nearby
+
+  var target = [
+    'platform=' + platform,
+    'arch=' + arch,
+    'runtime=' + runtime,
+    'abi=' + abi,
+    'uv=' + uv,
+    armv ? 'armv=' + armv : '',
+    'libc=' + libc,
+    'node=' + process.versions.node,
+    process.versions.electron ? 'electron=' + process.versions.electron : '',
+     true ? 'webpack=true' : 0 // eslint-disable-line
+  ].filter(Boolean).join(' ')
+
+  throw new Error('No native build was found for ' + target + '\n    loaded from: ' + dir + '\n')
+
+  function resolve (dir) {
+    // Find matching "prebuilds/<platform>-<arch>" directory
+    var tuples = readdirSync(path.join(dir, 'prebuilds')).map(parseTuple)
+    var tuple = tuples.filter(matchTuple(platform, arch)).sort(compareTuples)[0]
+    if (!tuple) return
+
+    // Find most specific flavor first
+    var prebuilds = path.join(dir, 'prebuilds', tuple.name)
+    var parsed = readdirSync(prebuilds).map(parseTags)
+    var candidates = parsed.filter(matchTags(runtime, abi))
+    var winner = candidates.sort(compareTags(runtime))[0]
+    if (winner) return path.join(prebuilds, winner.file)
+  }
+}
+
+function readdirSync (dir) {
+  try {
+    return fs.readdirSync(dir)
+  } catch (err) {
+    return []
+  }
+}
+
+function getFirst (dir, filter) {
+  var files = readdirSync(dir).filter(filter)
+  return files[0] && path.join(dir, files[0])
+}
+
+function matchBuild (name) {
+  return /\.node$/.test(name)
+}
+
+function parseTuple (name) {
+  // Example: darwin-x64+arm64
+  var arr = name.split('-')
+  if (arr.length !== 2) return
+
+  var platform = arr[0]
+  var architectures = arr[1].split('+')
+
+  if (!platform) return
+  if (!architectures.length) return
+  if (!architectures.every(Boolean)) return
+
+  return { name, platform, architectures }
+}
+
+function matchTuple (platform, arch) {
+  return function (tuple) {
+    if (tuple == null) return false
+    if (tuple.platform !== platform) return false
+    return tuple.architectures.includes(arch)
+  }
+}
+
+function compareTuples (a, b) {
+  // Prefer single-arch prebuilds over multi-arch
+  return a.architectures.length - b.architectures.length
+}
+
+function parseTags (file) {
+  var arr = file.split('.')
+  var extension = arr.pop()
+  var tags = { file: file, specificity: 0 }
+
+  if (extension !== 'node') return
+
+  for (var i = 0; i < arr.length; i++) {
+    var tag = arr[i]
+
+    if (tag === 'node' || tag === 'electron' || tag === 'node-webkit') {
+      tags.runtime = tag
+    } else if (tag === 'napi') {
+      tags.napi = true
+    } else if (tag.slice(0, 3) === 'abi') {
+      tags.abi = tag.slice(3)
+    } else if (tag.slice(0, 2) === 'uv') {
+      tags.uv = tag.slice(2)
+    } else if (tag.slice(0, 4) === 'armv') {
+      tags.armv = tag.slice(4)
+    } else if (tag === 'glibc' || tag === 'musl') {
+      tags.libc = tag
+    } else {
+      continue
+    }
+
+    tags.specificity++
+  }
+
+  return tags
+}
+
+function matchTags (runtime, abi) {
+  return function (tags) {
+    if (tags == null) return false
+    if (tags.runtime && tags.runtime !== runtime && !runtimeAgnostic(tags)) return false
+    if (tags.abi && tags.abi !== abi && !tags.napi) return false
+    if (tags.uv && tags.uv !== uv) return false
+    if (tags.armv && tags.armv !== armv) return false
+    if (tags.libc && tags.libc !== libc) return false
+
+    return true
+  }
+}
+
+function runtimeAgnostic (tags) {
+  return tags.runtime === 'node' && tags.napi
+}
+
+function compareTags (runtime) {
+  // Precedence: non-agnostic runtime, abi over napi, then by specificity.
+  return function (a, b) {
+    if (a.runtime !== b.runtime) {
+      return a.runtime === runtime ? -1 : 1
+    } else if (a.abi !== b.abi) {
+      return a.abi ? -1 : 1
+    } else if (a.specificity !== b.specificity) {
+      return a.specificity > b.specificity ? -1 : 1
+    } else {
+      return 0
+    }
+  }
+}
+
+function isNwjs () {
+  return !!(process.versions && process.versions.nw)
+}
+
+function isElectron () {
+  if (process.versions && process.versions.electron) return true
+  if (process.env.ELECTRON_RUN_AS_NODE) return true
+  return typeof window !== 'undefined' && window.process && window.process.type === 'renderer'
+}
+
+function isAlpine (platform) {
+  return platform === 'linux' && fs.existsSync('/etc/alpine-release')
+}
+
+// Exposed for unit tests
+// TODO: move to lib
+load.parseTags = parseTags
+load.matchTags = matchTags
+load.compareTags = compareTags
+load.parseTuple = parseTuple
+load.matchTuple = matchTuple
+load.compareTuples = compareTuples
+
+
+/***/ }),
+
+/***/ 579:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
@@ -13665,4188 +13692,7 @@ function checkByteLength(bytes, expectedLength) {
 
 /***/ }),
 
-/***/ 2486:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-/* eslint-disable func-style */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.signingBatchData = exports.transactionID = exports.sha512Half = exports.binaryToJSON = exports.signingClaimData = exports.signingData = exports.multiSigningData = exports.readJSON = exports.serializeObject = exports.makeParser = exports.BytesList = exports.BinarySerializer = exports.BinaryParser = void 0;
-const utils_1 = __nccwpck_require__(3617);
-const types_1 = __nccwpck_require__(8904);
-const binary_parser_1 = __nccwpck_require__(4631);
-Object.defineProperty(exports, "BinaryParser", ({ enumerable: true, get: function () { return binary_parser_1.BinaryParser; } }));
-const hash_prefixes_1 = __nccwpck_require__(9493);
-const binary_serializer_1 = __nccwpck_require__(1106);
-Object.defineProperty(exports, "BinarySerializer", ({ enumerable: true, get: function () { return binary_serializer_1.BinarySerializer; } }));
-Object.defineProperty(exports, "BytesList", ({ enumerable: true, get: function () { return binary_serializer_1.BytesList; } }));
-const hashes_1 = __nccwpck_require__(9794);
-Object.defineProperty(exports, "sha512Half", ({ enumerable: true, get: function () { return hashes_1.sha512Half; } }));
-Object.defineProperty(exports, "transactionID", ({ enumerable: true, get: function () { return hashes_1.transactionID; } }));
-const enums_1 = __nccwpck_require__(8430);
-/**
- * Construct a BinaryParser
- *
- * @param bytes hex-string or Uint8Array to construct BinaryParser from
- * @param definitions rippled definitions used to parse the values of transaction types and such.
- *                          Can be customized for sidechains and amendments.
- * @returns BinaryParser
- */
-const makeParser = (bytes, definitions) => new binary_parser_1.BinaryParser(bytes instanceof Uint8Array ? (0, utils_1.bytesToHex)(bytes) : bytes, definitions);
-exports.makeParser = makeParser;
-/**
- * Parse BinaryParser into JSON
- *
- * @param parser BinaryParser object
- * @param definitions rippled definitions used to parse the values of transaction types and such.
- *                          Can be customized for sidechains and amendments.
- * @returns JSON for the bytes in the BinaryParser
- */
-const readJSON = (parser, definitions = enums_1.DEFAULT_DEFINITIONS) => parser.readType(types_1.coreTypes.STObject).toJSON(definitions);
-exports.readJSON = readJSON;
-/**
- * Parse a hex-string into its JSON interpretation
- *
- * @param bytes hex-string to parse into JSON
- * @param definitions rippled definitions used to parse the values of transaction types and such.
- *                          Can be customized for sidechains and amendments.
- * @returns JSON
- */
-const binaryToJSON = (bytes, definitions) => readJSON(makeParser(bytes, definitions), definitions);
-exports.binaryToJSON = binaryToJSON;
-/**
- * Function to serialize JSON object representing a transaction
- *
- * @param object JSON object to serialize
- * @param opts options for serializing, including optional prefix, suffix, signingFieldOnly, and definitions
- * @returns A Uint8Array containing the serialized object
- */
-function serializeObject(object, opts = {}) {
-    const { prefix, suffix, signingFieldsOnly = false, definitions } = opts;
-    const bytesList = new binary_serializer_1.BytesList();
-    if (prefix) {
-        bytesList.put(prefix);
-    }
-    const filter = signingFieldsOnly
-        ? (f) => f.isSigningField
-        : undefined;
-    types_1.coreTypes.STObject
-        .from(object, filter, definitions)
-        .toBytesSink(bytesList);
-    if (suffix) {
-        bytesList.put(suffix);
-    }
-    return bytesList.toBytes();
-}
-exports.serializeObject = serializeObject;
-/**
- * Serialize an object for signing
- *
- * @param transaction Transaction to serialize
- * @param prefix Prefix bytes to put before the serialized object
- * @param opts.definitions Custom rippled types to use instead of the default. Used for sidechains and amendments.
- * @returns A Uint8Array with the serialized object
- */
-function signingData(transaction, prefix = hash_prefixes_1.HashPrefix.transactionSig, opts = {}) {
-    return serializeObject(transaction, {
-        prefix,
-        signingFieldsOnly: true,
-        definitions: opts.definitions,
-    });
-}
-exports.signingData = signingData;
-/**
- * Serialize a signingClaim
- *
- * @param claim A claim object to serialize
- * @param opts.definitions Custom rippled types to use instead of the default. Used for sidechains and amendments.
- * @returns the serialized object with appropriate prefix
- */
-function signingClaimData(claim) {
-    const num = BigInt(String(claim.amount));
-    const prefix = hash_prefixes_1.HashPrefix.paymentChannelClaim;
-    const channel = types_1.coreTypes.Hash256.from(claim.channel).toBytes();
-    const amount = types_1.coreTypes.UInt64.from(num).toBytes();
-    const bytesList = new binary_serializer_1.BytesList();
-    bytesList.put(prefix);
-    bytesList.put(channel);
-    bytesList.put(amount);
-    return bytesList.toBytes();
-}
-exports.signingClaimData = signingClaimData;
-/**
- * Serialize a transaction object for multiSigning
- *
- * @param transaction transaction to serialize
- * @param signingAccount Account to sign the transaction with
- * @param opts.definitions Custom rippled types to use instead of the default. Used for sidechains and amendments.
- * @returns serialized transaction with appropriate prefix and suffix
- */
-function multiSigningData(transaction, signingAccount, opts = {
-    definitions: enums_1.DEFAULT_DEFINITIONS,
-}) {
-    const prefix = hash_prefixes_1.HashPrefix.transactionMultiSig;
-    const suffix = types_1.coreTypes.AccountID.from(signingAccount).toBytes();
-    return serializeObject(transaction, {
-        prefix,
-        suffix,
-        signingFieldsOnly: true,
-        definitions: opts.definitions,
-    });
-}
-exports.multiSigningData = multiSigningData;
-/**
- * Serialize a signingClaim
- *
- * @param batch A Batch object to serialize.
- * @returns the serialized object with appropriate prefix
- */
-function signingBatchData(batch) {
-    if (batch.flags == null) {
-        throw Error("No field `flags'");
-    }
-    if (batch.txIDs == null) {
-        throw Error('No field `txIDs`');
-    }
-    const prefix = hash_prefixes_1.HashPrefix.batch;
-    const flags = types_1.coreTypes.UInt32.from(batch.flags).toBytes();
-    const txIDsLength = types_1.coreTypes.UInt32.from(batch.txIDs.length).toBytes();
-    const bytesList = new binary_serializer_1.BytesList();
-    bytesList.put(prefix);
-    bytesList.put(flags);
-    bytesList.put(txIDsLength);
-    batch.txIDs.forEach((txID) => {
-        bytesList.put(types_1.coreTypes.Hash256.from(txID).toBytes());
-    });
-    return bytesList.toBytes();
-}
-exports.signingBatchData = signingBatchData;
-//# sourceMappingURL=binary.js.map
-
-/***/ }),
-
-/***/ 7740:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.types = exports.ShaMap = exports.HashPrefix = exports.quality = exports.TransactionResult = exports.Type = exports.LedgerEntryType = exports.TransactionType = exports.Field = exports.DEFAULT_DEFINITIONS = exports.ledgerHashes = exports.binary = exports.hashes = void 0;
-const enums_1 = __nccwpck_require__(8430);
-Object.defineProperty(exports, "DEFAULT_DEFINITIONS", ({ enumerable: true, get: function () { return enums_1.DEFAULT_DEFINITIONS; } }));
-Object.defineProperty(exports, "Field", ({ enumerable: true, get: function () { return enums_1.Field; } }));
-Object.defineProperty(exports, "TransactionType", ({ enumerable: true, get: function () { return enums_1.TransactionType; } }));
-Object.defineProperty(exports, "LedgerEntryType", ({ enumerable: true, get: function () { return enums_1.LedgerEntryType; } }));
-Object.defineProperty(exports, "Type", ({ enumerable: true, get: function () { return enums_1.Type; } }));
-Object.defineProperty(exports, "TransactionResult", ({ enumerable: true, get: function () { return enums_1.TransactionResult; } }));
-const types = __importStar(__nccwpck_require__(8904));
-exports.types = types;
-const binary = __importStar(__nccwpck_require__(2486));
-exports.binary = binary;
-const shamap_1 = __nccwpck_require__(8270);
-Object.defineProperty(exports, "ShaMap", ({ enumerable: true, get: function () { return shamap_1.ShaMap; } }));
-const ledgerHashes = __importStar(__nccwpck_require__(3536));
-exports.ledgerHashes = ledgerHashes;
-const hashes = __importStar(__nccwpck_require__(9794));
-exports.hashes = hashes;
-const quality_1 = __nccwpck_require__(4916);
-Object.defineProperty(exports, "quality", ({ enumerable: true, get: function () { return quality_1.quality; } }));
-const hash_prefixes_1 = __nccwpck_require__(9493);
-Object.defineProperty(exports, "HashPrefix", ({ enumerable: true, get: function () { return hash_prefixes_1.HashPrefix; } }));
-//# sourceMappingURL=coretypes.js.map
-
-/***/ }),
-
-/***/ 746:
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.BytesLookup = exports.Bytes = void 0;
-/*
- * @brief: Bytes, name, and ordinal representing one type, ledger_type, transaction type, or result
- */
-class Bytes {
-    constructor(name, ordinal, ordinalWidth) {
-        this.name = name;
-        this.ordinal = ordinal;
-        this.ordinalWidth = ordinalWidth;
-        this.bytes = new Uint8Array(ordinalWidth);
-        for (let i = 0; i < ordinalWidth; i++) {
-            this.bytes[ordinalWidth - i - 1] = (ordinal >>> (i * 8)) & 0xff;
-        }
-    }
-    toJSON() {
-        return this.name;
-    }
-    toBytesSink(sink) {
-        sink.put(this.bytes);
-    }
-    toBytes() {
-        return this.bytes;
-    }
-}
-exports.Bytes = Bytes;
-/*
- * @brief: Collection of Bytes objects, mapping bidirectionally
- */
-class BytesLookup {
-    constructor(types, ordinalWidth) {
-        this.ordinalWidth = ordinalWidth;
-        Object.entries(types).forEach(([k, v]) => {
-            this.add(k, v);
-        });
-    }
-    /**
-     * Add a new name value pair to the BytesLookup.
-     *
-     * @param name - A human readable name for the field.
-     * @param value - The numeric value for the field.
-     * @throws if the name or value already exist in the lookup because it's unclear how to decode.
-     */
-    add(name, value) {
-        if (this[name]) {
-            throw new SyntaxError(`Attempted to add a value with a duplicate name "${name}". This is not allowed because it is unclear how to decode.`);
-        }
-        if (this[value.toString()]) {
-            throw new SyntaxError(`Attempted to add a duplicate value under a different name (Given name: "${name}" and previous name: "${this[value.toString()]}. This is not allowed because it is unclear how to decode.\nGiven value: ${value.toString()}`);
-        }
-        this[name] = new Bytes(name, value, this.ordinalWidth);
-        this[value.toString()] = this[name];
-    }
-    from(value) {
-        return value instanceof Bytes ? value : this[value];
-    }
-    fromParser(parser) {
-        return this.from(parser.readUIntN(this.ordinalWidth).toString());
-    }
-}
-exports.BytesLookup = BytesLookup;
-//# sourceMappingURL=bytes.js.map
-
-/***/ }),
-
-/***/ 785:
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DELEGATABLE_PERMISSIONS_WIDTH = exports.TRANSACTION_RESULT_WIDTH = exports.TRANSACTION_TYPE_WIDTH = exports.LEDGER_ENTRY_WIDTH = exports.TYPE_WIDTH = void 0;
-exports.TYPE_WIDTH = 2; // UInt16
-exports.LEDGER_ENTRY_WIDTH = 2; // UInt16
-exports.TRANSACTION_TYPE_WIDTH = 2; // UInt16
-exports.TRANSACTION_RESULT_WIDTH = 1; // UInt8
-exports.DELEGATABLE_PERMISSIONS_WIDTH = 4; // UInt32
-//# sourceMappingURL=constants.js.map
-
-/***/ }),
-
-/***/ 5304:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.FieldLookup = void 0;
-const bytes_1 = __nccwpck_require__(746);
-const serialized_type_1 = __nccwpck_require__(2029);
-const constants_1 = __nccwpck_require__(785);
-/*
- * @brief: Serialize a field based on type_code and Field.nth
- */
-function fieldHeader(type, nth) {
-    const header = [];
-    if (type < 16) {
-        if (nth < 16) {
-            header.push((type << 4) | nth);
-        }
-        else {
-            header.push(type << 4, nth);
-        }
-    }
-    else if (nth < 16) {
-        header.push(nth, type);
-    }
-    else {
-        header.push(0, type, nth);
-    }
-    return Uint8Array.from(header);
-}
-function buildField([name, info], typeOrdinal) {
-    const field = fieldHeader(typeOrdinal, info.nth);
-    return {
-        name: name,
-        nth: info.nth,
-        isVariableLengthEncoded: info.isVLEncoded,
-        isSerialized: info.isSerialized,
-        isSigningField: info.isSigningField,
-        ordinal: (typeOrdinal << 16) | info.nth,
-        type: new bytes_1.Bytes(info.type, typeOrdinal, constants_1.TYPE_WIDTH),
-        header: field,
-        associatedType: serialized_type_1.SerializedType, // For later assignment in ./types/index.js or Definitions.updateAll(...)
-    };
-}
-/*
- * @brief: The collection of all fields as defined in definitions.json
- */
-class FieldLookup {
-    constructor(fields, types) {
-        fields.forEach(([name, field_info]) => {
-            const typeOrdinal = types[field_info.type];
-            this[name] = buildField([name, field_info], typeOrdinal);
-            this[this[name].ordinal.toString()] = this[name];
-        });
-    }
-    fromString(value) {
-        return this[value];
-    }
-}
-exports.FieldLookup = FieldLookup;
-//# sourceMappingURL=field.js.map
-
-/***/ }),
-
-/***/ 8430:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.TRANSACTION_TYPES = exports.TransactionType = exports.TransactionResult = exports.LedgerEntryType = exports.Type = exports.Field = exports.DEFAULT_DEFINITIONS = exports.XrplDefinitionsBase = exports.Bytes = void 0;
-const definitions_json_1 = __importDefault(__nccwpck_require__(8652));
-const xrpl_definitions_base_1 = __nccwpck_require__(7223);
-Object.defineProperty(exports, "XrplDefinitionsBase", ({ enumerable: true, get: function () { return xrpl_definitions_base_1.XrplDefinitionsBase; } }));
-Object.defineProperty(exports, "Bytes", ({ enumerable: true, get: function () { return xrpl_definitions_base_1.Bytes; } }));
-/**
- * By default, coreTypes from the `types` folder is where known type definitions are initialized to avoid import cycles.
- */
-const DEFAULT_DEFINITIONS = new xrpl_definitions_base_1.XrplDefinitionsBase(definitions_json_1.default, {});
-exports.DEFAULT_DEFINITIONS = DEFAULT_DEFINITIONS;
-const Type = DEFAULT_DEFINITIONS.type;
-exports.Type = Type;
-const LedgerEntryType = DEFAULT_DEFINITIONS.ledgerEntryType;
-exports.LedgerEntryType = LedgerEntryType;
-const TransactionType = DEFAULT_DEFINITIONS.transactionType;
-exports.TransactionType = TransactionType;
-const TransactionResult = DEFAULT_DEFINITIONS.transactionResult;
-exports.TransactionResult = TransactionResult;
-const Field = DEFAULT_DEFINITIONS.field;
-exports.Field = Field;
-/*
- * @brief: All valid transaction types
- */
-const TRANSACTION_TYPES = DEFAULT_DEFINITIONS.transactionNames;
-exports.TRANSACTION_TYPES = TRANSACTION_TYPES;
-//# sourceMappingURL=index.js.map
-
-/***/ }),
-
-/***/ 7223:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.BytesLookup = exports.Bytes = exports.FieldLookup = exports.XrplDefinitionsBase = void 0;
-const bytes_1 = __nccwpck_require__(746);
-Object.defineProperty(exports, "Bytes", ({ enumerable: true, get: function () { return bytes_1.Bytes; } }));
-Object.defineProperty(exports, "BytesLookup", ({ enumerable: true, get: function () { return bytes_1.BytesLookup; } }));
-const field_1 = __nccwpck_require__(5304);
-Object.defineProperty(exports, "FieldLookup", ({ enumerable: true, get: function () { return field_1.FieldLookup; } }));
-const constants_1 = __nccwpck_require__(785);
-/**
- * Stores the various types and fields for rippled to be used to encode/decode information later on.
- * XrplDefinitions should be instantiated instead of this class.
- */
-class XrplDefinitionsBase {
-    /**
-     * Present rippled types in a typed and updatable format.
-     * For an example of the input format see `definitions.json`.
-     * To generate a new definitions file from rippled source code, use the tool at
-     * `packages/ripple-binary-codec/tools/generateDefinitions.js`.
-     *
-     * See the definitions.test.js file for examples of how to create your own updated definitions.json.
-     *
-     * @param enums - A json encoding of the core types, transaction types, transaction results, transaction names, and fields.
-     * @param types - A list of type objects with the same name as the fields defined.
-     *              You can use the coreTypes object if you are not adding new types.
-     */
-    constructor(enums, types) {
-        this.type = new bytes_1.BytesLookup(enums.TYPES, constants_1.TYPE_WIDTH);
-        this.ledgerEntryType = new bytes_1.BytesLookup(enums.LEDGER_ENTRY_TYPES, constants_1.LEDGER_ENTRY_WIDTH);
-        this.transactionType = new bytes_1.BytesLookup(enums.TRANSACTION_TYPES, constants_1.TRANSACTION_TYPE_WIDTH);
-        this.transactionResult = new bytes_1.BytesLookup(enums.TRANSACTION_RESULTS, constants_1.TRANSACTION_RESULT_WIDTH);
-        this.field = new field_1.FieldLookup(enums.FIELDS, enums.TYPES);
-        this.transactionNames = Object.entries(enums.TRANSACTION_TYPES)
-            .filter(([_key, value]) => value >= 0)
-            .map(([key, _value]) => key);
-        this.dataTypes = {}; // Filled in via associateTypes
-        this.associateTypes(types);
-        this.granularPermissions = {
-            TrustlineAuthorize: 65537,
-            TrustlineFreeze: 65538,
-            TrustlineUnfreeze: 65539,
-            AccountDomainSet: 65540,
-            AccountEmailHashSet: 65541,
-            AccountMessageKeySet: 65542,
-            AccountTransferRateSet: 65543,
-            AccountTickSizeSet: 65544,
-            PaymentMint: 65545,
-            PaymentBurn: 65546,
-            MPTokenIssuanceLock: 65547,
-            MPTokenIssuanceUnlock: 65548,
-        };
-        const incrementedTransactionTypes = Object.fromEntries(Object.entries(enums.TRANSACTION_TYPES).map(([key, value]) => [
-            key,
-            value + 1,
-        ]));
-        const combinedPermissions = Object.assign(Object.assign({}, this.granularPermissions), incrementedTransactionTypes);
-        this.delegatablePermissions = new bytes_1.BytesLookup(combinedPermissions, constants_1.DELEGATABLE_PERMISSIONS_WIDTH);
-    }
-    /**
-     * Associates each Field to a corresponding class that TypeScript can recognize.
-     *
-     * @param types a list of type objects with the same name as the fields defined.
-     *              Defaults to xrpl.js's core type definitions.
-     */
-    associateTypes(types) {
-        // Overwrite any existing type definitions with the given types
-        this.dataTypes = Object.assign({}, this.dataTypes, types);
-        Object.values(this.field).forEach((field) => {
-            field.associatedType = this.dataTypes[field.type.name];
-        });
-        this.field['TransactionType'].associatedType = this.transactionType;
-        this.field['TransactionResult'].associatedType = this.transactionResult;
-        this.field['LedgerEntryType'].associatedType = this.ledgerEntryType;
-        if (this.field['PermissionValue']) {
-            this.field['PermissionValue'].associatedType = this.delegatablePermissions;
-        }
-    }
-    getAssociatedTypes() {
-        return this.dataTypes;
-    }
-}
-exports.XrplDefinitionsBase = XrplDefinitionsBase;
-//# sourceMappingURL=xrpl-definitions-base.js.map
-
-/***/ }),
-
-/***/ 7512:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.XrplDefinitions = void 0;
-const xrpl_definitions_base_1 = __nccwpck_require__(7223);
-const types_1 = __nccwpck_require__(8904);
-/**
- * Stores the various types and fields for rippled to be used to encode/decode information later on.
- * Should be used instead of XrplDefinitionsBase since this defines default `types` for serializing/deserializing
- * ledger data.
- */
-class XrplDefinitions extends xrpl_definitions_base_1.XrplDefinitionsBase {
-    /**
-     * Present rippled types in a typed and updatable format.
-     * For an example of the input format see `definitions.json`
-     * To generate a new definitions file from rippled source code, use the tool at
-     * `packages/ripple-binary-codec/tools/generateDefinitions.js`.
-     *
-     * See the definitions.test.js file for examples of how to create your own updated definitions.json.
-     *
-     * @param enums - A json encoding of the core types, transaction types, transaction results, transaction names, and fields.
-     * @param additionalTypes - A list of SerializedType objects with the same name as the fields defined.
-     *              These types will be included in addition to the coreTypes used on mainnet.
-     */
-    constructor(enums, additionalTypes) {
-        const types = Object.assign({}, types_1.coreTypes, additionalTypes);
-        super(enums, types);
-    }
-}
-exports.XrplDefinitions = XrplDefinitions;
-//# sourceMappingURL=xrpl-definitions.js.map
-
-/***/ }),
-
-/***/ 9493:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.HashPrefix = void 0;
-const utils_1 = __nccwpck_require__(2093);
-/**
- * Write a 32 bit integer to a Uint8Array
- *
- * @param uint32 32 bit integer to write to Uint8Array
- * @returns a Uint8Array with the bytes representation of uint32
- */
-function bytes(uint32) {
-    const result = new Uint8Array(4);
-    (0, utils_1.writeUInt32BE)(result, uint32, 0);
-    return result;
-}
-/**
- * Maps HashPrefix names to their byte representation
- */
-const HashPrefix = {
-    transactionID: bytes(0x54584e00),
-    // transaction plus metadata
-    transaction: bytes(0x534e4400),
-    // account state
-    accountStateEntry: bytes(0x4d4c4e00),
-    // inner node in tree
-    innerNode: bytes(0x4d494e00),
-    // ledger master data for signing
-    ledgerHeader: bytes(0x4c575200),
-    // inner transaction to sign
-    transactionSig: bytes(0x53545800),
-    // inner transaction to sign
-    transactionMultiSig: bytes(0x534d5400),
-    // validation for signing
-    validation: bytes(0x56414c00),
-    // proposal for signing
-    proposal: bytes(0x50525000),
-    // payment channel claim
-    paymentChannelClaim: bytes(0x434c4d00),
-    // batch
-    batch: bytes(0x42434800),
-};
-exports.HashPrefix = HashPrefix;
-//# sourceMappingURL=hash-prefixes.js.map
-
-/***/ }),
-
-/***/ 9794:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.transactionID = exports.sha512Half = exports.Sha512Half = void 0;
-const hash_prefixes_1 = __nccwpck_require__(9493);
-const types_1 = __nccwpck_require__(8904);
-const binary_serializer_1 = __nccwpck_require__(1106);
-const sha512_1 = __nccwpck_require__(65);
-/**
- * Class for hashing with SHA512
- * @extends BytesList So SerializedTypes can write bytes to a Sha512Half
- */
-class Sha512Half extends binary_serializer_1.BytesList {
-    constructor() {
-        super(...arguments);
-        this.hash = sha512_1.sha512.create();
-    }
-    /**
-     * Construct a new Sha512Hash and write bytes this.hash
-     *
-     * @param bytes bytes to write to this.hash
-     * @returns the new Sha512Hash object
-     */
-    static put(bytes) {
-        return new Sha512Half().put(bytes);
-    }
-    /**
-     * Write bytes to an existing Sha512Hash
-     *
-     * @param bytes bytes to write to object
-     * @returns the Sha512 object
-     */
-    put(bytes) {
-        this.hash.update(bytes);
-        return this;
-    }
-    /**
-     * Compute SHA512 hash and slice in half
-     *
-     * @returns half of a SHA512 hash
-     */
-    finish256() {
-        return Uint8Array.from(this.hash.digest().slice(0, 32));
-    }
-    /**
-     * Constructs a Hash256 from the Sha512Half object
-     *
-     * @returns a Hash256 object
-     */
-    finish() {
-        return new types_1.Hash256(this.finish256());
-    }
-}
-exports.Sha512Half = Sha512Half;
-/**
- * compute SHA512 hash of a list of bytes
- *
- * @param args zero or more arguments to hash
- * @returns the sha512half hash of the arguments.
- */
-function sha512Half(...args) {
-    const hash = new Sha512Half();
-    args.forEach((a) => hash.put(a));
-    return hash.finish256();
-}
-exports.sha512Half = sha512Half;
-/**
- * Construct a transactionID from a Serialized Transaction
- *
- * @param serialized bytes to hash
- * @returns a Hash256 object
- */
-function transactionID(serialized) {
-    return new types_1.Hash256(sha512Half(hash_prefixes_1.HashPrefix.transactionID, serialized));
-}
-exports.transactionID = transactionID;
-//# sourceMappingURL=hashes.js.map
-
-/***/ }),
-
-/***/ 4578:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.coreTypes = exports.DEFAULT_DEFINITIONS = exports.XrplDefinitionsBase = exports.XrplDefinitions = exports.TRANSACTION_TYPES = exports.decodeLedgerData = exports.decodeQuality = exports.encodeQuality = exports.encodeForSigningBatch = exports.encodeForMultisigning = exports.encodeForSigningClaim = exports.encodeForSigning = exports.encode = exports.decode = void 0;
-const coretypes_1 = __nccwpck_require__(7740);
-const ledger_hashes_1 = __nccwpck_require__(3536);
-Object.defineProperty(exports, "decodeLedgerData", ({ enumerable: true, get: function () { return ledger_hashes_1.decodeLedgerData; } }));
-const enums_1 = __nccwpck_require__(8430);
-Object.defineProperty(exports, "XrplDefinitionsBase", ({ enumerable: true, get: function () { return enums_1.XrplDefinitionsBase; } }));
-Object.defineProperty(exports, "TRANSACTION_TYPES", ({ enumerable: true, get: function () { return enums_1.TRANSACTION_TYPES; } }));
-Object.defineProperty(exports, "DEFAULT_DEFINITIONS", ({ enumerable: true, get: function () { return enums_1.DEFAULT_DEFINITIONS; } }));
-const xrpl_definitions_1 = __nccwpck_require__(7512);
-Object.defineProperty(exports, "XrplDefinitions", ({ enumerable: true, get: function () { return xrpl_definitions_1.XrplDefinitions; } }));
-const types_1 = __nccwpck_require__(8904);
-Object.defineProperty(exports, "coreTypes", ({ enumerable: true, get: function () { return types_1.coreTypes; } }));
-const utils_1 = __nccwpck_require__(3617);
-const { signingData, signingClaimData, multiSigningData, signingBatchData, binaryToJSON, serializeObject, } = coretypes_1.binary;
-/**
- * Decode a transaction
- *
- * @param binary hex-string of the encoded transaction
- * @param definitions Custom rippled types to use instead of the default. Used for sidechains and amendments.
- * @returns the JSON representation of the transaction
- */
-function decode(binary, definitions) {
-    if (typeof binary !== 'string') {
-        throw new Error('binary must be a hex string');
-    }
-    return binaryToJSON(binary, definitions);
-}
-exports.decode = decode;
-/**
- * Encode a transaction
- *
- * @param json The JSON representation of a transaction
- * @param definitions Custom rippled types to use instead of the default. Used for sidechains and amendments.
- *
- * @returns A hex-string of the encoded transaction
- */
-function encode(json, definitions) {
-    if (typeof json !== 'object') {
-        throw new Error();
-    }
-    return (0, utils_1.bytesToHex)(serializeObject(json, { definitions }));
-}
-exports.encode = encode;
-/**
- * Encode a transaction and prepare for signing
- *
- * @param json JSON object representing the transaction
- * @param signer string representing the account to sign the transaction with
- * @param definitions Custom rippled types to use instead of the default. Used for sidechains and amendments.
- * @returns a hex string of the encoded transaction
- */
-function encodeForSigning(json, definitions) {
-    if (typeof json !== 'object') {
-        throw new Error();
-    }
-    return (0, utils_1.bytesToHex)(signingData(json, coretypes_1.HashPrefix.transactionSig, {
-        definitions,
-    }));
-}
-exports.encodeForSigning = encodeForSigning;
-/**
- * Encode a payment channel claim for signing.
- *
- * @param json JSON object representing the claim.
- * @returns a hex string of the encoded claim.
- */
-function encodeForSigningClaim(json) {
-    if (typeof json !== 'object') {
-        throw new Error();
-    }
-    return (0, utils_1.bytesToHex)(signingClaimData(json));
-}
-exports.encodeForSigningClaim = encodeForSigningClaim;
-/**
- * Encode a transaction and prepare for multi-signing.
- *
- * @param json JSON object representing the transaction.
- * @param signer string representing the account to sign the transaction with.
- * @param definitions Custom rippled types to use instead of the default. Used for sidechains and amendments.
- * @returns a hex string of the encoded transaction.
- */
-function encodeForMultisigning(json, signer, definitions) {
-    if (typeof json !== 'object') {
-        throw new Error();
-    }
-    const definitionsOpt = definitions ? { definitions } : undefined;
-    return (0, utils_1.bytesToHex)(multiSigningData(json, signer, definitionsOpt));
-}
-exports.encodeForMultisigning = encodeForMultisigning;
-/**
- * Encode a Batch transaction for signing.
- *
- * @param json JSON object representing the transaction.
- * @returns a hex string of the encoded transaction.
- */
-function encodeForSigningBatch(json) {
-    if (typeof json !== 'object') {
-        throw new Error('Need an object to encode a Batch transaction');
-    }
-    return (0, utils_1.bytesToHex)(signingBatchData(json));
-}
-exports.encodeForSigningBatch = encodeForSigningBatch;
-/**
- * Encode a quality value
- *
- * @param value string representation of a number
- * @returns a hex-string representing the quality
- */
-function encodeQuality(value) {
-    if (typeof value !== 'string') {
-        throw new Error();
-    }
-    return (0, utils_1.bytesToHex)(coretypes_1.quality.encode(value));
-}
-exports.encodeQuality = encodeQuality;
-/**
- * Decode a quality value
- *
- * @param value hex-string of a quality
- * @returns a string representing the quality
- */
-function decodeQuality(value) {
-    if (typeof value !== 'string') {
-        throw new Error();
-    }
-    return coretypes_1.quality.decode(value).toString();
-}
-exports.decodeQuality = decodeQuality;
-//# sourceMappingURL=index.js.map
-
-/***/ }),
-
-/***/ 3536:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.decodeLedgerData = exports.ledgerHash = exports.transactionTreeHash = exports.accountStateHash = void 0;
-const shamap_1 = __nccwpck_require__(8270);
-const hash_prefixes_1 = __nccwpck_require__(9493);
-const hashes_1 = __nccwpck_require__(9794);
-const binary_1 = __nccwpck_require__(2486);
-const hash_256_1 = __nccwpck_require__(2040);
-const st_object_1 = __nccwpck_require__(8605);
-const uint_64_1 = __nccwpck_require__(9329);
-const uint_32_1 = __nccwpck_require__(5105);
-const uint_8_1 = __nccwpck_require__(3584);
-const binary_parser_1 = __nccwpck_require__(4631);
-/**
- * Computes the hash of a list of objects
- *
- * @param itemizer Converts an item into a format that can be added to SHAMap
- * @param itemsJson Array of items to add to a SHAMap
- * @returns the hash of the SHAMap
- */
-function computeHash(itemizer, itemsJson) {
-    const map = new shamap_1.ShaMap();
-    itemsJson.forEach((item) => map.addItem(...itemizer(item)));
-    return map.hash();
-}
-/**
- * Convert a transaction into an index and an item
- *
- * @param json transaction with metadata
- * @returns a tuple of index and item to be added to SHAMap
- */
-function transactionItemizer(json) {
-    if (!json.hash) {
-        throw new Error();
-    }
-    const index = hash_256_1.Hash256.from(json.hash);
-    const item = {
-        hashPrefix() {
-            return hash_prefixes_1.HashPrefix.transaction;
-        },
-        toBytesSink(sink) {
-            const serializer = new binary_1.BinarySerializer(sink);
-            serializer.writeLengthEncoded(st_object_1.STObject.from(json));
-            serializer.writeLengthEncoded(st_object_1.STObject.from(json.metaData));
-        },
-    };
-    return [index, item, undefined];
-}
-/**
- * Convert an entry to a pair Hash256 and ShaMapNode
- *
- * @param json JSON describing a ledger entry item
- * @returns a tuple of index and item to be added to SHAMap
- */
-function entryItemizer(json) {
-    const index = hash_256_1.Hash256.from(json.index);
-    const bytes = (0, binary_1.serializeObject)(json);
-    const item = {
-        hashPrefix() {
-            return hash_prefixes_1.HashPrefix.accountStateEntry;
-        },
-        toBytesSink(sink) {
-            sink.put(bytes);
-        },
-    };
-    return [index, item, undefined];
-}
-/**
- * Function computing the hash of a transaction tree
- *
- * @param param An array of transaction objects to hash
- * @returns A Hash256 object
- */
-function transactionTreeHash(param) {
-    const itemizer = transactionItemizer;
-    return computeHash(itemizer, param);
-}
-exports.transactionTreeHash = transactionTreeHash;
-/**
- * Function computing the hash of accountState
- *
- * @param param A list of accountStates hash
- * @returns A Hash256 object
- */
-function accountStateHash(param) {
-    const itemizer = entryItemizer;
-    return computeHash(itemizer, param);
-}
-exports.accountStateHash = accountStateHash;
-/**
- * Serialize and hash a ledger header
- *
- * @param header a ledger header
- * @returns the hash of header
- */
-function ledgerHash(header) {
-    const hash = new hashes_1.Sha512Half();
-    hash.put(hash_prefixes_1.HashPrefix.ledgerHeader);
-    if (header.parent_close_time === undefined ||
-        header.close_flags === undefined) {
-        throw new Error();
-    }
-    uint_32_1.UInt32.from(header.ledger_index).toBytesSink(hash);
-    uint_64_1.UInt64.from(BigInt(String(header.total_coins))).toBytesSink(hash);
-    hash_256_1.Hash256.from(header.parent_hash).toBytesSink(hash);
-    hash_256_1.Hash256.from(header.transaction_hash).toBytesSink(hash);
-    hash_256_1.Hash256.from(header.account_hash).toBytesSink(hash);
-    uint_32_1.UInt32.from(header.parent_close_time).toBytesSink(hash);
-    uint_32_1.UInt32.from(header.close_time).toBytesSink(hash);
-    uint_8_1.UInt8.from(header.close_time_resolution).toBytesSink(hash);
-    uint_8_1.UInt8.from(header.close_flags).toBytesSink(hash);
-    return hash.finish();
-}
-exports.ledgerHash = ledgerHash;
-/**
- * Decodes a serialized ledger header
- *
- * @param binary A serialized ledger header
- * @param definitions Type definitions to parse the ledger objects.
- *      Used if there are non-default ledger objects to decode.
- * @returns A JSON object describing a ledger header
- */
-function decodeLedgerData(binary, definitions) {
-    if (typeof binary !== 'string') {
-        throw new Error('binary must be a hex string');
-    }
-    const parser = new binary_parser_1.BinaryParser(binary, definitions);
-    return {
-        ledger_index: parser.readUInt32(),
-        total_coins: parser.readType(uint_64_1.UInt64).valueOf().toString(),
-        parent_hash: parser.readType(hash_256_1.Hash256).toHex(),
-        transaction_hash: parser.readType(hash_256_1.Hash256).toHex(),
-        account_hash: parser.readType(hash_256_1.Hash256).toHex(),
-        parent_close_time: parser.readUInt32(),
-        close_time: parser.readUInt32(),
-        close_time_resolution: parser.readUInt8(),
-        close_flags: parser.readUInt8(),
-    };
-}
-exports.decodeLedgerData = decodeLedgerData;
-//# sourceMappingURL=ledger-hashes.js.map
-
-/***/ }),
-
-/***/ 4916:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.quality = void 0;
-const types_1 = __nccwpck_require__(8904);
-const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const utils_1 = __nccwpck_require__(3617);
-/**
- * class for encoding and decoding quality
- */
-class quality {
-    /**
-     * Encode quality amount
-     *
-     * @param arg string representation of an amount
-     * @returns Serialized quality
-     */
-    static encode(quality) {
-        const decimal = (0, bignumber_js_1.default)(quality);
-        const exponent = ((decimal === null || decimal === void 0 ? void 0 : decimal.e) || 0) - 15;
-        const qualityString = decimal.times(`1e${-exponent}`).abs().toString();
-        const bytes = types_1.coreTypes.UInt64.from(BigInt(qualityString)).toBytes();
-        bytes[0] = exponent + 100;
-        return bytes;
-    }
-    /**
-     * Decode quality amount
-     *
-     * @param arg hex-string denoting serialized quality
-     * @returns deserialized quality
-     */
-    static decode(quality) {
-        const bytes = (0, utils_1.hexToBytes)(quality).slice(-8);
-        const exponent = bytes[0] - 100;
-        const mantissa = new bignumber_js_1.default(`0x${(0, utils_1.bytesToHex)(bytes.slice(1))}`);
-        return mantissa.times(`1e${exponent}`);
-    }
-}
-exports.quality = quality;
-//# sourceMappingURL=quality.js.map
-
-/***/ }),
-
-/***/ 4631:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.BinaryParser = void 0;
-const enums_1 = __nccwpck_require__(8430);
-const utils_1 = __nccwpck_require__(3617);
-/**
- * BinaryParser is used to compute fields and values from a HexString
- */
-class BinaryParser {
-    /**
-     * Initialize bytes to a hex string
-     *
-     * @param hexBytes a hex string
-     * @param definitions Rippled definitions used to parse the values of transaction types and such.
-     *                          Can be customized for sidechains and amendments.
-     */
-    constructor(hexBytes, definitions = enums_1.DEFAULT_DEFINITIONS) {
-        this.bytes = (0, utils_1.hexToBytes)(hexBytes);
-        this.definitions = definitions;
-    }
-    /**
-     * Peek the first byte of the BinaryParser
-     *
-     * @returns The first byte of the BinaryParser
-     */
-    peek() {
-        if (this.bytes.byteLength === 0) {
-            throw new Error();
-        }
-        return this.bytes[0];
-    }
-    /**
-     * Consume the first n bytes of the BinaryParser
-     *
-     * @param n the number of bytes to skip
-     */
-    skip(n) {
-        if (n > this.bytes.byteLength) {
-            throw new Error();
-        }
-        this.bytes = this.bytes.slice(n);
-    }
-    /**
-     * read the first n bytes from the BinaryParser
-     *
-     * @param n The number of bytes to read
-     * @return The bytes
-     */
-    read(n) {
-        if (n > this.bytes.byteLength) {
-            throw new Error();
-        }
-        const slice = this.bytes.slice(0, n);
-        this.skip(n);
-        return slice;
-    }
-    /**
-     * Read an integer of given size
-     *
-     * @param n The number of bytes to read
-     * @return The number represented by those bytes
-     */
-    readUIntN(n) {
-        if (0 >= n || n > 4) {
-            throw new Error('invalid n');
-        }
-        return this.read(n).reduce((a, b) => (a << 8) | b) >>> 0;
-    }
-    readUInt8() {
-        return this.readUIntN(1);
-    }
-    readUInt16() {
-        return this.readUIntN(2);
-    }
-    readUInt32() {
-        return this.readUIntN(4);
-    }
-    size() {
-        return this.bytes.byteLength;
-    }
-    end(customEnd) {
-        const length = this.bytes.byteLength;
-        return length === 0 || (customEnd !== undefined && length <= customEnd);
-    }
-    /**
-     * Reads variable length encoded bytes
-     *
-     * @return The variable length bytes
-     */
-    readVariableLength() {
-        return this.read(this.readVariableLengthLength());
-    }
-    /**
-     * Reads the length of the variable length encoded bytes
-     *
-     * @return The length of the variable length encoded bytes
-     */
-    readVariableLengthLength() {
-        const b1 = this.readUInt8();
-        if (b1 <= 192) {
-            return b1;
-        }
-        else if (b1 <= 240) {
-            const b2 = this.readUInt8();
-            return 193 + (b1 - 193) * 256 + b2;
-        }
-        else if (b1 <= 254) {
-            const b2 = this.readUInt8();
-            const b3 = this.readUInt8();
-            return 12481 + (b1 - 241) * 65536 + b2 * 256 + b3;
-        }
-        throw new Error('Invalid variable length indicator');
-    }
-    /**
-     * Reads the field ordinal from the BinaryParser
-     *
-     * @return Field ordinal
-     */
-    readFieldOrdinal() {
-        let type = this.readUInt8();
-        let nth = type & 15;
-        type >>= 4;
-        if (type === 0) {
-            type = this.readUInt8();
-            if (type === 0 || type < 16) {
-                throw new Error(`Cannot read FieldOrdinal, type_code ${type} out of range`);
-            }
-        }
-        if (nth === 0) {
-            nth = this.readUInt8();
-            if (nth === 0 || nth < 16) {
-                throw new Error(`Cannot read FieldOrdinal, field_code ${nth} out of range`);
-            }
-        }
-        return (type << 16) | nth;
-    }
-    /**
-     * Read the field from the BinaryParser
-     *
-     * @return The field represented by the bytes at the head of the BinaryParser
-     */
-    readField() {
-        return this.definitions.field.fromString(this.readFieldOrdinal().toString());
-    }
-    /**
-     * Read a given type from the BinaryParser
-     *
-     * @param type The type that you want to read from the BinaryParser
-     * @return The instance of that type read from the BinaryParser
-     */
-    readType(type) {
-        return type.fromParser(this);
-    }
-    /**
-     * Get the type associated with a given field
-     *
-     * @param field The field that you wan to get the type of
-     * @return The type associated with the given field
-     */
-    typeForField(field) {
-        return field.associatedType;
-    }
-    /**
-     * Read value of the type specified by field from the BinaryParser
-     *
-     * @param field The field that you want to get the associated value for
-     * @return The value associated with the given field
-     */
-    readFieldValue(field) {
-        const type = this.typeForField(field);
-        if (!type) {
-            throw new Error(`unsupported: (${field.name}, ${field.type.name})`);
-        }
-        const sizeHint = field.isVariableLengthEncoded
-            ? this.readVariableLengthLength()
-            : undefined;
-        const value = type.fromParser(this, sizeHint);
-        if (value === undefined) {
-            throw new Error(`fromParser for (${field.name}, ${field.type.name}) -> undefined `);
-        }
-        return value;
-    }
-    /**
-     * Get the next field and value from the BinaryParser
-     *
-     * @return The field and value
-     */
-    readFieldAndValue() {
-        const field = this.readField();
-        return [field, this.readFieldValue(field)];
-    }
-}
-exports.BinaryParser = BinaryParser;
-//# sourceMappingURL=binary-parser.js.map
-
-/***/ }),
-
-/***/ 1106:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.BinarySerializer = exports.BytesList = void 0;
-const utils_1 = __nccwpck_require__(3617);
-/**
- * Bytes list is a collection of Uint8Array objects
- */
-class BytesList {
-    constructor() {
-        this.bytesArray = [];
-    }
-    /**
-     * Get the total number of bytes in the BytesList
-     *
-     * @return the number of bytes
-     */
-    getLength() {
-        return (0, utils_1.concat)(this.bytesArray).byteLength;
-    }
-    /**
-     * Put bytes in the BytesList
-     *
-     * @param bytesArg A Uint8Array
-     * @return this BytesList
-     */
-    put(bytesArg) {
-        const bytes = Uint8Array.from(bytesArg); // Temporary, to catch instances of Uint8Array being passed in
-        this.bytesArray.push(bytes);
-        return this;
-    }
-    /**
-     * Write this BytesList to the back of another bytes list
-     *
-     *  @param list The BytesList to write to
-     */
-    toBytesSink(list) {
-        list.put(this.toBytes());
-    }
-    toBytes() {
-        return (0, utils_1.concat)(this.bytesArray);
-    }
-    toHex() {
-        return (0, utils_1.bytesToHex)(this.toBytes());
-    }
-}
-exports.BytesList = BytesList;
-/**
- * BinarySerializer is used to write fields and values to Uint8Arrays
- */
-class BinarySerializer {
-    constructor(sink) {
-        this.sink = new BytesList();
-        this.sink = sink;
-    }
-    /**
-     * Write a value to this BinarySerializer
-     *
-     * @param value a SerializedType value
-     */
-    write(value) {
-        value.toBytesSink(this.sink);
-    }
-    /**
-     * Write bytes to this BinarySerializer
-     *
-     * @param bytes the bytes to write
-     */
-    put(bytes) {
-        this.sink.put(bytes);
-    }
-    /**
-     * Write a value of a given type to this BinarySerializer
-     *
-     * @param type the type to write
-     * @param value a value of that type
-     */
-    writeType(type, value) {
-        this.write(type.from(value));
-    }
-    /**
-     * Write BytesList to this BinarySerializer
-     *
-     * @param bl BytesList to write to BinarySerializer
-     */
-    writeBytesList(bl) {
-        bl.toBytesSink(this.sink);
-    }
-    /**
-     * Calculate the header of Variable Length encoded bytes
-     *
-     * @param length the length of the bytes
-     */
-    encodeVariableLength(length) {
-        const lenBytes = new Uint8Array(3);
-        if (length <= 192) {
-            lenBytes[0] = length;
-            return lenBytes.slice(0, 1);
-        }
-        else if (length <= 12480) {
-            length -= 193;
-            lenBytes[0] = 193 + (length >>> 8);
-            lenBytes[1] = length & 0xff;
-            return lenBytes.slice(0, 2);
-        }
-        else if (length <= 918744) {
-            length -= 12481;
-            lenBytes[0] = 241 + (length >>> 16);
-            lenBytes[1] = (length >> 8) & 0xff;
-            lenBytes[2] = length & 0xff;
-            return lenBytes.slice(0, 3);
-        }
-        throw new Error('Overflow error');
-    }
-    /**
-     * Write field and value to BinarySerializer
-     *
-     * @param field field to write to BinarySerializer
-     * @param value value to write to BinarySerializer
-     */
-    writeFieldAndValue(field, value, isUnlModifyWorkaround = false) {
-        const associatedValue = field.associatedType.from(value);
-        if (associatedValue.toBytesSink === undefined || field.name === undefined) {
-            throw new Error();
-        }
-        this.sink.put(field.header);
-        if (field.isVariableLengthEncoded) {
-            this.writeLengthEncoded(associatedValue, isUnlModifyWorkaround);
-        }
-        else {
-            associatedValue.toBytesSink(this.sink);
-        }
-    }
-    /**
-     * Write a variable length encoded value to the BinarySerializer
-     *
-     * @param value length encoded value to write to BytesList
-     */
-    writeLengthEncoded(value, isUnlModifyWorkaround = false) {
-        const bytes = new BytesList();
-        if (!isUnlModifyWorkaround) {
-            // this part doesn't happen for the Account field in a UNLModify transaction
-            value.toBytesSink(bytes);
-        }
-        this.put(this.encodeVariableLength(bytes.getLength()));
-        this.writeBytesList(bytes);
-    }
-}
-exports.BinarySerializer = BinarySerializer;
-//# sourceMappingURL=binary-serializer.js.map
-
-/***/ }),
-
-/***/ 8270:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ShaMapLeaf = exports.ShaMapNode = exports.ShaMap = void 0;
-const types_1 = __nccwpck_require__(8904);
-const hash_prefixes_1 = __nccwpck_require__(9493);
-const hashes_1 = __nccwpck_require__(9794);
-/**
- * Abstract class describing a SHAMapNode
- */
-class ShaMapNode {
-}
-exports.ShaMapNode = ShaMapNode;
-/**
- * Class describing a Leaf of SHAMap
- */
-class ShaMapLeaf extends ShaMapNode {
-    constructor(index, item) {
-        super();
-        this.index = index;
-        this.item = item;
-    }
-    /**
-     * @returns true as ShaMapLeaf is a leaf node
-     */
-    isLeaf() {
-        return true;
-    }
-    /**
-     * @returns false as ShaMapLeaf is not an inner node
-     */
-    isInner() {
-        return false;
-    }
-    /**
-     * Get the prefix of the this.item
-     *
-     * @returns The hash prefix, unless this.item is undefined, then it returns an empty Uint8Array
-     */
-    hashPrefix() {
-        return this.item === undefined ? new Uint8Array(0) : this.item.hashPrefix();
-    }
-    /**
-     * Hash the bytes representation of this
-     *
-     * @returns hash of this.item concatenated with this.index
-     */
-    hash() {
-        const hash = hashes_1.Sha512Half.put(this.hashPrefix());
-        this.toBytesSink(hash);
-        return hash.finish();
-    }
-    /**
-     * Write the bytes representation of this to a BytesList
-     * @param list BytesList to write bytes to
-     */
-    toBytesSink(list) {
-        if (this.item !== undefined) {
-            this.item.toBytesSink(list);
-        }
-        this.index.toBytesSink(list);
-    }
-}
-exports.ShaMapLeaf = ShaMapLeaf;
-/**
- * Class defining an Inner Node of a SHAMap
- */
-class ShaMapInner extends ShaMapNode {
-    constructor(depth = 0) {
-        super();
-        this.depth = depth;
-        this.slotBits = 0;
-        this.branches = Array(16);
-    }
-    /**
-     * @returns true as ShaMapInner is an inner node
-     */
-    isInner() {
-        return true;
-    }
-    /**
-     * @returns false as ShaMapInner is not a leaf node
-     */
-    isLeaf() {
-        return false;
-    }
-    /**
-     * Get the hash prefix for this node
-     *
-     * @returns hash prefix describing an inner node
-     */
-    hashPrefix() {
-        return hash_prefixes_1.HashPrefix.innerNode;
-    }
-    /**
-     * Set a branch of this node to be another node
-     *
-     * @param slot Slot to add branch to this.branches
-     * @param branch Branch to add
-     */
-    setBranch(slot, branch) {
-        this.slotBits = this.slotBits | (1 << slot);
-        this.branches[slot] = branch;
-    }
-    /**
-     * @returns true if node is empty
-     */
-    empty() {
-        return this.slotBits === 0;
-    }
-    /**
-     * Compute the hash of this node
-     *
-     * @returns The hash of this node
-     */
-    hash() {
-        if (this.empty()) {
-            return types_1.coreTypes.Hash256.ZERO_256;
-        }
-        const hash = hashes_1.Sha512Half.put(this.hashPrefix());
-        this.toBytesSink(hash);
-        return hash.finish();
-    }
-    /**
-     * Writes the bytes representation of this node to a BytesList
-     *
-     * @param list BytesList to write bytes to
-     */
-    toBytesSink(list) {
-        for (let i = 0; i < this.branches.length; i++) {
-            const branch = this.branches[i];
-            const hash = branch
-                ? branch.hash()
-                : types_1.coreTypes.Hash256.ZERO_256;
-            hash.toBytesSink(list);
-        }
-    }
-    /**
-     * Add item to the SHAMap
-     *
-     * @param index Hash of the index of the item being inserted
-     * @param item Item to insert in the map
-     * @param leaf Leaf node to insert when branch doesn't exist
-     */
-    addItem(index, item, leaf) {
-        if (index === undefined) {
-            throw new Error();
-        }
-        if (index !== undefined) {
-            const nibble = index.nibblet(this.depth);
-            const existing = this.branches[nibble];
-            if (existing === undefined) {
-                this.setBranch(nibble, leaf || new ShaMapLeaf(index, item));
-            }
-            else if (existing instanceof ShaMapLeaf) {
-                const newInner = new ShaMapInner(this.depth + 1);
-                newInner.addItem(existing.index, undefined, existing);
-                newInner.addItem(index, item, leaf);
-                this.setBranch(nibble, newInner);
-            }
-            else if (existing instanceof ShaMapInner) {
-                existing.addItem(index, item, leaf);
-            }
-            else {
-                throw new Error('invalid ShaMap.addItem call');
-            }
-        }
-    }
-}
-class ShaMap extends ShaMapInner {
-}
-exports.ShaMap = ShaMap;
-//# sourceMappingURL=shamap.js.map
-
-/***/ }),
-
-/***/ 6118:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.AccountID = void 0;
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const hash_160_1 = __nccwpck_require__(2424);
-const utils_1 = __nccwpck_require__(3617);
-const HEX_REGEX = /^[A-F0-9]{40}$/;
-/**
- * Class defining how to encode and decode an AccountID
- */
-class AccountID extends hash_160_1.Hash160 {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : AccountID.defaultAccountID.bytes);
-    }
-    /**
-     * Defines how to construct an AccountID
-     *
-     * @param value either an existing AccountID, a hex-string, or a base58 r-Address
-     * @returns an AccountID object
-     */
-    static from(value) {
-        if (value instanceof AccountID) {
-            return value;
-        }
-        if (typeof value === 'string') {
-            if (value === '') {
-                return new AccountID();
-            }
-            return HEX_REGEX.test(value)
-                ? new AccountID((0, utils_1.hexToBytes)(value))
-                : this.fromBase58(value);
-        }
-        throw new Error('Cannot construct AccountID from value given');
-    }
-    /**
-     * Defines how to build an AccountID from a base58 r-Address
-     *
-     * @param value a base58 r-Address
-     * @returns an AccountID object
-     */
-    static fromBase58(value) {
-        if ((0, ripple_address_codec_1.isValidXAddress)(value)) {
-            const classic = (0, ripple_address_codec_1.xAddressToClassicAddress)(value);
-            if (classic.tag !== false)
-                throw new Error('Only allowed to have tag on Account or Destination');
-            value = classic.classicAddress;
-        }
-        return new AccountID(Uint8Array.from((0, ripple_address_codec_1.decodeAccountID)(value)));
-    }
-    /**
-     * Overload of toJSON
-     *
-     * @returns the base58 string for this AccountID
-     */
-    toJSON() {
-        return this.toBase58();
-    }
-    /**
-     * Defines how to encode AccountID into a base58 address
-     *
-     * @returns the base58 string defined by this.bytes
-     */
-    toBase58() {
-        return (0, ripple_address_codec_1.encodeAccountID)(this.bytes);
-    }
-}
-exports.AccountID = AccountID;
-AccountID.defaultAccountID = new AccountID(new Uint8Array(20));
-//# sourceMappingURL=account-id.js.map
-
-/***/ }),
-
-/***/ 9008:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Amount = void 0;
-const binary_parser_1 = __nccwpck_require__(4631);
-const account_id_1 = __nccwpck_require__(6118);
-const currency_1 = __nccwpck_require__(7227);
-const serialized_type_1 = __nccwpck_require__(2029);
-const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const utils_1 = __nccwpck_require__(3617);
-const utils_2 = __nccwpck_require__(2093);
-const hash_192_1 = __nccwpck_require__(6555);
-/**
- * Constants for validating amounts
- */
-const MIN_IOU_EXPONENT = -96;
-const MAX_IOU_EXPONENT = 80;
-const MAX_IOU_PRECISION = 16;
-const MAX_DROPS = new bignumber_js_1.default('1e17');
-const MIN_XRP = new bignumber_js_1.default('1e-6');
-const mask = BigInt(0x00000000ffffffff);
-const mptMask = BigInt(0x8000000000000000);
-/**
- * BigNumber configuration for Amount IOUs
- */
-bignumber_js_1.default.config({
-    EXPONENTIAL_AT: [
-        MIN_IOU_EXPONENT - MAX_IOU_PRECISION,
-        MAX_IOU_EXPONENT + MAX_IOU_PRECISION,
-    ],
-});
-/**
- * Type guard for AmountObjectIOU
- */
-function isAmountObjectIOU(arg) {
-    const keys = Object.keys(arg).sort();
-    return (keys.length === 3 &&
-        keys[0] === 'currency' &&
-        keys[1] === 'issuer' &&
-        keys[2] === 'value');
-}
-/**
- * Type guard for AmountObjectMPT
- */
-function isAmountObjectMPT(arg) {
-    const keys = Object.keys(arg).sort();
-    return (keys.length === 2 && keys[0] === 'mpt_issuance_id' && keys[1] === 'value');
-}
-/**
- * Class for serializing/Deserializing Amounts
- */
-class Amount extends serialized_type_1.SerializedType {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : Amount.defaultAmount.bytes);
-    }
-    /**
-     * Construct an amount from an IOU, MPT or string amount
-     *
-     * @param value An Amount, object representing an IOU, or a string
-     *     representing an integer amount
-     * @returns An Amount object
-     */
-    static from(value) {
-        if (value instanceof Amount) {
-            return value;
-        }
-        let amount = new Uint8Array(8);
-        if (typeof value === 'string') {
-            Amount.assertXrpIsValid(value);
-            const number = BigInt(value);
-            const intBuf = [new Uint8Array(4), new Uint8Array(4)];
-            (0, utils_2.writeUInt32BE)(intBuf[0], Number(number >> BigInt(32)), 0);
-            (0, utils_2.writeUInt32BE)(intBuf[1], Number(number & BigInt(mask)), 0);
-            amount = (0, utils_1.concat)(intBuf);
-            amount[0] |= 0x40;
-            return new Amount(amount);
-        }
-        if (isAmountObjectIOU(value)) {
-            const number = new bignumber_js_1.default(value.value);
-            Amount.assertIouIsValid(number);
-            if (number.isZero()) {
-                amount[0] |= 0x80;
-            }
-            else {
-                const integerNumberString = number
-                    .times(`1e${-((number.e || 0) - 15)}`)
-                    .abs()
-                    .toString();
-                const num = BigInt(integerNumberString);
-                const intBuf = [new Uint8Array(4), new Uint8Array(4)];
-                (0, utils_2.writeUInt32BE)(intBuf[0], Number(num >> BigInt(32)), 0);
-                (0, utils_2.writeUInt32BE)(intBuf[1], Number(num & BigInt(mask)), 0);
-                amount = (0, utils_1.concat)(intBuf);
-                amount[0] |= 0x80;
-                if (number.gt(new bignumber_js_1.default(0))) {
-                    amount[0] |= 0x40;
-                }
-                const exponent = (number.e || 0) - 15;
-                const exponentByte = 97 + exponent;
-                amount[0] |= exponentByte >>> 2;
-                amount[1] |= (exponentByte & 0x03) << 6;
-            }
-            const currency = currency_1.Currency.from(value.currency).toBytes();
-            const issuer = account_id_1.AccountID.from(value.issuer).toBytes();
-            return new Amount((0, utils_1.concat)([amount, currency, issuer]));
-        }
-        if (isAmountObjectMPT(value)) {
-            Amount.assertMptIsValid(value.value);
-            let leadingByte = new Uint8Array(1);
-            leadingByte[0] |= 0x60;
-            const num = BigInt(value.value);
-            const intBuf = [new Uint8Array(4), new Uint8Array(4)];
-            (0, utils_2.writeUInt32BE)(intBuf[0], Number(num >> BigInt(32)), 0);
-            (0, utils_2.writeUInt32BE)(intBuf[1], Number(num & BigInt(mask)), 0);
-            amount = (0, utils_1.concat)(intBuf);
-            const mptIssuanceID = hash_192_1.Hash192.from(value.mpt_issuance_id).toBytes();
-            return new Amount((0, utils_1.concat)([leadingByte, amount, mptIssuanceID]));
-        }
-        throw new Error('Invalid type to construct an Amount');
-    }
-    /**
-     * Read an amount from a BinaryParser
-     *
-     * @param parser BinaryParser to read the Amount from
-     * @returns An Amount object
-     */
-    static fromParser(parser) {
-        const isIOU = parser.peek() & 0x80;
-        if (isIOU)
-            return new Amount(parser.read(48));
-        // the amount can be either MPT or XRP at this point
-        const isMPT = parser.peek() & 0x20;
-        const numBytes = isMPT ? 33 : 8;
-        return new Amount(parser.read(numBytes));
-    }
-    /**
-     * Get the JSON representation of this Amount
-     *
-     * @returns the JSON interpretation of this.bytes
-     */
-    toJSON() {
-        if (this.isNative()) {
-            const bytes = this.bytes;
-            const isPositive = bytes[0] & 0x40;
-            const sign = isPositive ? '' : '-';
-            bytes[0] &= 0x3f;
-            const msb = BigInt((0, utils_2.readUInt32BE)(bytes.slice(0, 4), 0));
-            const lsb = BigInt((0, utils_2.readUInt32BE)(bytes.slice(4), 0));
-            const num = (msb << BigInt(32)) | lsb;
-            return `${sign}${num.toString()}`;
-        }
-        if (this.isIOU()) {
-            const parser = new binary_parser_1.BinaryParser(this.toString());
-            const mantissa = parser.read(8);
-            const currency = currency_1.Currency.fromParser(parser);
-            const issuer = account_id_1.AccountID.fromParser(parser);
-            const b1 = mantissa[0];
-            const b2 = mantissa[1];
-            const isPositive = b1 & 0x40;
-            const sign = isPositive ? '' : '-';
-            const exponent = ((b1 & 0x3f) << 2) + ((b2 & 0xff) >> 6) - 97;
-            mantissa[0] = 0;
-            mantissa[1] &= 0x3f;
-            const value = new bignumber_js_1.default(`${sign}0x${(0, utils_1.bytesToHex)(mantissa)}`).times(`1e${exponent}`);
-            Amount.assertIouIsValid(value);
-            return {
-                value: value.toString(),
-                currency: currency.toJSON(),
-                issuer: issuer.toJSON(),
-            };
-        }
-        if (this.isMPT()) {
-            const parser = new binary_parser_1.BinaryParser(this.toString());
-            const leadingByte = parser.read(1);
-            const amount = parser.read(8);
-            const mptID = hash_192_1.Hash192.fromParser(parser);
-            const isPositive = leadingByte[0] & 0x40;
-            const sign = isPositive ? '' : '-';
-            const msb = BigInt((0, utils_2.readUInt32BE)(amount.slice(0, 4), 0));
-            const lsb = BigInt((0, utils_2.readUInt32BE)(amount.slice(4), 0));
-            const num = (msb << BigInt(32)) | lsb;
-            return {
-                value: `${sign}${num.toString()}`,
-                mpt_issuance_id: mptID.toString(),
-            };
-        }
-        throw new Error('Invalid amount to construct JSON');
-    }
-    /**
-     * Validate XRP amount
-     *
-     * @param amount String representing XRP amount
-     * @returns void, but will throw if invalid amount
-     */
-    static assertXrpIsValid(amount) {
-        if (amount.indexOf('.') !== -1) {
-            throw new Error(`${amount.toString()} is an illegal amount`);
-        }
-        const decimal = new bignumber_js_1.default(amount);
-        if (!decimal.isZero()) {
-            if (decimal.lt(MIN_XRP) || decimal.gt(MAX_DROPS)) {
-                throw new Error(`${amount.toString()} is an illegal amount`);
-            }
-        }
-    }
-    /**
-     * Validate IOU.value amount
-     *
-     * @param decimal BigNumber object representing IOU.value
-     * @returns void, but will throw if invalid amount
-     */
-    static assertIouIsValid(decimal) {
-        if (!decimal.isZero()) {
-            const p = decimal.precision();
-            const e = (decimal.e || 0) - 15;
-            if (p > MAX_IOU_PRECISION ||
-                e > MAX_IOU_EXPONENT ||
-                e < MIN_IOU_EXPONENT) {
-                throw new Error('Decimal precision out of range');
-            }
-            this.verifyNoDecimal(decimal);
-        }
-    }
-    /**
-     * Validate MPT.value amount
-     *
-     * @param decimal BigNumber object representing MPT.value
-     * @returns void, but will throw if invalid amount
-     */
-    static assertMptIsValid(amount) {
-        if (amount.indexOf('.') !== -1) {
-            throw new Error(`${amount.toString()} is an illegal amount`);
-        }
-        const decimal = new bignumber_js_1.default(amount);
-        if (!decimal.isZero()) {
-            if (decimal < (0, bignumber_js_1.default)(0)) {
-                throw new Error(`${amount.toString()} is an illegal amount`);
-            }
-            if (Number(BigInt(amount) & BigInt(mptMask)) != 0) {
-                throw new Error(`${amount.toString()} is an illegal amount`);
-            }
-        }
-    }
-    /**
-     * Ensure that the value after being multiplied by the exponent does not
-     * contain a decimal.
-     *
-     * @param decimal a Decimal object
-     * @returns a string of the object without a decimal
-     */
-    static verifyNoDecimal(decimal) {
-        const integerNumberString = decimal
-            .times(`1e${-((decimal.e || 0) - 15)}`)
-            .abs()
-            .toString();
-        if (integerNumberString.indexOf('.') !== -1) {
-            throw new Error('Decimal place found in integerNumberString');
-        }
-    }
-    /**
-     * Test if this amount is in units of Native Currency(XRP)
-     *
-     * @returns true if Native (XRP)
-     */
-    isNative() {
-        return (this.bytes[0] & 0x80) === 0 && (this.bytes[0] & 0x20) === 0;
-    }
-    /**
-     * Test if this amount is in units of MPT
-     *
-     * @returns true if MPT
-     */
-    isMPT() {
-        return (this.bytes[0] & 0x80) === 0 && (this.bytes[0] & 0x20) !== 0;
-    }
-    /**
-     * Test if this amount is in units of IOU
-     *
-     * @returns true if IOU
-     */
-    isIOU() {
-        return (this.bytes[0] & 0x80) !== 0;
-    }
-}
-exports.Amount = Amount;
-Amount.defaultAmount = new Amount((0, utils_1.hexToBytes)('4000000000000000'));
-//# sourceMappingURL=amount.js.map
-
-/***/ }),
-
-/***/ 43:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Blob = void 0;
-const serialized_type_1 = __nccwpck_require__(2029);
-const utils_1 = __nccwpck_require__(3617);
-/**
- * Variable length encoded type
- */
-class Blob extends serialized_type_1.SerializedType {
-    constructor(bytes) {
-        super(bytes);
-    }
-    /**
-     * Defines how to read a Blob from a BinaryParser
-     *
-     * @param parser The binary parser to read the Blob from
-     * @param hint The length of the blob, computed by readVariableLengthLength() and passed in
-     * @returns A Blob object
-     */
-    static fromParser(parser, hint) {
-        return new Blob(parser.read(hint));
-    }
-    /**
-     * Create a Blob object from a hex-string
-     *
-     * @param value existing Blob object or a hex-string
-     * @returns A Blob object
-     */
-    static from(value) {
-        if (value instanceof Blob) {
-            return value;
-        }
-        if (typeof value === 'string') {
-            if (!/^[A-F0-9]*$/iu.test(value)) {
-                throw new Error('Cannot construct Blob from a non-hex string');
-            }
-            return new Blob((0, utils_1.hexToBytes)(value));
-        }
-        throw new Error('Cannot construct Blob from value given');
-    }
-}
-exports.Blob = Blob;
-//# sourceMappingURL=blob.js.map
-
-/***/ }),
-
-/***/ 7227:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Currency = void 0;
-const hash_160_1 = __nccwpck_require__(2424);
-const utils_1 = __nccwpck_require__(3617);
-const XRP_HEX_REGEX = /^0{40}$/;
-const ISO_REGEX = /^[A-Z0-9a-z?!@#$%^&*(){}[\]|]{3}$/;
-const HEX_REGEX = /^[A-F0-9]{40}$/;
-// eslint-disable-next-line no-control-regex
-const STANDARD_FORMAT_HEX_REGEX = /^0{24}[\x00-\x7F]{6}0{10}$/;
-/**
- * Convert an ISO code to a currency bytes representation
- */
-function isoToBytes(iso) {
-    const bytes = new Uint8Array(20);
-    if (iso !== 'XRP') {
-        const isoBytes = iso.split('').map((c) => c.charCodeAt(0));
-        bytes.set(isoBytes, 12);
-    }
-    return bytes;
-}
-/**
- * Tests if ISO is a valid iso code
- */
-function isIsoCode(iso) {
-    return ISO_REGEX.test(iso);
-}
-function isoCodeFromHex(code) {
-    const iso = (0, utils_1.hexToString)((0, utils_1.bytesToHex)(code));
-    if (iso === 'XRP') {
-        return null;
-    }
-    if (isIsoCode(iso)) {
-        return iso;
-    }
-    return null;
-}
-/**
- * Tests if hex is a valid hex-string
- */
-function isHex(hex) {
-    return HEX_REGEX.test(hex);
-}
-/**
- * Tests if a string is a valid representation of a currency
- */
-function isStringRepresentation(input) {
-    return input.length === 3 || isHex(input);
-}
-/**
- * Tests if a Uint8Array is a valid representation of a currency
- */
-function isBytesArray(bytes) {
-    return bytes.byteLength === 20;
-}
-/**
- * Ensures that a value is a valid representation of a currency
- */
-function isValidRepresentation(input) {
-    return input instanceof Uint8Array
-        ? isBytesArray(input)
-        : isStringRepresentation(input);
-}
-/**
- * Generate bytes from a string or UInt8Array representation of a currency
- */
-function bytesFromRepresentation(input) {
-    if (!isValidRepresentation(input)) {
-        throw new Error(`Unsupported Currency representation: ${input}`);
-    }
-    return input.length === 3 ? isoToBytes(input) : (0, utils_1.hexToBytes)(input);
-}
-/**
- * Class defining how to encode and decode Currencies
- */
-class Currency extends hash_160_1.Hash160 {
-    constructor(byteBuf) {
-        super(byteBuf !== null && byteBuf !== void 0 ? byteBuf : Currency.XRP.bytes);
-        const hex = (0, utils_1.bytesToHex)(this.bytes);
-        if (XRP_HEX_REGEX.test(hex)) {
-            this._iso = 'XRP';
-        }
-        else if (STANDARD_FORMAT_HEX_REGEX.test(hex)) {
-            this._iso = isoCodeFromHex(this.bytes.slice(12, 15));
-        }
-        else {
-            this._iso = null;
-        }
-    }
-    /**
-     * Return the ISO code of this currency
-     *
-     * @returns ISO code if it exists, else null
-     */
-    iso() {
-        return this._iso;
-    }
-    /**
-     * Constructs a Currency object
-     *
-     * @param val Currency object or a string representation of a currency
-     */
-    static from(value) {
-        if (value instanceof Currency) {
-            return value;
-        }
-        if (typeof value === 'string') {
-            return new Currency(bytesFromRepresentation(value));
-        }
-        throw new Error('Cannot construct Currency from value given');
-    }
-    /**
-     * Gets the JSON representation of a currency
-     *
-     * @returns JSON representation
-     */
-    toJSON() {
-        const iso = this.iso();
-        if (iso !== null) {
-            return iso;
-        }
-        return (0, utils_1.bytesToHex)(this.bytes);
-    }
-}
-exports.Currency = Currency;
-Currency.XRP = new Currency(new Uint8Array(20));
-//# sourceMappingURL=currency.js.map
-
-/***/ }),
-
-/***/ 1579:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Hash128 = void 0;
-const hash_1 = __nccwpck_require__(9503);
-const utils_1 = __nccwpck_require__(3617);
-/**
- * Hash with a width of 128 bits
- */
-class Hash128 extends hash_1.Hash {
-    constructor(bytes) {
-        if ((bytes === null || bytes === void 0 ? void 0 : bytes.byteLength) === 0) {
-            bytes = Hash128.ZERO_128.bytes;
-        }
-        super(bytes !== null && bytes !== void 0 ? bytes : Hash128.ZERO_128.bytes);
-    }
-    /**
-     * Get the hex representation of a hash-128 bytes, allowing unset
-     *
-     * @returns hex String of this.bytes
-     */
-    toHex() {
-        const hex = (0, utils_1.bytesToHex)(this.toBytes());
-        if (/^0+$/.exec(hex)) {
-            return '';
-        }
-        return hex;
-    }
-}
-exports.Hash128 = Hash128;
-Hash128.width = 16;
-Hash128.ZERO_128 = new Hash128(new Uint8Array(Hash128.width));
-//# sourceMappingURL=hash-128.js.map
-
-/***/ }),
-
-/***/ 2424:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Hash160 = void 0;
-const hash_1 = __nccwpck_require__(9503);
-/**
- * Hash with a width of 160 bits
- */
-class Hash160 extends hash_1.Hash {
-    constructor(bytes) {
-        if ((bytes === null || bytes === void 0 ? void 0 : bytes.byteLength) === 0) {
-            bytes = Hash160.ZERO_160.bytes;
-        }
-        super(bytes !== null && bytes !== void 0 ? bytes : Hash160.ZERO_160.bytes);
-    }
-}
-exports.Hash160 = Hash160;
-Hash160.width = 20;
-Hash160.ZERO_160 = new Hash160(new Uint8Array(Hash160.width));
-//# sourceMappingURL=hash-160.js.map
-
-/***/ }),
-
-/***/ 6555:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Hash192 = void 0;
-const hash_1 = __nccwpck_require__(9503);
-/**
- * Hash with a width of 192 bits
- */
-class Hash192 extends hash_1.Hash {
-    constructor(bytes) {
-        if ((bytes === null || bytes === void 0 ? void 0 : bytes.byteLength) === 0) {
-            bytes = Hash192.ZERO_192.bytes;
-        }
-        super(bytes !== null && bytes !== void 0 ? bytes : Hash192.ZERO_192.bytes);
-    }
-}
-exports.Hash192 = Hash192;
-Hash192.width = 24;
-Hash192.ZERO_192 = new Hash192(new Uint8Array(Hash192.width));
-//# sourceMappingURL=hash-192.js.map
-
-/***/ }),
-
-/***/ 2040:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Hash256 = void 0;
-const hash_1 = __nccwpck_require__(9503);
-/**
- * Hash with a width of 256 bits
- */
-class Hash256 extends hash_1.Hash {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : Hash256.ZERO_256.bytes);
-    }
-}
-exports.Hash256 = Hash256;
-Hash256.width = 32;
-Hash256.ZERO_256 = new Hash256(new Uint8Array(Hash256.width));
-//# sourceMappingURL=hash-256.js.map
-
-/***/ }),
-
-/***/ 9503:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Hash = void 0;
-const serialized_type_1 = __nccwpck_require__(2029);
-const utils_1 = __nccwpck_require__(3617);
-const utils_2 = __nccwpck_require__(2093);
-/**
- * Base class defining how to encode and decode hashes
- */
-class Hash extends serialized_type_1.Comparable {
-    constructor(bytes) {
-        super(bytes);
-        if (this.bytes.length !== this.constructor.width) {
-            throw new Error(`Invalid Hash length ${this.bytes.byteLength}`);
-        }
-    }
-    /**
-     * Construct a Hash object from an existing Hash object or a hex-string
-     *
-     * @param value A hash object or hex-string of a hash
-     */
-    static from(value) {
-        if (value instanceof this) {
-            return value;
-        }
-        if (typeof value === 'string') {
-            if (!utils_1.HEX_REGEX.test(value)) {
-                throw new Error(`Invalid hash string ${value}`);
-            }
-            return new this((0, utils_1.hexToBytes)(value));
-        }
-        throw new Error('Cannot construct Hash from given value');
-    }
-    /**
-     * Read a Hash object from a BinaryParser
-     *
-     * @param parser BinaryParser to read the hash from
-     * @param hint length of the bytes to read, optional
-     */
-    static fromParser(parser, hint) {
-        return new this(parser.read(hint !== null && hint !== void 0 ? hint : this.width));
-    }
-    /**
-     * Overloaded operator for comparing two hash objects
-     *
-     * @param other The Hash to compare this to
-     */
-    compareTo(other) {
-        return (0, utils_2.compare)(this.bytes, this.constructor.from(other).bytes);
-    }
-    /**
-     * @returns the hex-string representation of this Hash
-     */
-    toString() {
-        return this.toHex();
-    }
-    /**
-     * Returns four bits at the specified depth within a hash
-     *
-     * @param depth The depth of the four bits
-     * @returns The number represented by the four bits
-     */
-    nibblet(depth) {
-        const byteIx = depth > 0 ? (depth / 2) | 0 : 0;
-        let b = this.bytes[byteIx];
-        if (depth % 2 === 0) {
-            b = (b & 0xf0) >>> 4;
-        }
-        else {
-            b = b & 0x0f;
-        }
-        return b;
-    }
-}
-exports.Hash = Hash;
-//# sourceMappingURL=hash.js.map
-
-/***/ }),
-
-/***/ 8904:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Vector256 = exports.UInt64 = exports.UInt32 = exports.UInt16 = exports.UInt8 = exports.STObject = exports.STArray = exports.PathSet = exports.Int32 = exports.Hash256 = exports.Hash192 = exports.Hash160 = exports.Hash128 = exports.Currency = exports.Blob = exports.Amount = exports.AccountID = exports.coreTypes = void 0;
-const account_id_1 = __nccwpck_require__(6118);
-Object.defineProperty(exports, "AccountID", ({ enumerable: true, get: function () { return account_id_1.AccountID; } }));
-const amount_1 = __nccwpck_require__(9008);
-Object.defineProperty(exports, "Amount", ({ enumerable: true, get: function () { return amount_1.Amount; } }));
-const blob_1 = __nccwpck_require__(43);
-Object.defineProperty(exports, "Blob", ({ enumerable: true, get: function () { return blob_1.Blob; } }));
-const currency_1 = __nccwpck_require__(7227);
-Object.defineProperty(exports, "Currency", ({ enumerable: true, get: function () { return currency_1.Currency; } }));
-const hash_128_1 = __nccwpck_require__(1579);
-Object.defineProperty(exports, "Hash128", ({ enumerable: true, get: function () { return hash_128_1.Hash128; } }));
-const hash_160_1 = __nccwpck_require__(2424);
-Object.defineProperty(exports, "Hash160", ({ enumerable: true, get: function () { return hash_160_1.Hash160; } }));
-const hash_192_1 = __nccwpck_require__(6555);
-Object.defineProperty(exports, "Hash192", ({ enumerable: true, get: function () { return hash_192_1.Hash192; } }));
-const hash_256_1 = __nccwpck_require__(2040);
-Object.defineProperty(exports, "Hash256", ({ enumerable: true, get: function () { return hash_256_1.Hash256; } }));
-const int_32_1 = __nccwpck_require__(80);
-Object.defineProperty(exports, "Int32", ({ enumerable: true, get: function () { return int_32_1.Int32; } }));
-const issue_1 = __nccwpck_require__(7179);
-const st_number_1 = __nccwpck_require__(4856);
-const path_set_1 = __nccwpck_require__(4596);
-Object.defineProperty(exports, "PathSet", ({ enumerable: true, get: function () { return path_set_1.PathSet; } }));
-const st_array_1 = __nccwpck_require__(8994);
-Object.defineProperty(exports, "STArray", ({ enumerable: true, get: function () { return st_array_1.STArray; } }));
-const st_object_1 = __nccwpck_require__(8605);
-Object.defineProperty(exports, "STObject", ({ enumerable: true, get: function () { return st_object_1.STObject; } }));
-const uint_16_1 = __nccwpck_require__(5886);
-Object.defineProperty(exports, "UInt16", ({ enumerable: true, get: function () { return uint_16_1.UInt16; } }));
-const uint_32_1 = __nccwpck_require__(5105);
-Object.defineProperty(exports, "UInt32", ({ enumerable: true, get: function () { return uint_32_1.UInt32; } }));
-const uint_64_1 = __nccwpck_require__(9329);
-Object.defineProperty(exports, "UInt64", ({ enumerable: true, get: function () { return uint_64_1.UInt64; } }));
-const uint_8_1 = __nccwpck_require__(3584);
-Object.defineProperty(exports, "UInt8", ({ enumerable: true, get: function () { return uint_8_1.UInt8; } }));
-const vector_256_1 = __nccwpck_require__(3183);
-Object.defineProperty(exports, "Vector256", ({ enumerable: true, get: function () { return vector_256_1.Vector256; } }));
-const xchain_bridge_1 = __nccwpck_require__(2017);
-const enums_1 = __nccwpck_require__(8430);
-const coreTypes = {
-    AccountID: account_id_1.AccountID,
-    Amount: amount_1.Amount,
-    Blob: blob_1.Blob,
-    Currency: currency_1.Currency,
-    Hash128: hash_128_1.Hash128,
-    Hash160: hash_160_1.Hash160,
-    Hash192: hash_192_1.Hash192,
-    Hash256: hash_256_1.Hash256,
-    Int32: int_32_1.Int32,
-    Issue: issue_1.Issue,
-    Number: st_number_1.STNumber,
-    PathSet: path_set_1.PathSet,
-    STArray: st_array_1.STArray,
-    STObject: st_object_1.STObject,
-    UInt8: uint_8_1.UInt8,
-    UInt16: uint_16_1.UInt16,
-    UInt32: uint_32_1.UInt32,
-    UInt64: uint_64_1.UInt64,
-    Vector256: vector_256_1.Vector256,
-    XChainBridge: xchain_bridge_1.XChainBridge,
-};
-exports.coreTypes = coreTypes;
-// Ensures that the DEFAULT_DEFINITIONS object connects these types to fields for serializing/deserializing
-// This is done here instead of in enums/index.ts to avoid a circular dependency
-// because some of the above types depend on BinarySerializer which depends on enums/index.ts.
-enums_1.DEFAULT_DEFINITIONS.associateTypes(coreTypes);
-//# sourceMappingURL=index.js.map
-
-/***/ }),
-
-/***/ 80:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Int32 = void 0;
-const int_1 = __nccwpck_require__(2631);
-const utils_1 = __nccwpck_require__(2093);
-/**
- * Derived Int class for serializing/deserializing signed 32-bit integers.
- */
-class Int32 extends int_1.Int {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : Int32.defaultInt32.bytes);
-    }
-    /**
-     * Construct an Int32 from a BinaryParser
-     *
-     * @param parser BinaryParser to read Int32 from
-     * @returns An Int32 object
-     */
-    static fromParser(parser) {
-        return new Int32(parser.read(Int32.width));
-    }
-    /**
-     * Construct an Int32 object from a number or string
-     *
-     * @param val Int32 object, number, or string
-     * @returns An Int32 object
-     */
-    static from(val) {
-        if (val instanceof Int32) {
-            return val;
-        }
-        const buf = new Uint8Array(Int32.width);
-        if (typeof val === 'string') {
-            const num = Number(val);
-            if (!Number.isFinite(num) || !Number.isInteger(num)) {
-                throw new Error(`Cannot construct Int32 from string: ${val}`);
-            }
-            Int32.checkIntRange('Int32', num, Int32.MIN_VALUE, Int32.MAX_VALUE);
-            (0, utils_1.writeInt32BE)(buf, num, 0);
-            return new Int32(buf);
-        }
-        if (typeof val === 'number' && Number.isInteger(val)) {
-            Int32.checkIntRange('Int32', val, Int32.MIN_VALUE, Int32.MAX_VALUE);
-            (0, utils_1.writeInt32BE)(buf, val, 0);
-            return new Int32(buf);
-        }
-        throw new Error('Cannot construct Int32 from given value');
-    }
-    /**
-     * Get the value of the Int32 object
-     *
-     * @returns the signed 32-bit integer represented by this.bytes
-     */
-    valueOf() {
-        return (0, utils_1.readInt32BE)(this.bytes, 0);
-    }
-}
-exports.Int32 = Int32;
-Int32.width = 32 / 8; // 4 bytes
-Int32.defaultInt32 = new Int32(new Uint8Array(Int32.width));
-// Signed 32-bit integer range
-Int32.MIN_VALUE = -2147483648; // -2^31
-Int32.MAX_VALUE = 2147483647; // 2^31 - 1
-//# sourceMappingURL=int-32.js.map
-
-/***/ }),
-
-/***/ 2631:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Int = void 0;
-const serialized_type_1 = __nccwpck_require__(2029);
-/**
- * Compare numbers and bigInts n1 and n2
- *
- * @param n1 First object to compare
- * @param n2 Second object to compare
- * @returns -1, 0, or 1, depending on how the two objects compare
- */
-function compare(n1, n2) {
-    return n1 < n2 ? -1 : n1 == n2 ? 0 : 1;
-}
-/**
- * Base class for serializing and deserializing signed integers.
- */
-class Int extends serialized_type_1.Comparable {
-    constructor(bytes) {
-        super(bytes);
-    }
-    /**
-     * Overload of compareTo for Comparable
-     *
-     * @param other other Int to compare this to
-     * @returns -1, 0, or 1 depending on how the objects relate to each other
-     */
-    compareTo(other) {
-        return compare(this.valueOf(), other.valueOf());
-    }
-    /**
-     * Convert an Int object to JSON
-     *
-     * @returns number or string represented by this.bytes
-     */
-    toJSON() {
-        const val = this.valueOf();
-        return typeof val === 'number' ? val : val.toString();
-    }
-    /**
-     * Validate that a number is within the specified signed integer range
-     *
-     * @param typeName The name of the type (for error messages)
-     * @param val The number to validate
-     * @param min The minimum allowed value
-     * @param max The maximum allowed value
-     * @throws Error if the value is out of range
-     */
-    // eslint-disable-next-line max-params -- for error clarity in browsers
-    static checkIntRange(typeName, val, min, max) {
-        if (val < min || val > max) {
-            throw new Error(`Invalid ${typeName}: ${val} must be >= ${min} and <= ${max}`);
-        }
-    }
-}
-exports.Int = Int;
-//# sourceMappingURL=int.js.map
-
-/***/ }),
-
-/***/ 7179:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Issue = void 0;
-const utils_1 = __nccwpck_require__(3617);
-const binary_parser_1 = __nccwpck_require__(4631);
-const account_id_1 = __nccwpck_require__(6118);
-const currency_1 = __nccwpck_require__(7227);
-const serialized_type_1 = __nccwpck_require__(2029);
-const hash_192_1 = __nccwpck_require__(6555);
-const utils_2 = __nccwpck_require__(2093);
-/**
- * Type guard for Issue Object
- */
-function isIssueObject(arg) {
-    const keys = Object.keys(arg).sort();
-    const isXRP = keys.length === 1 && keys[0] === 'currency';
-    const isIOU = keys.length === 2 && keys[0] === 'currency' && keys[1] === 'issuer';
-    const isMPT = keys.length === 1 && keys[0] === 'mpt_issuance_id';
-    return isXRP || isIOU || isMPT;
-}
-const MPT_WIDTH = 44;
-const NO_ACCOUNT = account_id_1.AccountID.from('0000000000000000000000000000000000000001');
-/**
- * Class for serializing/Deserializing Issue
- */
-class Issue extends serialized_type_1.SerializedType {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : Issue.XRP_ISSUE.bytes);
-    }
-    /**
-     * Construct Issue from XRPIssue, IOUIssue or MPTIssue
-     *
-     * @param value An object representing an XRPIssue, IOUIssue or MPTIssue
-     * @returns An Issue object
-     */
-    static from(value) {
-        if (value instanceof Issue) {
-            return value;
-        }
-        if (isIssueObject(value)) {
-            if (value.currency) {
-                const currency = currency_1.Currency.from(value.currency.toString()).toBytes();
-                //IOU case
-                if (value.issuer) {
-                    const issuer = account_id_1.AccountID.from(value.issuer.toString()).toBytes();
-                    return new Issue((0, utils_1.concat)([currency, issuer]));
-                }
-                //XRP case
-                return new Issue(currency);
-            }
-            // MPT case
-            if (value.mpt_issuance_id) {
-                const mptIssuanceIdBytes = hash_192_1.Hash192.from(value.mpt_issuance_id.toString()).toBytes();
-                const issuerAccount = mptIssuanceIdBytes.slice(4);
-                const sequence = Number((0, utils_2.readUInt32BE)(mptIssuanceIdBytes.slice(0, 4), 0)); // sequence is in Big-endian format in mpt_issuance_id
-                // Convert to Little-endian
-                const sequenceBuffer = new Uint8Array(4);
-                new DataView(sequenceBuffer.buffer).setUint32(0, sequence, true);
-                return new Issue((0, utils_1.concat)([issuerAccount, NO_ACCOUNT.toBytes(), sequenceBuffer]));
-            }
-        }
-        throw new Error('Invalid type to construct an Issue');
-    }
-    /**
-     * Read Issue from a BinaryParser
-     *
-     * @param parser BinaryParser to read the Issue from
-     *
-     * @returns An Issue object
-     */
-    static fromParser(parser) {
-        // XRP
-        const currencyOrAccount = parser.read(20);
-        if (new currency_1.Currency(currencyOrAccount).toJSON() === 'XRP') {
-            return new Issue(currencyOrAccount);
-        }
-        // MPT
-        const issuerAccountId = new account_id_1.AccountID(parser.read(20));
-        if (NO_ACCOUNT.toHex() === issuerAccountId.toHex()) {
-            const sequence = parser.read(4);
-            return new Issue((0, utils_1.concat)([currencyOrAccount, NO_ACCOUNT.toBytes(), sequence]));
-        }
-        // IOU
-        return new Issue((0, utils_1.concat)([currencyOrAccount, issuerAccountId.toBytes()]));
-    }
-    /**
-     * Get the JSON representation of this IssueObject
-     *
-     * @returns the JSON interpretation of this.bytes
-     */
-    toJSON() {
-        // If the buffer is exactly 44 bytes, treat it as an MPTIssue.
-        if (this.toBytes().length === MPT_WIDTH) {
-            const issuerAccount = this.toBytes().slice(0, 20);
-            const sequence = new DataView(this.toBytes().slice(40).buffer).getUint32(0, true);
-            // sequence part of mpt_issuance_id should be in Big-endian
-            const sequenceBuffer = new Uint8Array(4);
-            (0, utils_2.writeUInt32BE)(sequenceBuffer, sequence, 0);
-            return {
-                mpt_issuance_id: (0, utils_1.bytesToHex)((0, utils_1.concat)([sequenceBuffer, issuerAccount])),
-            };
-        }
-        const parser = new binary_parser_1.BinaryParser(this.toString());
-        const currency = currency_1.Currency.fromParser(parser);
-        if (currency.toJSON() === 'XRP') {
-            return { currency: currency.toJSON() };
-        }
-        const issuer = account_id_1.AccountID.fromParser(parser);
-        return {
-            currency: currency.toJSON(),
-            issuer: issuer.toJSON(),
-        };
-    }
-}
-exports.Issue = Issue;
-Issue.XRP_ISSUE = new Issue(new Uint8Array(20));
-//# sourceMappingURL=issue.js.map
-
-/***/ }),
-
-/***/ 4596:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PathSet = void 0;
-const account_id_1 = __nccwpck_require__(6118);
-const currency_1 = __nccwpck_require__(7227);
-const binary_parser_1 = __nccwpck_require__(4631);
-const serialized_type_1 = __nccwpck_require__(2029);
-const utils_1 = __nccwpck_require__(3617);
-/**
- * Constants for separating Paths in a PathSet
- */
-const PATHSET_END_BYTE = 0x00;
-const PATH_SEPARATOR_BYTE = 0xff;
-/**
- * Constant for masking types of a Hop
- */
-const TYPE_ACCOUNT = 0x01;
-const TYPE_CURRENCY = 0x10;
-const TYPE_ISSUER = 0x20;
-/**
- * TypeGuard for HopObject
- */
-function isHopObject(arg) {
-    return (arg.issuer !== undefined ||
-        arg.account !== undefined ||
-        arg.currency !== undefined);
-}
-/**
- * TypeGuard for PathSet
- */
-function isPathSet(arg) {
-    return ((Array.isArray(arg) && arg.length === 0) ||
-        (Array.isArray(arg) && Array.isArray(arg[0]) && arg[0].length === 0) ||
-        (Array.isArray(arg) && Array.isArray(arg[0]) && isHopObject(arg[0][0])));
-}
-/**
- * Serialize and Deserialize a Hop
- */
-class Hop extends serialized_type_1.SerializedType {
-    /**
-     * Create a Hop from a HopObject
-     *
-     * @param value Either a hop or HopObject to create a hop with
-     * @returns a Hop
-     */
-    static from(value) {
-        if (value instanceof Hop) {
-            return value;
-        }
-        const bytes = [Uint8Array.from([0])];
-        if (value.account) {
-            bytes.push(account_id_1.AccountID.from(value.account).toBytes());
-            bytes[0][0] |= TYPE_ACCOUNT;
-        }
-        if (value.currency) {
-            bytes.push(currency_1.Currency.from(value.currency).toBytes());
-            bytes[0][0] |= TYPE_CURRENCY;
-        }
-        if (value.issuer) {
-            bytes.push(account_id_1.AccountID.from(value.issuer).toBytes());
-            bytes[0][0] |= TYPE_ISSUER;
-        }
-        return new Hop((0, utils_1.concat)(bytes));
-    }
-    /**
-     * Construct a Hop from a BinaryParser
-     *
-     * @param parser BinaryParser to read the Hop from
-     * @returns a Hop
-     */
-    static fromParser(parser) {
-        const type = parser.readUInt8();
-        const bytes = [Uint8Array.from([type])];
-        if (type & TYPE_ACCOUNT) {
-            bytes.push(parser.read(account_id_1.AccountID.width));
-        }
-        if (type & TYPE_CURRENCY) {
-            bytes.push(parser.read(currency_1.Currency.width));
-        }
-        if (type & TYPE_ISSUER) {
-            bytes.push(parser.read(account_id_1.AccountID.width));
-        }
-        return new Hop((0, utils_1.concat)(bytes));
-    }
-    /**
-     * Get the JSON interpretation of this hop
-     *
-     * @returns a HopObject, an JS object with optional account, issuer, and currency
-     */
-    toJSON() {
-        const hopParser = new binary_parser_1.BinaryParser((0, utils_1.bytesToHex)(this.bytes));
-        const type = hopParser.readUInt8();
-        let account, currency, issuer;
-        if (type & TYPE_ACCOUNT) {
-            account = account_id_1.AccountID.fromParser(hopParser).toJSON();
-        }
-        if (type & TYPE_CURRENCY) {
-            currency = currency_1.Currency.fromParser(hopParser).toJSON();
-        }
-        if (type & TYPE_ISSUER) {
-            issuer = account_id_1.AccountID.fromParser(hopParser).toJSON();
-        }
-        const result = {};
-        if (account) {
-            result.account = account;
-        }
-        if (issuer) {
-            result.issuer = issuer;
-        }
-        if (currency) {
-            result.currency = currency;
-        }
-        return result;
-    }
-    /**
-     * get a number representing the type of this hop
-     *
-     * @returns a number to be bitwise and-ed with TYPE_ constants to describe the types in the hop
-     */
-    type() {
-        return this.bytes[0];
-    }
-}
-/**
- * Class for serializing/deserializing Paths
- */
-class Path extends serialized_type_1.SerializedType {
-    /**
-     * construct a Path from an array of Hops
-     *
-     * @param value Path or array of HopObjects to construct a Path
-     * @returns the Path
-     */
-    static from(value) {
-        if (value instanceof Path) {
-            return value;
-        }
-        const bytes = [];
-        value.forEach((hop) => {
-            bytes.push(Hop.from(hop).toBytes());
-        });
-        return new Path((0, utils_1.concat)(bytes));
-    }
-    /**
-     * Read a Path from a BinaryParser
-     *
-     * @param parser BinaryParser to read Path from
-     * @returns the Path represented by the bytes read from the BinaryParser
-     */
-    static fromParser(parser) {
-        const bytes = [];
-        while (!parser.end()) {
-            bytes.push(Hop.fromParser(parser).toBytes());
-            if (parser.peek() === PATHSET_END_BYTE ||
-                parser.peek() === PATH_SEPARATOR_BYTE) {
-                break;
-            }
-        }
-        return new Path((0, utils_1.concat)(bytes));
-    }
-    /**
-     * Get the JSON representation of this Path
-     *
-     * @returns an Array of HopObject constructed from this.bytes
-     */
-    toJSON() {
-        const json = [];
-        const pathParser = new binary_parser_1.BinaryParser(this.toString());
-        while (!pathParser.end()) {
-            json.push(Hop.fromParser(pathParser).toJSON());
-        }
-        return json;
-    }
-}
-/**
- * Deserialize and Serialize the PathSet type
- */
-class PathSet extends serialized_type_1.SerializedType {
-    /**
-     * Construct a PathSet from an Array of Arrays representing paths
-     *
-     * @param value A PathSet or Array of Array of HopObjects
-     * @returns the PathSet constructed from value
-     */
-    static from(value) {
-        if (value instanceof PathSet) {
-            return value;
-        }
-        if (isPathSet(value)) {
-            const bytes = [];
-            value.forEach((path) => {
-                bytes.push(Path.from(path).toBytes());
-                bytes.push(Uint8Array.from([PATH_SEPARATOR_BYTE]));
-            });
-            bytes[bytes.length - 1] = Uint8Array.from([PATHSET_END_BYTE]);
-            return new PathSet((0, utils_1.concat)(bytes));
-        }
-        throw new Error('Cannot construct PathSet from given value');
-    }
-    /**
-     * Construct a PathSet from a BinaryParser
-     *
-     * @param parser A BinaryParser to read PathSet from
-     * @returns the PathSet read from parser
-     */
-    static fromParser(parser) {
-        const bytes = [];
-        while (!parser.end()) {
-            bytes.push(Path.fromParser(parser).toBytes());
-            bytes.push(parser.read(1));
-            if (bytes[bytes.length - 1][0] == PATHSET_END_BYTE) {
-                break;
-            }
-        }
-        return new PathSet((0, utils_1.concat)(bytes));
-    }
-    /**
-     * Get the JSON representation of this PathSet
-     *
-     * @returns an Array of Array of HopObjects, representing this PathSet
-     */
-    toJSON() {
-        const json = [];
-        const pathParser = new binary_parser_1.BinaryParser(this.toString());
-        while (!pathParser.end()) {
-            json.push(Path.fromParser(pathParser).toJSON());
-            pathParser.skip(1);
-        }
-        return json;
-    }
-}
-exports.PathSet = PathSet;
-//# sourceMappingURL=path-set.js.map
-
-/***/ }),
-
-/***/ 2029:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Comparable = exports.SerializedType = void 0;
-const binary_serializer_1 = __nccwpck_require__(1106);
-const utils_1 = __nccwpck_require__(3617);
-/**
- * The base class for all binary-codec types
- */
-class SerializedType {
-    constructor(bytes) {
-        this.bytes = new Uint8Array(0);
-        this.bytes = bytes !== null && bytes !== void 0 ? bytes : new Uint8Array(0);
-    }
-    static fromParser(parser, hint) {
-        throw new Error('fromParser not implemented');
-        return this.fromParser(parser, hint);
-    }
-    static from(value) {
-        throw new Error('from not implemented');
-        return this.from(value);
-    }
-    /**
-     * Write the bytes representation of a SerializedType to a BytesList
-     *
-     * @param list The BytesList to write SerializedType bytes to
-     */
-    toBytesSink(list) {
-        list.put(this.bytes);
-    }
-    /**
-     * Get the hex representation of a SerializedType's bytes
-     *
-     * @returns hex String of this.bytes
-     */
-    toHex() {
-        return (0, utils_1.bytesToHex)(this.toBytes());
-    }
-    /**
-     * Get the bytes representation of a SerializedType
-     *
-     * @returns A Uint8Array of the bytes
-     */
-    toBytes() {
-        if (this.bytes) {
-            return this.bytes;
-        }
-        const bytes = new binary_serializer_1.BytesList();
-        this.toBytesSink(bytes);
-        return bytes.toBytes();
-    }
-    /**
-     * Return the JSON representation of a SerializedType
-     *
-     * @param _definitions rippled definitions used to parse the values of transaction types and such.
-     *                          Unused in default, but used in STObject, STArray
-     *                          Can be customized for sidechains and amendments.
-     * @returns any type, if not overloaded returns hexString representation of bytes
-     */
-    toJSON(_definitions, _fieldName) {
-        return this.toHex();
-    }
-    /**
-     * @returns hexString representation of this.bytes
-     */
-    toString() {
-        return this.toHex();
-    }
-}
-exports.SerializedType = SerializedType;
-/**
- * Base class for SerializedTypes that are comparable.
- *
- * @template T - What types you want to allow comparisons between. You must specify all types. Primarily used to allow
- * comparisons between built-in types (like `string`) and SerializedType subclasses (like `Hash`).
- *
- * Ex. `class Hash extends Comparable<Hash | string>`
- */
-class Comparable extends SerializedType {
-    lt(other) {
-        return this.compareTo(other) < 0;
-    }
-    eq(other) {
-        return this.compareTo(other) === 0;
-    }
-    gt(other) {
-        return this.compareTo(other) > 0;
-    }
-    gte(other) {
-        return this.compareTo(other) > -1;
-    }
-    lte(other) {
-        return this.compareTo(other) < 1;
-    }
-    /**
-     * Overload this method to define how two Comparable SerializedTypes are compared
-     *
-     * @param other The comparable object to compare this to
-     * @returns A number denoting the relationship of this and other
-     */
-    compareTo(other) {
-        throw new Error(`cannot compare ${this.toString()} and ${other.toString()}`);
-    }
-}
-exports.Comparable = Comparable;
-//# sourceMappingURL=serialized-type.js.map
-
-/***/ }),
-
-/***/ 8994:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.STArray = void 0;
-const enums_1 = __nccwpck_require__(8430);
-const serialized_type_1 = __nccwpck_require__(2029);
-const st_object_1 = __nccwpck_require__(8605);
-const binary_parser_1 = __nccwpck_require__(4631);
-const utils_1 = __nccwpck_require__(3617);
-const ARRAY_END_MARKER = Uint8Array.from([0xf1]);
-const ARRAY_END_MARKER_NAME = 'ArrayEndMarker';
-const OBJECT_END_MARKER = Uint8Array.from([0xe1]);
-/**
- * TypeGuard for Array<JsonObject>
- */
-function isObjects(args) {
-    return (Array.isArray(args) &&
-        args.every((arg) => typeof arg === 'object' &&
-            Object.keys(arg).length === 1 &&
-            typeof Object.values(arg)[0] === 'object'));
-}
-/**
- * Class for serializing and deserializing Arrays of Objects
- */
-class STArray extends serialized_type_1.SerializedType {
-    /**
-     * Construct an STArray from a BinaryParser
-     *
-     * @param parser BinaryParser to parse an STArray from
-     * @returns An STArray Object
-     */
-    static fromParser(parser) {
-        const bytes = [];
-        while (!parser.end()) {
-            const field = parser.readField();
-            if (field.name === ARRAY_END_MARKER_NAME) {
-                break;
-            }
-            bytes.push(field.header, parser.readFieldValue(field).toBytes(), OBJECT_END_MARKER);
-        }
-        bytes.push(ARRAY_END_MARKER);
-        return new STArray((0, utils_1.concat)(bytes));
-    }
-    /**
-     * Construct an STArray from an Array of JSON Objects
-     *
-     * @param value STArray or Array of Objects to parse into an STArray
-     * @param definitions optional, types and values to use to encode/decode a transaction
-     * @returns An STArray object
-     */
-    static from(value, definitions = enums_1.DEFAULT_DEFINITIONS) {
-        if (value instanceof STArray) {
-            return value;
-        }
-        if (isObjects(value)) {
-            const bytes = [];
-            value.forEach((obj) => {
-                bytes.push(st_object_1.STObject.from(obj, undefined, definitions).toBytes());
-            });
-            bytes.push(ARRAY_END_MARKER);
-            return new STArray((0, utils_1.concat)(bytes));
-        }
-        throw new Error('Cannot construct STArray from value given');
-    }
-    /**
-     * Return the JSON representation of this.bytes
-     *
-     * @param definitions optional, types and values to use to encode/decode a transaction
-     * @returns An Array of JSON objects
-     */
-    toJSON(definitions = enums_1.DEFAULT_DEFINITIONS) {
-        const result = [];
-        const arrayParser = new binary_parser_1.BinaryParser(this.toString(), definitions);
-        while (!arrayParser.end()) {
-            const field = arrayParser.readField();
-            if (field.name === ARRAY_END_MARKER_NAME) {
-                break;
-            }
-            const outer = {};
-            outer[field.name] = st_object_1.STObject.fromParser(arrayParser).toJSON(definitions);
-            result.push(outer);
-        }
-        return result;
-    }
-}
-exports.STArray = STArray;
-//# sourceMappingURL=st-array.js.map
-
-/***/ }),
-
-/***/ 4856:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.STNumber = void 0;
-const serialized_type_1 = __nccwpck_require__(2029);
-const utils_1 = __nccwpck_require__(2093);
-/**
- * Constants for mantissa and exponent normalization per XRPL Number spec.
- * These define allowed magnitude for mantissa and exponent after normalization.
- */
-const MIN_MANTISSA = BigInt('1000000000000000000'); // 10^18
-const MAX_MANTISSA = BigInt('9999999999999999999'); // 10^19 - 1
-const MAX_INT64 = BigInt('9223372036854775807'); // 2^63 - 1, max signed 64-bit integer
-const MIN_EXPONENT = -32768;
-const MAX_EXPONENT = 32768;
-const DEFAULT_VALUE_EXPONENT = -2147483648;
-/**
- * Extract mantissa, exponent, and sign from a number string.
- *
- * @param val - The string representing the number (may be integer, decimal, or scientific notation).
- * @returns Object containing mantissa (BigInt), exponent (number), and isNegative (boolean).
- * @throws Error if the string cannot be parsed as a valid number.
- *
- * Examples:
- *   '123'        -> { mantissa: 123n, exponent: 0, isNegative: false }
- *   '-00123.45'  -> { mantissa: -12345n, exponent: -2, isNegative: true }
- *   '+7.1e2'     -> { mantissa: 71n, exponent: -1 + 2 = 1, isNegative: false }
- */
-function extractNumberPartsFromString(val) {
-    /**
-     * Regex for parsing decimal/float/scientific number strings with optional sign, integer, decimal, and exponent parts.
-     *
-     * Pattern: /^([-+]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?$/
-     *
-     * Breakdown:
-     *   1. ([-+]?)         - Optional '+' or '-' sign at the start.
-     *   2. ([0-9]+)        - Integer part: one or more digits (leading zeros allowed).
-     *   3. (?:\.([0-9]+))? - Optional decimal point followed by one or more digits.
-     *   4. (?:[eE]([+-]?[0-9]+))? - Optional exponent, starting with 'e' or 'E', optional sign, and digits.
-     *
-     * Notes:
-     *   - Leading zeros are accepted and normalized by code after parsing.
-     *   - Empty decimal ('123.') and missing integer ('.456') are NOT matched—must be fully specified.
-     */
-    // eslint-disable-next-line prefer-named-capture-group
-    const regex = /^([-+]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?$/;
-    const match = regex.exec(val);
-    if (!match)
-        throw new Error(`Unable to parse number from string: ${val}`);
-    const [, sign, intPart, fracPart, expPart] = match;
-    // Remove leading zeros (unless the entire intPart is zeros)
-    const cleanIntPart = intPart.replace(/^0+(?=\d)/, '') || '0';
-    let mantissaStr = cleanIntPart;
-    let exponent = 0;
-    if (fracPart) {
-        mantissaStr += fracPart;
-        exponent -= fracPart.length;
-    }
-    if (expPart)
-        exponent += parseInt(expPart, 10);
-    // Remove trailing zeros from mantissa and adjust exponent
-    while (mantissaStr.length > 1 && mantissaStr.endsWith('0')) {
-        mantissaStr = mantissaStr.slice(0, -1);
-        exponent += 1;
-    }
-    let mantissa = BigInt(mantissaStr);
-    if (sign === '-')
-        mantissa = -mantissa;
-    const isNegative = mantissa < BigInt(0);
-    return { mantissa, exponent, isNegative };
-}
-/**
- * Normalize the mantissa and exponent to XRPL constraints.
- *
- * Ensures that after normalization, the mantissa is between MIN_MANTISSA and MAX_INT64.
- * Adjusts the exponent as needed by shifting the mantissa left/right (multiplying/dividing by 10).
- *
- * @param mantissa - The unnormalized mantissa (BigInt).
- * @param exponent - The unnormalized exponent (number).
- * @returns An object with normalized mantissa and exponent.
- * @throws Error if the number cannot be normalized within allowed exponent range.
- */
-function normalize(mantissa, exponent) {
-    let m = mantissa < BigInt(0) ? -mantissa : mantissa;
-    const isNegative = mantissa < BigInt(0);
-    // Handle zero
-    if (m === BigInt(0)) {
-        return { mantissa: BigInt(0), exponent: DEFAULT_VALUE_EXPONENT };
-    }
-    // Grow mantissa until it reaches MIN_MANTISSA
-    while (m < MIN_MANTISSA && exponent > MIN_EXPONENT) {
-        exponent -= 1;
-        m *= BigInt(10);
-    }
-    let lastDigit = null;
-    // Shrink mantissa until it fits within MAX_MANTISSA
-    while (m > MAX_MANTISSA) {
-        if (exponent >= MAX_EXPONENT) {
-            throw new Error('Mantissa and exponent are too large');
-        }
-        exponent += 1;
-        lastDigit = m % BigInt(10);
-        m /= BigInt(10);
-    }
-    // Handle underflow: if exponent too small or mantissa too small, throw error
-    if (exponent < MIN_EXPONENT || m < MIN_MANTISSA) {
-        throw new Error('Underflow: value too small to represent');
-    }
-    // Handle overflow: if exponent exceeds MAX_EXPONENT after growing.
-    if (exponent > MAX_EXPONENT) {
-        throw new Error('Exponent overflow: value too large to represent');
-    }
-    // Handle overflow: if mantissa exceeds MAX_INT64 (2^63-1) after growing.
-    if (m > MAX_INT64) {
-        if (exponent >= MAX_EXPONENT) {
-            throw new Error('Exponent overflow: value too large to represent');
-        }
-        exponent += 1;
-        lastDigit = m % BigInt(10);
-        m /= BigInt(10);
-    }
-    if (lastDigit != null && lastDigit >= BigInt(5)) {
-        m += BigInt(1);
-        // After rounding, mantissa may exceed MAX_INT64 again
-        if (m > MAX_INT64) {
-            if (exponent >= MAX_EXPONENT) {
-                throw new Error('Exponent overflow: value too large to represent');
-            }
-            lastDigit = m % BigInt(10);
-            exponent += 1;
-            m /= BigInt(10);
-            if (lastDigit >= BigInt(5)) {
-                m += BigInt(1);
-            }
-        }
-    }
-    if (isNegative)
-        m = -m;
-    return { mantissa: m, exponent };
-}
-/**
- * STNumber: Encodes XRPL's "Number" type.
- *
- * - Always encoded as 12 bytes: 8-byte signed mantissa, 4-byte signed exponent, both big-endian.
- * - Can only be constructed from a valid number string or another STNumber instance.
- *
- * Usage:
- *   STNumber.from("1.2345e5")
- *   STNumber.from("-123")
- *   STNumber.fromParser(parser)
- */
-class STNumber extends serialized_type_1.SerializedType {
-    /**
-     * Construct a STNumber from 12 bytes (8 for mantissa, 4 for exponent).
-     * @param bytes - 12-byte Uint8Array
-     * @throws Error if input is not a Uint8Array of length 12.
-     */
-    constructor(bytes) {
-        const used = bytes !== null && bytes !== void 0 ? bytes : STNumber.defaultBytes;
-        if (!(used instanceof Uint8Array) || used.length !== 12) {
-            throw new Error(`STNumber must be constructed from a 12-byte Uint8Array, got ${used === null || used === void 0 ? void 0 : used.length}`);
-        }
-        super(used);
-    }
-    /**
-     * Construct from a number string (or another STNumber).
-     *
-     * @param value - A string, or STNumber instance.
-     * @returns STNumber instance.
-     * @throws Error if not a string or STNumber.
-     */
-    static from(value) {
-        if (value instanceof STNumber) {
-            return value;
-        }
-        if (typeof value === 'string') {
-            return STNumber.fromValue(value);
-        }
-        throw new Error('STNumber.from: Only string or STNumber instance is supported');
-    }
-    /**
-     * Construct from a number string (integer, decimal, or scientific notation).
-     * Handles normalization to XRPL Number constraints.
-     *
-     * @param val - The number as a string (e.g. '1.23', '-123e5').
-     * @returns STNumber instance
-     * @throws Error if val is not a valid number string.
-     */
-    static fromValue(val) {
-        const { mantissa, exponent } = extractNumberPartsFromString(val);
-        const { mantissa: normalizedMantissa, exponent: normalizedExponent } = normalize(mantissa, exponent);
-        const bytes = new Uint8Array(12);
-        (0, utils_1.writeInt64BE)(bytes, normalizedMantissa, 0);
-        (0, utils_1.writeInt32BE)(bytes, normalizedExponent, 8);
-        return new STNumber(bytes);
-    }
-    /**
-     * Read a STNumber from a BinaryParser stream (12 bytes).
-     * @param parser - BinaryParser positioned at the start of a number
-     * @returns STNumber instance
-     */
-    static fromParser(parser) {
-        return new STNumber(parser.read(12));
-    }
-    /**
-     * Convert this STNumber to a normalized string representation.
-     * The output is decimal or scientific notation, depending on exponent range.
-     * Follows XRPL convention: zero is "0", other values are normalized to a canonical string.
-     *
-     * @returns String representation of the value
-     */
-    toJSON() {
-        const b = this.bytes;
-        if (!b || (b === null || b === void 0 ? void 0 : b.length) !== 12)
-            throw new Error('STNumber internal bytes not set or wrong length');
-        // Signed 64-bit mantissa
-        const mantissa = (0, utils_1.readInt64BE)(b, 0);
-        // Signed 32-bit exponent
-        let exponent = (0, utils_1.readInt32BE)(b, 8);
-        // Special zero: XRPL encodes canonical zero as mantissa=0, exponent=DEFAULT_VALUE_EXPONENT.
-        if (mantissa === BigInt(0) && exponent === DEFAULT_VALUE_EXPONENT) {
-            return '0';
-        }
-        const isNegative = mantissa < BigInt(0);
-        let mantissaAbs = isNegative ? -mantissa : mantissa;
-        // If mantissa < MIN_MANTISSA, it was shrunk for int64 serialization (mantissa > 2^63-1).
-        // Restore it for proper string rendering to match rippled's internal representation.
-        if (mantissaAbs !== BigInt(0) && mantissaAbs < MIN_MANTISSA) {
-            mantissaAbs *= BigInt(10);
-            exponent -= 1;
-        }
-        // For large mantissa range (default), rangeLog = 18
-        const rangeLog = 18;
-        // Use scientific notation for exponents that are too small or too large
-        // Condition from rippled: exponent != 0 AND (exponent < -(rangeLog + 10) OR exponent > -(rangeLog - 10))
-        // For rangeLog = 18: exponent != 0 AND (exponent < -28 OR exponent > -8)
-        if (exponent !== 0 &&
-            (exponent < -(rangeLog + 10) || exponent > -(rangeLog - 10))) {
-            // Strip trailing zeros from mantissa (matches rippled behavior)
-            let exp = exponent;
-            while (mantissaAbs !== BigInt(0) &&
-                mantissaAbs % BigInt(10) === BigInt(0) &&
-                exp < MAX_EXPONENT) {
-                mantissaAbs /= BigInt(10);
-                exp += 1;
-            }
-            const sign = isNegative ? '-' : '';
-            return `${sign}${mantissaAbs}e${exp}`;
-        }
-        // Decimal rendering for -(rangeLog + 10) <= exponent <= -(rangeLog - 10)
-        // i.e., -28 <= exponent <= -8, or exponent == 0
-        const padPrefix = rangeLog + 12; // 30
-        const padSuffix = rangeLog + 8; // 26
-        const mantissaStr = mantissaAbs.toString();
-        const rawValue = '0'.repeat(padPrefix) + mantissaStr + '0'.repeat(padSuffix);
-        const offset = exponent + padPrefix + rangeLog + 1; // exponent + 49
-        const integerPart = rawValue.slice(0, offset).replace(/^0+/, '') || '0';
-        const fractionPart = rawValue.slice(offset).replace(/0+$/, '');
-        return `${isNegative ? '-' : ''}${integerPart}${fractionPart ? '.' + fractionPart : ''}`;
-    }
-}
-exports.STNumber = STNumber;
-/** 12 zero bytes, represents canonical zero. */
-STNumber.defaultBytes = new Uint8Array(12);
-//# sourceMappingURL=st-number.js.map
-
-/***/ }),
-
-/***/ 8605:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.STObject = void 0;
-const enums_1 = __nccwpck_require__(8430);
-const serialized_type_1 = __nccwpck_require__(2029);
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const binary_parser_1 = __nccwpck_require__(4631);
-const binary_serializer_1 = __nccwpck_require__(1106);
-const st_array_1 = __nccwpck_require__(8994);
-const uint_64_1 = __nccwpck_require__(9329);
-const OBJECT_END_MARKER_BYTE = Uint8Array.from([0xe1]);
-const OBJECT_END_MARKER = 'ObjectEndMarker';
-const ST_OBJECT = 'STObject';
-const DESTINATION = 'Destination';
-const ACCOUNT = 'Account';
-const SOURCE_TAG = 'SourceTag';
-const DEST_TAG = 'DestinationTag';
-/**
- * Break down an X-Address into an account and a tag
- *
- * @param field Name of field
- * @param xAddress X-Address corresponding to the field
- */
-function handleXAddress(field, xAddress) {
-    const decoded = (0, ripple_address_codec_1.xAddressToClassicAddress)(xAddress);
-    let tagName;
-    if (field === DESTINATION)
-        tagName = DEST_TAG;
-    else if (field === ACCOUNT)
-        tagName = SOURCE_TAG;
-    else if (decoded.tag !== false)
-        throw new Error(`${field} cannot have an associated tag`);
-    return decoded.tag !== false
-        ? { [field]: decoded.classicAddress, [tagName]: decoded.tag }
-        : { [field]: decoded.classicAddress };
-}
-/**
- * Validate that two objects don't both have the same tag fields
- *
- * @param obj1 First object to check for tags
- * @param obj2 Second object to check for tags
- * @throws When both objects have SourceTag or DestinationTag
- */
-function checkForDuplicateTags(obj1, obj2) {
-    if (!(obj1[SOURCE_TAG] === undefined || obj2[SOURCE_TAG] === undefined))
-        throw new Error('Cannot have Account X-Address and SourceTag');
-    if (!(obj1[DEST_TAG] === undefined || obj2[DEST_TAG] === undefined))
-        throw new Error('Cannot have Destination X-Address and DestinationTag');
-}
-/**
- * Class for Serializing/Deserializing objects
- */
-class STObject extends serialized_type_1.SerializedType {
-    /**
-     * Construct a STObject from a BinaryParser
-     *
-     * @param parser BinaryParser to read STObject from
-     * @returns A STObject object
-     */
-    static fromParser(parser) {
-        const list = new binary_serializer_1.BytesList();
-        const bytes = new binary_serializer_1.BinarySerializer(list);
-        while (!parser.end()) {
-            const field = parser.readField();
-            if (field.name === OBJECT_END_MARKER) {
-                break;
-            }
-            const associatedValue = parser.readFieldValue(field);
-            bytes.writeFieldAndValue(field, associatedValue);
-            if (field.type.name === ST_OBJECT) {
-                bytes.put(OBJECT_END_MARKER_BYTE);
-            }
-        }
-        return new STObject(list.toBytes());
-    }
-    /**
-     * Construct a STObject from a JSON object
-     *
-     * @param value An object to include
-     * @param filter optional, denote which field to include in serialized object
-     * @param definitions optional, types and values to use to encode/decode a transaction
-     * @returns a STObject object
-     */
-    static from(value, filter, definitions = enums_1.DEFAULT_DEFINITIONS) {
-        if (value instanceof STObject) {
-            return value;
-        }
-        const list = new binary_serializer_1.BytesList();
-        const bytes = new binary_serializer_1.BinarySerializer(list);
-        let isUnlModify = false;
-        const xAddressDecoded = Object.entries(value).reduce((acc, [key, val]) => {
-            let handled = undefined;
-            if (val && (0, ripple_address_codec_1.isValidXAddress)(val.toString())) {
-                handled = handleXAddress(key, val.toString());
-                checkForDuplicateTags(handled, value);
-            }
-            return Object.assign(acc, handled !== null && handled !== void 0 ? handled : { [key]: val });
-        }, {});
-        function isValidFieldInstance(f) {
-            return (f !== undefined &&
-                xAddressDecoded[f.name] !== undefined &&
-                f.isSerialized);
-        }
-        let sorted = Object.keys(xAddressDecoded)
-            .map((f) => {
-            if (!(f in definitions.field)) {
-                if (f[0] === f[0].toLowerCase())
-                    return undefined;
-                throw new Error(`Field ${f} is not defined in the definitions`);
-            }
-            return definitions.field[f];
-        })
-            .filter(isValidFieldInstance)
-            .sort((a, b) => {
-            return a.ordinal - b.ordinal;
-        });
-        if (filter !== undefined) {
-            sorted = sorted.filter(filter);
-        }
-        sorted.forEach((field) => {
-            const associatedValue = field.type.name === ST_OBJECT
-                ? this.from(xAddressDecoded[field.name], undefined, definitions)
-                : field.type.name === 'STArray'
-                    ? st_array_1.STArray.from(xAddressDecoded[field.name], definitions)
-                    : field.type.name === 'UInt64'
-                        ? uint_64_1.UInt64.from(xAddressDecoded[field.name], field.name)
-                        : field.associatedType.from(xAddressDecoded[field.name]);
-            if (associatedValue == undefined) {
-                throw new TypeError(`Unable to interpret "${field.name}: ${xAddressDecoded[field.name]}".`);
-            }
-            if (associatedValue.name === 'UNLModify') {
-                // triggered when the TransactionType field has a value of 'UNLModify'
-                isUnlModify = true;
-            }
-            // true when in the UNLModify pseudotransaction (after the transaction type has been processed) and working with the
-            // Account field
-            // The Account field must not be a part of the UNLModify pseudotransaction encoding, due to a bug in rippled
-            const isUnlModifyWorkaround = field.name == 'Account' && isUnlModify;
-            bytes.writeFieldAndValue(field, associatedValue, isUnlModifyWorkaround);
-            if (field.type.name === ST_OBJECT) {
-                bytes.put(OBJECT_END_MARKER_BYTE);
-            }
-        });
-        return new STObject(list.toBytes());
-    }
-    /**
-     * Get the JSON interpretation of this.bytes
-     * @param definitions rippled definitions used to parse the values of transaction types and such.
-     *                          Can be customized for sidechains and amendments.
-     * @returns a JSON object
-     */
-    toJSON(definitions) {
-        const objectParser = new binary_parser_1.BinaryParser(this.toString(), definitions);
-        const accumulator = {};
-        while (!objectParser.end()) {
-            const field = objectParser.readField();
-            if (field.name === OBJECT_END_MARKER) {
-                break;
-            }
-            accumulator[field.name] = objectParser
-                .readFieldValue(field)
-                .toJSON(definitions, field.name);
-        }
-        return accumulator;
-    }
-}
-exports.STObject = STObject;
-//# sourceMappingURL=st-object.js.map
-
-/***/ }),
-
-/***/ 5886:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.UInt16 = void 0;
-const uint_1 = __nccwpck_require__(3111);
-const utils_1 = __nccwpck_require__(2093);
-/**
- * Derived UInt class for serializing/deserializing 16 bit UInt
- */
-class UInt16 extends uint_1.UInt {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : UInt16.defaultUInt16.bytes);
-    }
-    static fromParser(parser) {
-        return new UInt16(parser.read(UInt16.width));
-    }
-    /**
-     * Construct a UInt16 object from a number
-     *
-     * @param val UInt16 object or number
-     */
-    static from(val) {
-        if (val instanceof UInt16) {
-            return val;
-        }
-        if (typeof val === 'number' && Number.isInteger(val)) {
-            UInt16.checkUintRange(val, 0, 0xffff);
-            const buf = new Uint8Array(UInt16.width);
-            (0, utils_1.writeUInt16BE)(buf, val, 0);
-            return new UInt16(buf);
-        }
-        throw new Error('Cannot construct UInt16 from given value');
-    }
-    /**
-     * get the value of a UInt16 object
-     *
-     * @returns the number represented by this.bytes
-     */
-    valueOf() {
-        return parseInt((0, utils_1.readUInt16BE)(this.bytes, 0));
-    }
-}
-exports.UInt16 = UInt16;
-UInt16.width = 16 / 8; // 2
-UInt16.defaultUInt16 = new UInt16(new Uint8Array(UInt16.width));
-//# sourceMappingURL=uint-16.js.map
-
-/***/ }),
-
-/***/ 5105:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.UInt32 = void 0;
-const uint_1 = __nccwpck_require__(3111);
-const utils_1 = __nccwpck_require__(2093);
-/**
- * Derived UInt class for serializing/deserializing 32 bit UInt
- */
-class UInt32 extends uint_1.UInt {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : UInt32.defaultUInt32.bytes);
-    }
-    static fromParser(parser) {
-        return new UInt32(parser.read(UInt32.width));
-    }
-    /**
-     * Construct a UInt32 object from a number
-     *
-     * @param val UInt32 object or number
-     */
-    static from(val) {
-        if (val instanceof UInt32) {
-            return val;
-        }
-        const buf = new Uint8Array(UInt32.width);
-        if (typeof val === 'string') {
-            const num = Number.parseInt(val);
-            (0, utils_1.writeUInt32BE)(buf, num, 0);
-            return new UInt32(buf);
-        }
-        if (typeof val === 'number' && Number.isInteger(val)) {
-            UInt32.checkUintRange(val, 0, 0xffffffff);
-            (0, utils_1.writeUInt32BE)(buf, val, 0);
-            return new UInt32(buf);
-        }
-        throw new Error('Cannot construct UInt32 from given value');
-    }
-    /**
-     * get the value of a UInt32 object
-     *
-     * @returns the number represented by this.bytes
-     */
-    valueOf() {
-        return parseInt((0, utils_1.readUInt32BE)(this.bytes, 0), 10);
-    }
-}
-exports.UInt32 = UInt32;
-UInt32.width = 32 / 8; // 4
-UInt32.defaultUInt32 = new UInt32(new Uint8Array(UInt32.width));
-//# sourceMappingURL=uint-32.js.map
-
-/***/ }),
-
-/***/ 9329:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.UInt64 = void 0;
-const uint_1 = __nccwpck_require__(3111);
-const utils_1 = __nccwpck_require__(3617);
-const utils_2 = __nccwpck_require__(2093);
-const enums_1 = __nccwpck_require__(8430);
-const HEX_REGEX = /^[a-fA-F0-9]{1,16}$/;
-const BASE10_REGEX = /^[0-9]{1,20}$/;
-const mask = BigInt(0x00000000ffffffff);
-const BASE10_AMOUNT_FIELDS = new Set([
-    'MaximumAmount',
-    'OutstandingAmount',
-    'MPTAmount',
-    'LockedAmount',
-]);
-function isBase10(fieldName) {
-    return BASE10_AMOUNT_FIELDS.has(fieldName);
-}
-/**
- * Derived UInt class for serializing/deserializing 64 bit UInt
- */
-class UInt64 extends uint_1.UInt {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : UInt64.defaultUInt64.bytes);
-    }
-    static fromParser(parser) {
-        return new UInt64(parser.read(UInt64.width));
-    }
-    /**
-     * Construct a UInt64 object
-     *
-     * @param val A UInt64, hex-string, bigInt, or number
-     * @returns A UInt64 object
-     */
-    // eslint-disable-next-line complexity
-    static from(val, fieldName = '') {
-        if (val instanceof UInt64) {
-            return val;
-        }
-        let buf = new Uint8Array(UInt64.width);
-        if (typeof val === 'number' && Number.isInteger(val)) {
-            if (val < 0) {
-                throw new Error('value must be an unsigned integer');
-            }
-            const number = BigInt(val);
-            const intBuf = [new Uint8Array(4), new Uint8Array(4)];
-            (0, utils_2.writeUInt32BE)(intBuf[0], Number(number >> BigInt(32)), 0);
-            (0, utils_2.writeUInt32BE)(intBuf[1], Number(number & BigInt(mask)), 0);
-            return new UInt64((0, utils_1.concat)(intBuf));
-        }
-        if (typeof val === 'string') {
-            if (isBase10(fieldName)) {
-                if (!BASE10_REGEX.test(val)) {
-                    throw new Error(`${fieldName} ${val} is not a valid base 10 string`);
-                }
-                val = BigInt(val).toString(16);
-            }
-            if (typeof val === 'string' && !HEX_REGEX.test(val)) {
-                throw new Error(`${val} is not a valid hex-string`);
-            }
-            const strBuf = val.padStart(16, '0');
-            buf = (0, utils_1.hexToBytes)(strBuf);
-            return new UInt64(buf);
-        }
-        if (typeof val === 'bigint') {
-            const intBuf = [new Uint8Array(4), new Uint8Array(4)];
-            (0, utils_2.writeUInt32BE)(intBuf[0], Number(Number(val >> BigInt(32))), 0);
-            (0, utils_2.writeUInt32BE)(intBuf[1], Number(val & BigInt(mask)), 0);
-            return new UInt64((0, utils_1.concat)(intBuf));
-        }
-        throw new Error('Cannot construct UInt64 from given value');
-    }
-    /**
-     * The JSON representation of a UInt64 object
-     *
-     * @returns a hex-string
-     */
-    toJSON(_definitions = enums_1.DEFAULT_DEFINITIONS, fieldName = '') {
-        const hexString = (0, utils_1.bytesToHex)(this.bytes);
-        if (isBase10(fieldName)) {
-            return BigInt('0x' + hexString).toString(10);
-        }
-        return hexString;
-    }
-    /**
-     * Get the value of the UInt64
-     *
-     * @returns the number represented buy this.bytes
-     */
-    valueOf() {
-        const msb = BigInt((0, utils_2.readUInt32BE)(this.bytes.slice(0, 4), 0));
-        const lsb = BigInt((0, utils_2.readUInt32BE)(this.bytes.slice(4), 0));
-        return (msb << BigInt(32)) | lsb;
-    }
-    /**
-     * Get the bytes representation of the UInt64 object
-     *
-     * @returns 8 bytes representing the UInt64
-     */
-    toBytes() {
-        return this.bytes;
-    }
-}
-exports.UInt64 = UInt64;
-UInt64.width = 64 / 8; // 8
-UInt64.defaultUInt64 = new UInt64(new Uint8Array(UInt64.width));
-//# sourceMappingURL=uint-64.js.map
-
-/***/ }),
-
-/***/ 3584:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.UInt8 = void 0;
-const uint_1 = __nccwpck_require__(3111);
-const utils_1 = __nccwpck_require__(3617);
-const utils_2 = __nccwpck_require__(2093);
-/**
- * Derived UInt class for serializing/deserializing 8 bit UInt
- */
-class UInt8 extends uint_1.UInt {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : UInt8.defaultUInt8.bytes);
-    }
-    static fromParser(parser) {
-        return new UInt8(parser.read(UInt8.width));
-    }
-    /**
-     * Construct a UInt8 object from a number
-     *
-     * @param val UInt8 object or number
-     */
-    static from(val) {
-        if (val instanceof UInt8) {
-            return val;
-        }
-        if (typeof val === 'number' && Number.isInteger(val)) {
-            UInt8.checkUintRange(val, 0, 0xff);
-            const buf = new Uint8Array(UInt8.width);
-            (0, utils_2.writeUInt8)(buf, val, 0);
-            return new UInt8(buf);
-        }
-        throw new Error('Cannot construct UInt8 from given value');
-    }
-    /**
-     * get the value of a UInt8 object
-     *
-     * @returns the number represented by this.bytes
-     */
-    valueOf() {
-        return parseInt((0, utils_1.bytesToHex)(this.bytes), 16);
-    }
-}
-exports.UInt8 = UInt8;
-UInt8.width = 8 / 8; // 1
-UInt8.defaultUInt8 = new UInt8(new Uint8Array(UInt8.width));
-//# sourceMappingURL=uint-8.js.map
-
-/***/ }),
-
-/***/ 3111:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.UInt = void 0;
-const serialized_type_1 = __nccwpck_require__(2029);
-/**
- * Compare numbers and bigInts n1 and n2
- *
- * @param n1 First object to compare
- * @param n2 Second object to compare
- * @returns -1, 0, or 1, depending on how the two objects compare
- */
-function compare(n1, n2) {
-    return n1 < n2 ? -1 : n1 == n2 ? 0 : 1;
-}
-/**
- * Base class for serializing and deserializing unsigned integers.
- */
-class UInt extends serialized_type_1.Comparable {
-    constructor(bytes) {
-        super(bytes);
-    }
-    /**
-     * Overload of compareTo for Comparable
-     *
-     * @param other other UInt to compare this to
-     * @returns -1, 0, or 1 depending on how the objects relate to each other
-     */
-    compareTo(other) {
-        return compare(this.valueOf(), other.valueOf());
-    }
-    /**
-     * Convert a UInt object to JSON
-     *
-     * @returns number or string represented by this.bytes
-     */
-    toJSON() {
-        const val = this.valueOf();
-        return typeof val === 'number' ? val : val.toString();
-    }
-    static checkUintRange(val, min, max) {
-        if (val < min || val > max) {
-            throw new Error(`Invalid ${this.constructor.name}: ${val} must be >= ${min} and <= ${max}`);
-        }
-    }
-}
-exports.UInt = UInt;
-//# sourceMappingURL=uint.js.map
-
-/***/ }),
-
-/***/ 3183:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Vector256 = void 0;
-const serialized_type_1 = __nccwpck_require__(2029);
-const hash_256_1 = __nccwpck_require__(2040);
-const binary_serializer_1 = __nccwpck_require__(1106);
-const utils_1 = __nccwpck_require__(3617);
-/**
- * TypeGuard for Array<string>
- */
-function isStrings(arg) {
-    return Array.isArray(arg) && (arg.length === 0 || typeof arg[0] === 'string');
-}
-/**
- * Class for serializing and deserializing vectors of Hash256
- */
-class Vector256 extends serialized_type_1.SerializedType {
-    constructor(bytes) {
-        super(bytes);
-    }
-    /**
-     * Construct a Vector256 from a BinaryParser
-     *
-     * @param parser BinaryParser to
-     * @param hint length of the vector, in bytes, optional
-     * @returns a Vector256 object
-     */
-    static fromParser(parser, hint) {
-        const bytesList = new binary_serializer_1.BytesList();
-        const bytes = hint !== null && hint !== void 0 ? hint : parser.size();
-        const hashes = bytes / 32;
-        for (let i = 0; i < hashes; i++) {
-            hash_256_1.Hash256.fromParser(parser).toBytesSink(bytesList);
-        }
-        return new Vector256(bytesList.toBytes());
-    }
-    /**
-     * Construct a Vector256 object from an array of hashes
-     *
-     * @param value A Vector256 object or array of hex-strings representing Hash256's
-     * @returns a Vector256 object
-     */
-    static from(value) {
-        if (value instanceof Vector256) {
-            return value;
-        }
-        if (isStrings(value)) {
-            const bytesList = new binary_serializer_1.BytesList();
-            value.forEach((hash) => {
-                hash_256_1.Hash256.from(hash).toBytesSink(bytesList);
-            });
-            return new Vector256(bytesList.toBytes());
-        }
-        throw new Error('Cannot construct Vector256 from given value');
-    }
-    /**
-     * Return an Array of hex-strings represented by this.bytes
-     *
-     * @returns An Array of strings representing the Hash256 objects
-     */
-    toJSON() {
-        if (this.bytes.byteLength % 32 !== 0) {
-            throw new Error('Invalid bytes for Vector256');
-        }
-        const result = [];
-        for (let i = 0; i < this.bytes.byteLength; i += 32) {
-            result.push((0, utils_1.bytesToHex)(this.bytes.slice(i, i + 32)));
-        }
-        return result;
-    }
-}
-exports.Vector256 = Vector256;
-//# sourceMappingURL=vector-256.js.map
-
-/***/ }),
-
-/***/ 2017:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.XChainBridge = void 0;
-const binary_parser_1 = __nccwpck_require__(4631);
-const account_id_1 = __nccwpck_require__(6118);
-const serialized_type_1 = __nccwpck_require__(2029);
-const issue_1 = __nccwpck_require__(7179);
-const utils_1 = __nccwpck_require__(3617);
-/**
- * Type guard for XChainBridgeObject
- */
-function isXChainBridgeObject(arg) {
-    const keys = Object.keys(arg).sort();
-    return (keys.length === 4 &&
-        keys[0] === 'IssuingChainDoor' &&
-        keys[1] === 'IssuingChainIssue' &&
-        keys[2] === 'LockingChainDoor' &&
-        keys[3] === 'LockingChainIssue');
-}
-/**
- * Class for serializing/deserializing XChainBridges
- */
-class XChainBridge extends serialized_type_1.SerializedType {
-    constructor(bytes) {
-        super(bytes !== null && bytes !== void 0 ? bytes : XChainBridge.ZERO_XCHAIN_BRIDGE.bytes);
-    }
-    /**
-     * Construct a cross-chain bridge from a JSON
-     *
-     * @param value XChainBridge or JSON to parse into an XChainBridge
-     * @returns An XChainBridge object
-     */
-    static from(value) {
-        if (value instanceof XChainBridge) {
-            return value;
-        }
-        if (!isXChainBridgeObject(value)) {
-            throw new Error('Invalid type to construct an XChainBridge');
-        }
-        const bytes = [];
-        this.TYPE_ORDER.forEach((item) => {
-            const { name, type } = item;
-            if (type === account_id_1.AccountID) {
-                bytes.push(Uint8Array.from([0x14]));
-            }
-            const object = type.from(value[name]);
-            bytes.push(object.toBytes());
-        });
-        return new XChainBridge((0, utils_1.concat)(bytes));
-    }
-    /**
-     * Read an XChainBridge from a BinaryParser
-     *
-     * @param parser BinaryParser to read the XChainBridge from
-     * @returns An XChainBridge object
-     */
-    static fromParser(parser) {
-        const bytes = [];
-        this.TYPE_ORDER.forEach((item) => {
-            const { type } = item;
-            if (type === account_id_1.AccountID) {
-                parser.skip(1);
-                bytes.push(Uint8Array.from([0x14]));
-            }
-            const object = type.fromParser(parser);
-            bytes.push(object.toBytes());
-        });
-        return new XChainBridge((0, utils_1.concat)(bytes));
-    }
-    /**
-     * Get the JSON representation of this XChainBridge
-     *
-     * @returns the JSON interpretation of this.bytes
-     */
-    toJSON() {
-        const parser = new binary_parser_1.BinaryParser(this.toString());
-        const json = {};
-        XChainBridge.TYPE_ORDER.forEach((item) => {
-            const { name, type } = item;
-            if (type === account_id_1.AccountID) {
-                parser.skip(1);
-            }
-            const object = type.fromParser(parser).toJSON();
-            json[name] = object;
-        });
-        return json;
-    }
-}
-exports.XChainBridge = XChainBridge;
-XChainBridge.ZERO_XCHAIN_BRIDGE = new XChainBridge((0, utils_1.concat)([
-    Uint8Array.from([0x14]),
-    new Uint8Array(40),
-    Uint8Array.from([0x14]),
-    new Uint8Array(40),
-]));
-XChainBridge.TYPE_ORDER = [
-    { name: 'LockingChainDoor', type: account_id_1.AccountID },
-    { name: 'LockingChainIssue', type: issue_1.Issue },
-    { name: 'IssuingChainDoor', type: account_id_1.AccountID },
-    { name: 'IssuingChainIssue', type: issue_1.Issue },
-];
-//# sourceMappingURL=xchain-bridge.js.map
-
-/***/ }),
-
-/***/ 2093:
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.compare = exports.equal = exports.readInt64BE = exports.readInt32BE = exports.readUInt32BE = exports.readUInt16BE = exports.writeInt64BE = exports.writeInt32BE = exports.writeUInt32BE = exports.writeUInt16BE = exports.writeUInt8 = void 0;
-/**
- * Writes value to array at the specified offset. The value must be a valid unsigned 8-bit integer.
- * @param array Uint8Array to be written to
- * @param value Number to be written to array.
- * @param offset plus the number of bytes written.
- */
-function writeUInt8(array, value, offset) {
-    value = Number(value);
-    array[offset] = value;
-}
-exports.writeUInt8 = writeUInt8;
-/**
- * Writes value to array at the specified offset as big-endian. The value must be a valid unsigned 16-bit integer.
- * @param array Uint8Array to be written to
- * @param value Number to be written to array.
- * @param offset plus the number of bytes written.
- */
-function writeUInt16BE(array, value, offset) {
-    value = Number(value);
-    array[offset] = value >>> 8;
-    array[offset + 1] = value;
-}
-exports.writeUInt16BE = writeUInt16BE;
-/**
- * Writes value to array at the specified offset as big-endian. The value must be a valid unsigned 32-bit integer.
- * @param array Uint8Array to be written to
- * @param value Number to be written to array.
- * @param offset plus the number of bytes written.
- */
-function writeUInt32BE(array, value, offset) {
-    array[offset] = (value >>> 24) & 0xff;
-    array[offset + 1] = (value >>> 16) & 0xff;
-    array[offset + 2] = (value >>> 8) & 0xff;
-    array[offset + 3] = value & 0xff;
-}
-exports.writeUInt32BE = writeUInt32BE;
-/**
- * Writes a signed 32-bit integer to a Uint8Array at the specified offset (big-endian).
- *
- * @param array - The Uint8Array to write to.
- * @param value - The signed 32-bit integer to write.
- * @param offset - The offset at which to write.
- */
-function writeInt32BE(array, value, offset) {
-    new DataView(array.buffer, array.byteOffset, array.byteLength).setInt32(offset, value, false);
-}
-exports.writeInt32BE = writeInt32BE;
-/**
- * Writes a signed 64-bit integer (BigInt) to a Uint8Array at the specified offset (big-endian).
- *
- * @param array - The Uint8Array to write to.
- * @param value - The signed 64-bit integer (BigInt) to write.
- * @param offset - The offset at which to write.
- */
-function writeInt64BE(array, value, offset) {
-    new DataView(array.buffer, array.byteOffset, array.byteLength).setBigInt64(offset, value, false);
-}
-exports.writeInt64BE = writeInt64BE;
-/**
- * Reads an unsigned, big-endian 16-bit integer from the array at the specified offset.
- * @param array Uint8Array to read
- * @param offset Number of bytes to skip before starting to read. Must satisfy 0 <= offset <= buf.length - 2
- */
-function readUInt16BE(array, offset) {
-    return new DataView(array.buffer).getUint16(offset, false).toString(10);
-}
-exports.readUInt16BE = readUInt16BE;
-/**
- * Reads an unsigned, big-endian 16-bit integer from the array at the specified offset.
- * @param array Uint8Array to read
- * @param offset Number of bytes to skip before starting to read. Must satisfy 0 <= offset <= buf.length - 4
- */
-function readUInt32BE(array, offset) {
-    return new DataView(array.buffer).getUint32(offset, false).toString(10);
-}
-exports.readUInt32BE = readUInt32BE;
-/**
- * Reads a signed 32-bit integer from a Uint8Array at the specified offset (big-endian).
- *
- * @param array - The Uint8Array to read from.
- * @param offset - The offset at which to start reading.
- * @returns The signed 32-bit integer.
- */
-function readInt32BE(array, offset) {
-    return new DataView(array.buffer, array.byteOffset, array.byteLength).getInt32(offset, false);
-}
-exports.readInt32BE = readInt32BE;
-/**
- * Reads a signed 64-bit integer (BigInt) from a Uint8Array at the specified offset (big-endian).
- *
- * @param array - The Uint8Array to read from.
- * @param offset - The offset at which to start reading.
- * @returns The signed 64-bit integer (BigInt).
- */
-function readInt64BE(array, offset) {
-    return new DataView(array.buffer, array.byteOffset, array.byteLength).getBigInt64(offset, false);
-}
-exports.readInt64BE = readInt64BE;
-/**
- * Compares two Uint8Array or ArrayBuffers
- * @param a first array to compare
- * @param b second array to compare
- */
-function equal(a, b) {
-    const aUInt = a instanceof ArrayBuffer ? new Uint8Array(a, 0) : a;
-    const bUInt = b instanceof ArrayBuffer ? new Uint8Array(b, 0) : b;
-    if (aUInt.byteLength != bUInt.byteLength)
-        return false;
-    if (aligned32(aUInt) && aligned32(bUInt))
-        return compare32(aUInt, bUInt) === 0;
-    if (aligned16(aUInt) && aligned16(bUInt))
-        return compare16(aUInt, bUInt) === 0;
-    return compare8(aUInt, bUInt) === 0;
-}
-exports.equal = equal;
-/**
- * Compares two 8 bit aligned arrays
- * @param a first array to compare
- * @param b second array to compare
- */
-function compare8(a, b) {
-    const ua = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
-    const ub = new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
-    return compare(ua, ub);
-}
-/**
- * Compares two 16 bit aligned arrays
- * @param a first array to compare
- * @param b second array to compare
- */
-function compare16(a, b) {
-    const ua = new Uint16Array(a.buffer, a.byteOffset, a.byteLength / 2);
-    const ub = new Uint16Array(b.buffer, b.byteOffset, b.byteLength / 2);
-    return compare(ua, ub);
-}
-/**
- * Compares two 32 bit aligned arrays
- * @param a first array to compare
- * @param b second array to compare
- */
-function compare32(a, b) {
-    const ua = new Uint32Array(a.buffer, a.byteOffset, a.byteLength / 4);
-    const ub = new Uint32Array(b.buffer, b.byteOffset, b.byteLength / 4);
-    return compare(ua, ub);
-}
-/**
- * Compare two TypedArrays
- * @param a first array to compare
- * @param b second array to compare
- */
-function compare(a, b) {
-    if (a.byteLength !== b.byteLength) {
-        throw new Error('Cannot compare arrays of different length');
-    }
-    for (let i = 0; i < a.length - 1; i += 1) {
-        if (a[i] > b[i])
-            return 1;
-        if (a[i] < b[i])
-            return -1;
-    }
-    return 0;
-}
-exports.compare = compare;
-/**
- * Determine if TypedArray is 16 bit aligned
- * @param array The array to check
- */
-function aligned16(array) {
-    return array.byteOffset % 2 === 0 && array.byteLength % 2 === 0;
-}
-/**
- * Determine if TypedArray is 32 bit aligned
- * @param array The array to check
- */
-function aligned32(array) {
-    return array.byteOffset % 4 === 0 && array.byteLength % 4 === 0;
-}
-//# sourceMappingURL=utils.js.map
-
-/***/ }),
-
-/***/ 4508:
+/***/ 1551:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -17855,7 +13701,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.decodeSeed = exports.deriveNodeAddress = exports.deriveAddress = exports.verify = exports.sign = exports.deriveKeypair = exports.generateSeed = void 0;
-const ripple_address_codec_1 = __nccwpck_require__(3996);
+const ripple_address_codec_1 = __nccwpck_require__(579);
 Object.defineProperty(exports, "decodeSeed", ({ enumerable: true, get: function () { return ripple_address_codec_1.decodeSeed; } }));
 const ripemd160_1 = __nccwpck_require__(8841);
 const sha256_1 = __nccwpck_require__(8093);
@@ -18262,6 +14108,89 @@ exports.getAlgorithmFromPrivateKey = getAlgorithmFromPrivateKey;
 
 /***/ }),
 
+/***/ 2534:
+/***/ ((module) => {
+
+
+
+/**
+ * Checks if a given buffer contains only correct UTF-8.
+ * Ported from https://www.cl.cam.ac.uk/%7Emgk25/ucs/utf8_check.c by
+ * Markus Kuhn.
+ *
+ * @param {Buffer} buf The buffer to check
+ * @return {Boolean} `true` if `buf` contains only correct UTF-8, else `false`
+ * @public
+ */
+function isValidUTF8(buf) {
+  const len = buf.length;
+  let i = 0;
+
+  while (i < len) {
+    if ((buf[i] & 0x80) === 0x00) {  // 0xxxxxxx
+      i++;
+    } else if ((buf[i] & 0xe0) === 0xc0) {  // 110xxxxx 10xxxxxx
+      if (
+        i + 1 === len ||
+        (buf[i + 1] & 0xc0) !== 0x80 ||
+        (buf[i] & 0xfe) === 0xc0  // overlong
+      ) {
+        return false;
+      }
+
+      i += 2;
+    } else if ((buf[i] & 0xf0) === 0xe0) {  // 1110xxxx 10xxxxxx 10xxxxxx
+      if (
+        i + 2 >= len ||
+        (buf[i + 1] & 0xc0) !== 0x80 ||
+        (buf[i + 2] & 0xc0) !== 0x80 ||
+        buf[i] === 0xe0 && (buf[i + 1] & 0xe0) === 0x80 ||  // overlong
+        buf[i] === 0xed && (buf[i + 1] & 0xe0) === 0xa0  // surrogate (U+D800 - U+DFFF)
+      ) {
+        return false;
+      }
+
+      i += 3;
+    } else if ((buf[i] & 0xf8) === 0xf0) {  // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+      if (
+        i + 3 >= len ||
+        (buf[i + 1] & 0xc0) !== 0x80 ||
+        (buf[i + 2] & 0xc0) !== 0x80 ||
+        (buf[i + 3] & 0xc0) !== 0x80 ||
+        buf[i] === 0xf0 && (buf[i + 1] & 0xf0) === 0x80 ||  // overlong
+        buf[i] === 0xf4 && buf[i + 1] > 0x8f || buf[i] > 0xf4  // > U+10FFFF
+      ) {
+        return false;
+      }
+
+      i += 4;
+    } else {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+module.exports = isValidUTF8;
+
+
+/***/ }),
+
+/***/ 5161:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+
+
+try {
+  module.exports = require(__nccwpck_require__.ab + "prebuilds/linux-x64/node.napi.node");
+} catch (e) {
+  module.exports = __nccwpck_require__(2534);
+}
+
+
+/***/ }),
+
 /***/ 8867:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -18401,7 +14330,7 @@ module.exports = {
 /* istanbul ignore else  */
 if (!process.env.WS_NO_BUFFER_UTIL) {
   try {
-    const bufferUtil = __nccwpck_require__(1269);
+    const bufferUtil = __nccwpck_require__(3352);
 
     module.exports.mask = function (source, mask, output, offset, length) {
       if (length < 48) _mask(source, mask, output, offset, length);
@@ -21257,7 +17186,7 @@ if (isUtf8) {
   };
 } /* istanbul ignore else  */ else if (!process.env.WS_NO_UTF_8_VALIDATE) {
   try {
-    const isValidUTF8 = __nccwpck_require__(4592);
+    const isValidUTF8 = __nccwpck_require__(5161);
 
     module.exports.isValidUTF8 = function (buf) {
       return buf.length < 32 ? _isValidUTF8(buf) : isValidUTF8(buf);
@@ -23231,7 +19160,4317 @@ function socketOnError() {
 
 /***/ }),
 
-/***/ 7514:
+/***/ 647:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isValidXAddress = exports.decodeXAddress = exports.xAddressToClassicAddress = exports.encodeXAddress = exports.classicAddressToXAddress = exports.isValidClassicAddress = exports.decodeAccountPublic = exports.encodeAccountPublic = exports.decodeNodePublic = exports.encodeNodePublic = exports.decodeAccountID = exports.encodeAccountID = exports.decodeSeed = exports.encodeSeed = exports.codec = void 0;
+const utils_1 = __nccwpck_require__(3617);
+const xah_codec_1 = __nccwpck_require__(8539);
+Object.defineProperty(exports, "codec", ({ enumerable: true, get: function () { return xah_codec_1.codec; } }));
+Object.defineProperty(exports, "encodeSeed", ({ enumerable: true, get: function () { return xah_codec_1.encodeSeed; } }));
+Object.defineProperty(exports, "decodeSeed", ({ enumerable: true, get: function () { return xah_codec_1.decodeSeed; } }));
+Object.defineProperty(exports, "encodeAccountID", ({ enumerable: true, get: function () { return xah_codec_1.encodeAccountID; } }));
+Object.defineProperty(exports, "decodeAccountID", ({ enumerable: true, get: function () { return xah_codec_1.decodeAccountID; } }));
+Object.defineProperty(exports, "encodeNodePublic", ({ enumerable: true, get: function () { return xah_codec_1.encodeNodePublic; } }));
+Object.defineProperty(exports, "decodeNodePublic", ({ enumerable: true, get: function () { return xah_codec_1.decodeNodePublic; } }));
+Object.defineProperty(exports, "encodeAccountPublic", ({ enumerable: true, get: function () { return xah_codec_1.encodeAccountPublic; } }));
+Object.defineProperty(exports, "decodeAccountPublic", ({ enumerable: true, get: function () { return xah_codec_1.decodeAccountPublic; } }));
+Object.defineProperty(exports, "isValidClassicAddress", ({ enumerable: true, get: function () { return xah_codec_1.isValidClassicAddress; } }));
+const PREFIX_BYTES = {
+    // 5, 68
+    main: Uint8Array.from([0x05, 0x44]),
+    // 4, 147
+    test: Uint8Array.from([0x04, 0x93]),
+};
+const MAX_32_BIT_UNSIGNED_INT = 4294967295;
+function classicAddressToXAddress(classicAddress, tag, test) {
+    const accountId = (0, xah_codec_1.decodeAccountID)(classicAddress);
+    return encodeXAddress(accountId, tag, test);
+}
+exports.classicAddressToXAddress = classicAddressToXAddress;
+function encodeXAddress(accountId, tag, test) {
+    if (accountId.length !== 20) {
+        // RIPEMD160 is 160 bits = 20 bytes
+        throw new Error('Account ID must be 20 bytes');
+    }
+    if (tag !== false && tag > MAX_32_BIT_UNSIGNED_INT) {
+        throw new Error('Invalid tag');
+    }
+    const theTag = tag || 0;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Passing null is a common js mistake
+    const flag = tag === false || tag == null ? 0 : 1;
+    /* eslint-disable no-bitwise ---
+     * need to use bitwise operations here */
+    const bytes = (0, utils_1.concat)([
+        test ? PREFIX_BYTES.test : PREFIX_BYTES.main,
+        accountId,
+        Uint8Array.from([
+            // 0x00 if no tag, 0x01 if 32-bit tag
+            flag,
+            // first byte
+            theTag & 0xff,
+            // second byte
+            (theTag >> 8) & 0xff,
+            // third byte
+            (theTag >> 16) & 0xff,
+            // fourth byte
+            (theTag >> 24) & 0xff,
+            0,
+            0,
+            0,
+            // four zero bytes (reserved for 64-bit tags)
+            0,
+        ]),
+    ]);
+    /* eslint-enable no-bitwise */
+    return xah_codec_1.codec.encodeChecked(bytes);
+}
+exports.encodeXAddress = encodeXAddress;
+function xAddressToClassicAddress(xAddress) {
+    /* eslint-disable @typescript-eslint/naming-convention --
+     * TODO 'test' should be something like 'isTest', do this later
+     */
+    const { accountId, tag, test } = decodeXAddress(xAddress);
+    /* eslint-enable @typescript-eslint/naming-convention */
+    const classicAddress = (0, xah_codec_1.encodeAccountID)(accountId);
+    return {
+        classicAddress,
+        tag,
+        test,
+    };
+}
+exports.xAddressToClassicAddress = xAddressToClassicAddress;
+function decodeXAddress(xAddress) {
+    const decoded = xah_codec_1.codec.decodeChecked(xAddress);
+    /* eslint-disable @typescript-eslint/naming-convention --
+     * TODO 'test' should be something like 'isTest', do this later
+     */
+    const test = isUint8ArrayForTestAddress(decoded);
+    /* eslint-enable @typescript-eslint/naming-convention */
+    const accountId = decoded.slice(2, 22);
+    const tag = tagFromUint8Array(decoded);
+    return {
+        accountId,
+        tag,
+        test,
+    };
+}
+exports.decodeXAddress = decodeXAddress;
+function isUint8ArrayForTestAddress(buf) {
+    const decodedPrefix = buf.slice(0, 2);
+    if ((0, utils_1.equal)(PREFIX_BYTES.main, decodedPrefix)) {
+        return false;
+    }
+    if ((0, utils_1.equal)(PREFIX_BYTES.test, decodedPrefix)) {
+        return true;
+    }
+    throw new Error('Invalid X-address: bad prefix');
+}
+function tagFromUint8Array(buf) {
+    const flag = buf[22];
+    if (flag >= 2) {
+        // No support for 64-bit tags at this time
+        throw new Error('Unsupported X-address');
+    }
+    if (flag === 1) {
+        // Little-endian to big-endian
+        return buf[23] + buf[24] * 0x100 + buf[25] * 0x10000 + buf[26] * 0x1000000;
+    }
+    if (flag !== 0) {
+        throw new Error('flag must be zero to indicate no tag');
+    }
+    if (!(0, utils_1.equal)((0, utils_1.hexToBytes)('0000000000000000'), buf.slice(23, 23 + 8))) {
+        throw new Error('remaining bytes must be zero');
+    }
+    return false;
+}
+function isValidXAddress(xAddress) {
+    try {
+        decodeXAddress(xAddress);
+    }
+    catch (_error) {
+        return false;
+    }
+    return true;
+}
+exports.isValidXAddress = isValidXAddress;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 7404:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.concatArgs = exports.arrayEqual = void 0;
+/**
+ * Check whether two sequences (e.g. Arrays of numbers) are equal.
+ *
+ * @param arr1 - One of the arrays to compare.
+ * @param arr2 - The other array to compare.
+ */
+function arrayEqual(arr1, arr2) {
+    if (arr1.length !== arr2.length) {
+        return false;
+    }
+    return arr1.every((value, index) => value === arr2[index]);
+}
+exports.arrayEqual = arrayEqual;
+/**
+ * Check whether a value is a scalar
+ *
+ * @param val - The value to check.
+ */
+function isScalar(val) {
+    return typeof val === 'number';
+}
+/**
+ * Concatenate all `arguments` into a single array. Each argument can be either
+ * a single element or a sequence, which has a `length` property and supports
+ * element retrieval via sequence[ix].
+ *
+ * > concatArgs(1, [2, 3], Uint8Array.from([4,5]), new Uint8Array([6, 7]));
+ * [1,2,3,4,5,6,7]
+ *
+ * @param args - Concatenate of these args into a single array.
+ * @returns Array of concatenated arguments
+ */
+function concatArgs(...args) {
+    return args.flatMap((arg) => {
+        return isScalar(arg) ? [arg] : Array.from(arg);
+    });
+}
+exports.concatArgs = concatArgs;
+//# sourceMappingURL=utils.js.map
+
+/***/ }),
+
+/***/ 8539:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+/**
+ * Codec class
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isValidClassicAddress = exports.decodeAccountPublic = exports.encodeAccountPublic = exports.encodeNodePublic = exports.decodeNodePublic = exports.decodeAddress = exports.decodeAccountID = exports.encodeAddress = exports.encodeAccountID = exports.decodeSeed = exports.encodeSeed = exports.codec = void 0;
+const base_1 = __nccwpck_require__(9891);
+const sha256_1 = __nccwpck_require__(8093);
+const utils_1 = __nccwpck_require__(7404);
+class Codec {
+    constructor(options) {
+        this._sha256 = options.sha256;
+        this._codec = base_1.base58xrp;
+    }
+    /**
+     * Encoder.
+     *
+     * @param bytes - Uint8Array of data to encode.
+     * @param opts - Options object including the version bytes and the expected length of the data to encode.
+     */
+    encode(bytes, opts) {
+        const versions = opts.versions;
+        return this._encodeVersioned(bytes, versions, opts.expectedLength);
+    }
+    /**
+     * Decoder.
+     *
+     * @param base58string - Base58Check-encoded string to decode.
+     * @param opts - Options object including the version byte(s) and the expected length of the data after decoding.
+     */
+    /* eslint-disable max-lines-per-function --
+     * TODO refactor */
+    decode(base58string, opts) {
+        var _a;
+        const versions = opts.versions;
+        const types = opts.versionTypes;
+        const withoutSum = this.decodeChecked(base58string);
+        if (versions.length > 1 && !opts.expectedLength) {
+            throw new Error('expectedLength is required because there are >= 2 possible versions');
+        }
+        const versionLengthGuess = typeof versions[0] === 'number' ? 1 : versions[0].length;
+        const payloadLength = (_a = opts.expectedLength) !== null && _a !== void 0 ? _a : withoutSum.length - versionLengthGuess;
+        const versionBytes = withoutSum.slice(0, -payloadLength);
+        const payload = withoutSum.slice(-payloadLength);
+        for (let i = 0; i < versions.length; i++) {
+            /* eslint-disable @typescript-eslint/consistent-type-assertions --
+             * TODO refactor */
+            const version = Array.isArray(versions[i])
+                ? versions[i]
+                : [versions[i]];
+            if ((0, utils_1.arrayEqual)(versionBytes, version)) {
+                return {
+                    version,
+                    bytes: payload,
+                    type: types ? types[i] : null,
+                };
+            }
+            /* eslint-enable @typescript-eslint/consistent-type-assertions */
+        }
+        throw new Error('version_invalid: version bytes do not match any of the provided version(s)');
+    }
+    encodeChecked(bytes) {
+        const check = this._sha256(this._sha256(bytes)).slice(0, 4);
+        return this._encodeRaw(Uint8Array.from((0, utils_1.concatArgs)(bytes, check)));
+    }
+    decodeChecked(base58string) {
+        const intArray = this._decodeRaw(base58string);
+        if (intArray.byteLength < 5) {
+            throw new Error('invalid_input_size: decoded data must have length >= 5');
+        }
+        if (!this._verifyCheckSum(intArray)) {
+            throw new Error('checksum_invalid');
+        }
+        return intArray.slice(0, -4);
+    }
+    _encodeVersioned(bytes, versions, expectedLength) {
+        if (!checkByteLength(bytes, expectedLength)) {
+            throw new Error('unexpected_payload_length: bytes.length does not match expectedLength.' +
+                ' Ensure that the bytes are a Uint8Array.');
+        }
+        return this.encodeChecked((0, utils_1.concatArgs)(versions, bytes));
+    }
+    _encodeRaw(bytes) {
+        return this._codec.encode(Uint8Array.from(bytes));
+    }
+    /* eslint-enable max-lines-per-function */
+    _decodeRaw(base58string) {
+        return this._codec.decode(base58string);
+    }
+    _verifyCheckSum(bytes) {
+        const computed = this._sha256(this._sha256(bytes.slice(0, -4))).slice(0, 4);
+        const checksum = bytes.slice(-4);
+        return (0, utils_1.arrayEqual)(computed, checksum);
+    }
+}
+/**
+ * XAH codec
+ */
+// base58 encodings: https://xrpl.org/base58-encodings.html
+// Account address (20 bytes)
+const ACCOUNT_ID = 0;
+// Account public key (33 bytes)
+const ACCOUNT_PUBLIC_KEY = 0x23;
+// 33; Seed value (for secret keys) (16 bytes)
+const FAMILY_SEED = 0x21;
+// 28; Validation public key (33 bytes)
+const NODE_PUBLIC = 0x1c;
+// [1, 225, 75]
+const ED25519_SEED = [0x01, 0xe1, 0x4b];
+const codecOptions = {
+    sha256: sha256_1.sha256,
+};
+const codecWithXrpAlphabet = new Codec(codecOptions);
+exports.codec = codecWithXrpAlphabet;
+// entropy is a Uint8Array of size 16
+// type is 'ed25519' or 'secp256k1'
+function encodeSeed(entropy, type) {
+    if (!checkByteLength(entropy, 16)) {
+        throw new Error('entropy must have length 16');
+    }
+    const opts = {
+        expectedLength: 16,
+        // for secp256k1, use `FAMILY_SEED`
+        versions: type === 'ed25519' ? ED25519_SEED : [FAMILY_SEED],
+    };
+    // prefixes entropy with version bytes
+    return codecWithXrpAlphabet.encode(entropy, opts);
+}
+exports.encodeSeed = encodeSeed;
+function decodeSeed(seed, opts = {
+    versionTypes: ['ed25519', 'secp256k1'],
+    versions: [ED25519_SEED, FAMILY_SEED],
+    expectedLength: 16,
+}) {
+    return codecWithXrpAlphabet.decode(seed, opts);
+}
+exports.decodeSeed = decodeSeed;
+function encodeAccountID(bytes) {
+    const opts = { versions: [ACCOUNT_ID], expectedLength: 20 };
+    return codecWithXrpAlphabet.encode(bytes, opts);
+}
+exports.encodeAccountID = encodeAccountID;
+/* eslint-disable import/no-unused-modules ---
+ * unclear why this is aliased but we should keep it in case someone else is
+ * importing it with the aliased name */
+exports.encodeAddress = encodeAccountID;
+/* eslint-enable import/no-unused-modules */
+function decodeAccountID(accountId) {
+    const opts = { versions: [ACCOUNT_ID], expectedLength: 20 };
+    return codecWithXrpAlphabet.decode(accountId, opts).bytes;
+}
+exports.decodeAccountID = decodeAccountID;
+/* eslint-disable import/no-unused-modules ---
+ * unclear why this is aliased but we should keep it in case someone else is
+ * importing it with the aliased name */
+exports.decodeAddress = decodeAccountID;
+/* eslint-enable import/no-unused-modules */
+function decodeNodePublic(base58string) {
+    const opts = { versions: [NODE_PUBLIC], expectedLength: 33 };
+    return codecWithXrpAlphabet.decode(base58string, opts).bytes;
+}
+exports.decodeNodePublic = decodeNodePublic;
+function encodeNodePublic(bytes) {
+    const opts = { versions: [NODE_PUBLIC], expectedLength: 33 };
+    return codecWithXrpAlphabet.encode(bytes, opts);
+}
+exports.encodeNodePublic = encodeNodePublic;
+function encodeAccountPublic(bytes) {
+    const opts = { versions: [ACCOUNT_PUBLIC_KEY], expectedLength: 33 };
+    return codecWithXrpAlphabet.encode(bytes, opts);
+}
+exports.encodeAccountPublic = encodeAccountPublic;
+function decodeAccountPublic(base58string) {
+    const opts = { versions: [ACCOUNT_PUBLIC_KEY], expectedLength: 33 };
+    return codecWithXrpAlphabet.decode(base58string, opts).bytes;
+}
+exports.decodeAccountPublic = decodeAccountPublic;
+function isValidClassicAddress(address) {
+    try {
+        decodeAccountID(address);
+    }
+    catch (_error) {
+        return false;
+    }
+    return true;
+}
+exports.isValidClassicAddress = isValidClassicAddress;
+function checkByteLength(bytes, expectedLength) {
+    return 'byteLength' in bytes
+        ? bytes.byteLength === expectedLength
+        : bytes.length === expectedLength;
+}
+//# sourceMappingURL=xah-codec.js.map
+
+/***/ }),
+
+/***/ 3529:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+/* eslint-disable func-style */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.transactionID = exports.sha512Half = exports.binaryToJSON = exports.signingClaimData = exports.signingData = exports.multiSigningData = exports.readJSON = exports.serializeObject = exports.makeParser = exports.BytesList = exports.BinarySerializer = exports.BinaryParser = void 0;
+const utils_1 = __nccwpck_require__(3617);
+const types_1 = __nccwpck_require__(3659);
+const binary_parser_1 = __nccwpck_require__(5956);
+Object.defineProperty(exports, "BinaryParser", ({ enumerable: true, get: function () { return binary_parser_1.BinaryParser; } }));
+const hash_prefixes_1 = __nccwpck_require__(525);
+const binary_serializer_1 = __nccwpck_require__(2412);
+Object.defineProperty(exports, "BinarySerializer", ({ enumerable: true, get: function () { return binary_serializer_1.BinarySerializer; } }));
+Object.defineProperty(exports, "BytesList", ({ enumerable: true, get: function () { return binary_serializer_1.BytesList; } }));
+const hashes_1 = __nccwpck_require__(2179);
+Object.defineProperty(exports, "sha512Half", ({ enumerable: true, get: function () { return hashes_1.sha512Half; } }));
+Object.defineProperty(exports, "transactionID", ({ enumerable: true, get: function () { return hashes_1.transactionID; } }));
+const enums_1 = __nccwpck_require__(8039);
+/**
+ * Construct a BinaryParser
+ *
+ * @param bytes hex-string or Uint8Array to construct BinaryParser from
+ * @param definitions xahaud definitions used to parse the values of transaction types and such.
+ *                          Can be customized for sidechains and amendments.
+ * @returns BinaryParser
+ */
+const makeParser = (bytes, definitions) => new binary_parser_1.BinaryParser(bytes instanceof Uint8Array ? (0, utils_1.bytesToHex)(bytes) : bytes, definitions);
+exports.makeParser = makeParser;
+/**
+ * Parse BinaryParser into JSON
+ *
+ * @param parser BinaryParser object
+ * @param definitions xahaud definitions used to parse the values of transaction types and such.
+ *                          Can be customized for sidechains and amendments.
+ * @returns JSON for the bytes in the BinaryParser
+ */
+const readJSON = (parser, definitions = enums_1.DEFAULT_DEFINITIONS) => parser.readType(types_1.coreTypes.STObject).toJSON(definitions);
+exports.readJSON = readJSON;
+/**
+ * Parse a hex-string into its JSON interpretation
+ *
+ * @param bytes hex-string to parse into JSON
+ * @param definitions xahaud definitions used to parse the values of transaction types and such.
+ *                          Can be customized for sidechains and amendments.
+ * @returns JSON
+ */
+const binaryToJSON = (bytes, definitions) => readJSON(makeParser(bytes, definitions), definitions);
+exports.binaryToJSON = binaryToJSON;
+/**
+ * Function to serialize JSON object representing a transaction
+ *
+ * @param object JSON object to serialize
+ * @param opts options for serializing, including optional prefix, suffix, signingFieldOnly, and definitions
+ * @returns A Uint8Array containing the serialized object
+ */
+function serializeObject(object, opts = {}) {
+    const { prefix, suffix, signingFieldsOnly = false, definitions } = opts;
+    const bytesList = new binary_serializer_1.BytesList();
+    if (prefix) {
+        bytesList.put(prefix);
+    }
+    const filter = signingFieldsOnly
+        ? (f) => f.isSigningField
+        : undefined;
+    types_1.coreTypes.STObject
+        .from(object, filter, definitions)
+        .toBytesSink(bytesList);
+    if (suffix) {
+        bytesList.put(suffix);
+    }
+    return bytesList.toBytes();
+}
+exports.serializeObject = serializeObject;
+/**
+ * Serialize an object for signing
+ *
+ * @param transaction Transaction to serialize
+ * @param prefix Prefix bytes to put before the serialized object
+ * @param opts.definitions Custom xahaud types to use instead of the default. Used for sidechains and amendments.
+ * @returns A Uint8Array with the serialized object
+ */
+function signingData(transaction, prefix = hash_prefixes_1.HashPrefix.transactionSig, opts = {}) {
+    return serializeObject(transaction, {
+        prefix,
+        signingFieldsOnly: true,
+        definitions: opts.definitions,
+    });
+}
+exports.signingData = signingData;
+/**
+ * Serialize a signingClaim
+ *
+ * @param claim A claim object to serialize
+ * @param opts.definitions Custom xahaud types to use instead of the default. Used for sidechains and amendments.
+ * @returns the serialized object with appropriate prefix
+ */
+function signingClaimData(claim) {
+    const prefix = hash_prefixes_1.HashPrefix.paymentChannelClaim;
+    const channel = types_1.coreTypes.Hash256.from(claim.channel).toBytes();
+    const bytesList = new binary_serializer_1.BytesList();
+    bytesList.put(prefix);
+    bytesList.put(channel);
+    if (typeof claim.amount === 'string') {
+        const num = BigInt(String(claim.amount));
+        const amount = types_1.coreTypes.UInt64.from(num).toBytes();
+        bytesList.put(amount);
+    }
+    else {
+        const amount = types_1.coreTypes.Amount.from(claim.amount).toBytes();
+        bytesList.put(amount);
+    }
+    return bytesList.toBytes();
+}
+exports.signingClaimData = signingClaimData;
+/**
+ * Serialize a transaction object for multiSigning
+ *
+ * @param transaction transaction to serialize
+ * @param signingAccount Account to sign the transaction with
+ * @param opts.definitions Custom xahaud types to use instead of the default. Used for sidechains and amendments.
+ * @returns serialized transaction with appropriate prefix and suffix
+ */
+function multiSigningData(transaction, signingAccount, opts = {
+    definitions: enums_1.DEFAULT_DEFINITIONS,
+}) {
+    const prefix = hash_prefixes_1.HashPrefix.transactionMultiSig;
+    const suffix = types_1.coreTypes.AccountID.from(signingAccount).toBytes();
+    return serializeObject(transaction, {
+        prefix,
+        suffix,
+        signingFieldsOnly: true,
+        definitions: opts.definitions,
+    });
+}
+exports.multiSigningData = multiSigningData;
+//# sourceMappingURL=binary.js.map
+
+/***/ }),
+
+/***/ 1956:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.types = exports.ShaMap = exports.HashPrefix = exports.quality = exports.TransactionResult = exports.Type = exports.LedgerEntryType = exports.TransactionType = exports.Field = exports.DEFAULT_DEFINITIONS = exports.ledgerHashes = exports.binary = exports.hashes = void 0;
+const enums_1 = __nccwpck_require__(8039);
+Object.defineProperty(exports, "DEFAULT_DEFINITIONS", ({ enumerable: true, get: function () { return enums_1.DEFAULT_DEFINITIONS; } }));
+Object.defineProperty(exports, "Field", ({ enumerable: true, get: function () { return enums_1.Field; } }));
+Object.defineProperty(exports, "TransactionType", ({ enumerable: true, get: function () { return enums_1.TransactionType; } }));
+Object.defineProperty(exports, "LedgerEntryType", ({ enumerable: true, get: function () { return enums_1.LedgerEntryType; } }));
+Object.defineProperty(exports, "Type", ({ enumerable: true, get: function () { return enums_1.Type; } }));
+Object.defineProperty(exports, "TransactionResult", ({ enumerable: true, get: function () { return enums_1.TransactionResult; } }));
+const types = __importStar(__nccwpck_require__(3659));
+exports.types = types;
+const binary = __importStar(__nccwpck_require__(3529));
+exports.binary = binary;
+const shamap_1 = __nccwpck_require__(1661);
+Object.defineProperty(exports, "ShaMap", ({ enumerable: true, get: function () { return shamap_1.ShaMap; } }));
+const ledgerHashes = __importStar(__nccwpck_require__(831));
+exports.ledgerHashes = ledgerHashes;
+const hashes = __importStar(__nccwpck_require__(2179));
+exports.hashes = hashes;
+const quality_1 = __nccwpck_require__(4088);
+Object.defineProperty(exports, "quality", ({ enumerable: true, get: function () { return quality_1.quality; } }));
+const hash_prefixes_1 = __nccwpck_require__(525);
+Object.defineProperty(exports, "HashPrefix", ({ enumerable: true, get: function () { return hash_prefixes_1.HashPrefix; } }));
+//# sourceMappingURL=coretypes.js.map
+
+/***/ }),
+
+/***/ 1492:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BytesLookup = exports.Bytes = void 0;
+/*
+ * @brief: Bytes, name, and ordinal representing one type, ledger_type, transaction type, or result
+ */
+class Bytes {
+    constructor(name, ordinal, ordinalWidth) {
+        this.name = name;
+        this.ordinal = ordinal;
+        this.ordinalWidth = ordinalWidth;
+        this.bytes = new Uint8Array(ordinalWidth);
+        for (let i = 0; i < ordinalWidth; i++) {
+            this.bytes[ordinalWidth - i - 1] = (ordinal >>> (i * 8)) & 0xff;
+        }
+    }
+    toJSON() {
+        return this.name;
+    }
+    toBytesSink(sink) {
+        sink.put(this.bytes);
+    }
+    toBytes() {
+        return this.bytes;
+    }
+}
+exports.Bytes = Bytes;
+/*
+ * @brief: Collection of Bytes objects, mapping bidirectionally
+ */
+class BytesLookup {
+    constructor(types, ordinalWidth) {
+        this.ordinalWidth = ordinalWidth;
+        Object.entries(types).forEach(([k, v]) => {
+            this.add(k, v);
+        });
+    }
+    /**
+     * Add a new name value pair to the BytesLookup.
+     *
+     * @param name - A human readable name for the field.
+     * @param value - The numeric value for the field.
+     * @throws if the name or value already exist in the lookup because it's unclear how to decode.
+     */
+    add(name, value) {
+        if (this[name]) {
+            throw new SyntaxError(`Attempted to add a value with a duplicate name "${name}". This is not allowed because it is unclear how to decode.`);
+        }
+        if (this[value.toString()]) {
+            throw new SyntaxError(`Attempted to add a duplicate value under a different name (Given name: "${name}" and previous name: "${this[value.toString()]}. This is not allowed because it is unclear how to decode.\nGiven value: ${value.toString()}`);
+        }
+        this[name] = new Bytes(name, value, this.ordinalWidth);
+        this[value.toString()] = this[name];
+    }
+    from(value) {
+        return value instanceof Bytes ? value : this[value];
+    }
+    fromParser(parser) {
+        return this.from(parser.readUIntN(this.ordinalWidth).toString());
+    }
+}
+exports.BytesLookup = BytesLookup;
+//# sourceMappingURL=bytes.js.map
+
+/***/ }),
+
+/***/ 3052:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TRANSACTION_RESULT_WIDTH = exports.TRANSACTION_TYPE_WIDTH = exports.LEDGER_ENTRY_WIDTH = exports.TYPE_WIDTH = void 0;
+exports.TYPE_WIDTH = 2;
+exports.LEDGER_ENTRY_WIDTH = 2;
+exports.TRANSACTION_TYPE_WIDTH = 2;
+exports.TRANSACTION_RESULT_WIDTH = 1;
+//# sourceMappingURL=constants.js.map
+
+/***/ }),
+
+/***/ 8798:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.FieldLookup = void 0;
+const bytes_1 = __nccwpck_require__(1492);
+const serialized_type_1 = __nccwpck_require__(1375);
+const constants_1 = __nccwpck_require__(3052);
+/*
+ * @brief: Serialize a field based on type_code and Field.nth
+ */
+function fieldHeader(type, nth) {
+    const header = [];
+    if (type < 16) {
+        if (nth < 16) {
+            header.push((type << 4) | nth);
+        }
+        else {
+            header.push(type << 4, nth);
+        }
+    }
+    else if (nth < 16) {
+        header.push(nth, type);
+    }
+    else {
+        header.push(0, type, nth);
+    }
+    return Uint8Array.from(header);
+}
+function buildField([name, info], typeOrdinal) {
+    const field = fieldHeader(typeOrdinal, info.nth);
+    return {
+        name: name,
+        nth: info.nth,
+        isVariableLengthEncoded: info.isVLEncoded,
+        isSerialized: info.isSerialized,
+        isSigningField: info.isSigningField,
+        ordinal: (typeOrdinal << 16) | info.nth,
+        type: new bytes_1.Bytes(info.type, typeOrdinal, constants_1.TYPE_WIDTH),
+        header: field,
+        associatedType: serialized_type_1.SerializedType, // For later assignment in ./types/index.js or Definitions.updateAll(...)
+    };
+}
+/*
+ * @brief: The collection of all fields as defined in definitions.json
+ */
+class FieldLookup {
+    constructor(fields, types) {
+        fields.forEach(([name, field_info]) => {
+            const typeOrdinal = types[field_info.type];
+            this[name] = buildField([name, field_info], typeOrdinal);
+            this[this[name].ordinal.toString()] = this[name];
+        });
+    }
+    fromString(value) {
+        return this[value];
+    }
+}
+exports.FieldLookup = FieldLookup;
+//# sourceMappingURL=field.js.map
+
+/***/ }),
+
+/***/ 8039:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TRANSACTION_TYPE_MAP = exports.TRANSACTION_TYPES = exports.TransactionType = exports.TransactionResult = exports.LedgerEntryType = exports.Type = exports.Field = exports.DEFAULT_DEFINITIONS = exports.XrplDefinitionsBase = exports.Bytes = void 0;
+const definitions_json_1 = __importDefault(__nccwpck_require__(3892));
+const xahau_definitions_base_1 = __nccwpck_require__(1303);
+Object.defineProperty(exports, "XrplDefinitionsBase", ({ enumerable: true, get: function () { return xahau_definitions_base_1.XrplDefinitionsBase; } }));
+Object.defineProperty(exports, "Bytes", ({ enumerable: true, get: function () { return xahau_definitions_base_1.Bytes; } }));
+/**
+ * By default, coreTypes from the `types` folder is where known type definitions are initialized to avoid import cycles.
+ */
+const DEFAULT_DEFINITIONS = new xahau_definitions_base_1.XrplDefinitionsBase(definitions_json_1.default, {});
+exports.DEFAULT_DEFINITIONS = DEFAULT_DEFINITIONS;
+const Type = DEFAULT_DEFINITIONS.type;
+exports.Type = Type;
+const LedgerEntryType = DEFAULT_DEFINITIONS.ledgerEntryType;
+exports.LedgerEntryType = LedgerEntryType;
+const TransactionType = DEFAULT_DEFINITIONS.transactionType;
+exports.TransactionType = TransactionType;
+const TransactionResult = DEFAULT_DEFINITIONS.transactionResult;
+exports.TransactionResult = TransactionResult;
+const Field = DEFAULT_DEFINITIONS.field;
+exports.Field = Field;
+/*
+ * @brief: All valid transaction types
+ */
+const TRANSACTION_TYPES = DEFAULT_DEFINITIONS.transactionNames;
+exports.TRANSACTION_TYPES = TRANSACTION_TYPES;
+const TRANSACTION_TYPE_MAP = DEFAULT_DEFINITIONS.transactionMap;
+exports.TRANSACTION_TYPE_MAP = TRANSACTION_TYPE_MAP;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 1303:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BytesLookup = exports.Bytes = exports.FieldLookup = exports.XrplDefinitionsBase = void 0;
+const bytes_1 = __nccwpck_require__(1492);
+Object.defineProperty(exports, "Bytes", ({ enumerable: true, get: function () { return bytes_1.Bytes; } }));
+Object.defineProperty(exports, "BytesLookup", ({ enumerable: true, get: function () { return bytes_1.BytesLookup; } }));
+const field_1 = __nccwpck_require__(8798);
+Object.defineProperty(exports, "FieldLookup", ({ enumerable: true, get: function () { return field_1.FieldLookup; } }));
+const constants_1 = __nccwpck_require__(3052);
+/**
+ * Stores the various types and fields for xahaud to be used to encode/decode information later on.
+ * XrplDefinitions should be instantiated instead of this class.
+ */
+class XrplDefinitionsBase {
+    /**
+     * Present xahaud types in a typed and updatable format.
+     * For an example of the input format see `definitions.json`
+     * To generate a new definitions file from xahaud source code, use this tool: https://github.com/RichardAH/xrpl-codec-gen
+     *
+     * See the definitions.test.js file for examples of how to create your own updated definitions.json.
+     *
+     * @param enums - A json encoding of the core types, transaction types, transaction results, transaction names, and fields.
+     * @param types - A list of type objects with the same name as the fields defined.
+     *              You can use the coreTypes object if you are not adding new types.
+     */
+    constructor(enums, types) {
+        this.type = new bytes_1.BytesLookup(enums.TYPES, constants_1.TYPE_WIDTH);
+        this.ledgerEntryType = new bytes_1.BytesLookup(enums.LEDGER_ENTRY_TYPES, constants_1.LEDGER_ENTRY_WIDTH);
+        this.transactionType = new bytes_1.BytesLookup(enums.TRANSACTION_TYPES, constants_1.TRANSACTION_TYPE_WIDTH);
+        this.transactionResult = new bytes_1.BytesLookup(enums.TRANSACTION_RESULTS, constants_1.TRANSACTION_RESULT_WIDTH);
+        this.field = new field_1.FieldLookup(enums.FIELDS, enums.TYPES);
+        this.transactionNames = Object.entries(enums.TRANSACTION_TYPES)
+            .filter(([_key, value]) => value >= 0)
+            .map(([key, _value]) => key);
+        const ignoreList = [
+            'EnableAmendment',
+            'SetFee',
+            'UNLModify',
+            'EmitFailure',
+            'Cron',
+        ];
+        this.transactionMap = Object.assign({}, ...Object.entries(enums.TRANSACTION_TYPES)
+            .filter(([_key, _value]) => _value >= 0 || ignoreList.includes(_key))
+            .map(([key, value]) => ({ [key]: value })));
+        this.dataTypes = {}; // Filled in via associateTypes
+        this.associateTypes(types);
+    }
+    /**
+     * Associates each Field to a corresponding class that TypeScript can recognize.
+     *
+     * @param types a list of type objects with the same name as the fields defined.
+     *              Defaults to xahau.js's core type definitions.
+     */
+    associateTypes(types) {
+        // Overwrite any existing type definitions with the given types
+        this.dataTypes = Object.assign({}, this.dataTypes, types);
+        Object.values(this.field).forEach((field) => {
+            field.associatedType = this.dataTypes[field.type.name];
+        });
+        this.field['TransactionType'].associatedType = this.transactionType;
+        this.field['TransactionResult'].associatedType = this.transactionResult;
+        this.field['LedgerEntryType'].associatedType = this.ledgerEntryType;
+    }
+    getAssociatedTypes() {
+        return this.dataTypes;
+    }
+}
+exports.XrplDefinitionsBase = XrplDefinitionsBase;
+//# sourceMappingURL=xahau-definitions-base.js.map
+
+/***/ }),
+
+/***/ 8925:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.XrplDefinitions = void 0;
+const xahau_definitions_base_1 = __nccwpck_require__(1303);
+const types_1 = __nccwpck_require__(3659);
+/**
+ * Stores the various types and fields for xahaud to be used to encode/decode information later on.
+ * Should be used instead of XrplDefinitionsBase since this defines default `types` for serializing/deserializing
+ * ledger data.
+ */
+class XrplDefinitions extends xahau_definitions_base_1.XrplDefinitionsBase {
+    /**
+     * Present xahaud types in a typed and updatable format.
+     * For an example of the input format see `definitions.json`
+     * To generate a new definitions file from xahaud source code, use this tool: https://github.com/RichardAH/xrpl-codec-gen
+     *
+     * See the definitions.test.js file for examples of how to create your own updated definitions.json.
+     *
+     * @param enums - A json encoding of the core types, transaction types, transaction results, transaction names, and fields.
+     * @param additionalTypes - A list of SerializedType objects with the same name as the fields defined.
+     *              These types will be included in addition to the coreTypes used on mainnet.
+     */
+    constructor(enums, additionalTypes) {
+        const types = Object.assign({}, types_1.coreTypes, additionalTypes);
+        super(enums, types);
+    }
+}
+exports.XrplDefinitions = XrplDefinitions;
+//# sourceMappingURL=xahau-definitions.js.map
+
+/***/ }),
+
+/***/ 525:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.HashPrefix = void 0;
+const utils_1 = __nccwpck_require__(2758);
+/**
+ * Write a 32 bit integer to a Uint8Array
+ *
+ * @param uint32 32 bit integer to write to Uint8Array
+ * @returns a Uint8Array with the bytes representation of uint32
+ */
+function bytes(uint32) {
+    const result = new Uint8Array(4);
+    (0, utils_1.writeUInt32BE)(result, uint32, 0);
+    return result;
+}
+/**
+ * Maps HashPrefix names to their byte representation
+ */
+const HashPrefix = {
+    transactionID: bytes(0x54584e00),
+    // transaction plus metadata
+    transaction: bytes(0x534e4400),
+    // account state
+    accountStateEntry: bytes(0x4d4c4e00),
+    // inner node in tree
+    innerNode: bytes(0x4d494e00),
+    // ledger master data for signing
+    ledgerHeader: bytes(0x4c575200),
+    // inner transaction to sign
+    transactionSig: bytes(0x53545800),
+    // inner transaction to sign
+    transactionMultiSig: bytes(0x534d5400),
+    // validation for signing
+    validation: bytes(0x56414c00),
+    // proposal for signing
+    proposal: bytes(0x50525000),
+    // payment channel claim
+    paymentChannelClaim: bytes(0x434c4d00),
+};
+exports.HashPrefix = HashPrefix;
+//# sourceMappingURL=hash-prefixes.js.map
+
+/***/ }),
+
+/***/ 2179:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.transactionID = exports.sha512Half = exports.Sha512Half = void 0;
+const hash_prefixes_1 = __nccwpck_require__(525);
+const types_1 = __nccwpck_require__(3659);
+const binary_serializer_1 = __nccwpck_require__(2412);
+const sha512_1 = __nccwpck_require__(65);
+/**
+ * Class for hashing with SHA512
+ * @extends BytesList So SerializedTypes can write bytes to a Sha512Half
+ */
+class Sha512Half extends binary_serializer_1.BytesList {
+    constructor() {
+        super(...arguments);
+        this.hash = sha512_1.sha512.create();
+    }
+    /**
+     * Construct a new Sha512Hash and write bytes this.hash
+     *
+     * @param bytes bytes to write to this.hash
+     * @returns the new Sha512Hash object
+     */
+    static put(bytes) {
+        return new Sha512Half().put(bytes);
+    }
+    /**
+     * Write bytes to an existing Sha512Hash
+     *
+     * @param bytes bytes to write to object
+     * @returns the Sha512 object
+     */
+    put(bytes) {
+        this.hash.update(bytes);
+        return this;
+    }
+    /**
+     * Compute SHA512 hash and slice in half
+     *
+     * @returns half of a SHA512 hash
+     */
+    finish256() {
+        return Uint8Array.from(this.hash.digest().slice(0, 32));
+    }
+    /**
+     * Constructs a Hash256 from the Sha512Half object
+     *
+     * @returns a Hash256 object
+     */
+    finish() {
+        return new types_1.Hash256(this.finish256());
+    }
+}
+exports.Sha512Half = Sha512Half;
+/**
+ * compute SHA512 hash of a list of bytes
+ *
+ * @param args zero or more arguments to hash
+ * @returns the sha512half hash of the arguments.
+ */
+function sha512Half(...args) {
+    const hash = new Sha512Half();
+    args.forEach((a) => hash.put(a));
+    return hash.finish256();
+}
+exports.sha512Half = sha512Half;
+/**
+ * Construct a transactionID from a Serialized Transaction
+ *
+ * @param serialized bytes to hash
+ * @returns a Hash256 object
+ */
+function transactionID(serialized) {
+    return new types_1.Hash256(sha512Half(hash_prefixes_1.HashPrefix.transactionID, serialized));
+}
+exports.transactionID = transactionID;
+//# sourceMappingURL=hashes.js.map
+
+/***/ }),
+
+/***/ 67:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.coreTypes = exports.DEFAULT_DEFINITIONS = exports.XrplDefinitionsBase = exports.XrplDefinitions = exports.TRANSACTION_TYPE_MAP = exports.TRANSACTION_TYPES = exports.decodeLedgerData = exports.decodeQuality = exports.encodeQuality = exports.encodeForMultisigning = exports.encodeForSigningClaim = exports.encodeForSigning = exports.encode = exports.decode = void 0;
+const coretypes_1 = __nccwpck_require__(1956);
+const ledger_hashes_1 = __nccwpck_require__(831);
+Object.defineProperty(exports, "decodeLedgerData", ({ enumerable: true, get: function () { return ledger_hashes_1.decodeLedgerData; } }));
+const enums_1 = __nccwpck_require__(8039);
+Object.defineProperty(exports, "XrplDefinitionsBase", ({ enumerable: true, get: function () { return enums_1.XrplDefinitionsBase; } }));
+Object.defineProperty(exports, "TRANSACTION_TYPES", ({ enumerable: true, get: function () { return enums_1.TRANSACTION_TYPES; } }));
+Object.defineProperty(exports, "TRANSACTION_TYPE_MAP", ({ enumerable: true, get: function () { return enums_1.TRANSACTION_TYPE_MAP; } }));
+Object.defineProperty(exports, "DEFAULT_DEFINITIONS", ({ enumerable: true, get: function () { return enums_1.DEFAULT_DEFINITIONS; } }));
+const xahau_definitions_1 = __nccwpck_require__(8925);
+Object.defineProperty(exports, "XrplDefinitions", ({ enumerable: true, get: function () { return xahau_definitions_1.XrplDefinitions; } }));
+const types_1 = __nccwpck_require__(3659);
+Object.defineProperty(exports, "coreTypes", ({ enumerable: true, get: function () { return types_1.coreTypes; } }));
+const utils_1 = __nccwpck_require__(3617);
+const { signingData, signingClaimData, multiSigningData, binaryToJSON, serializeObject, } = coretypes_1.binary;
+/**
+ * Decode a transaction
+ *
+ * @param binary hex-string of the encoded transaction
+ * @param definitions Custom xahaud types to use instead of the default. Used for sidechains and amendments.
+ * @returns the JSON representation of the transaction
+ */
+function decode(binary, definitions) {
+    if (typeof binary !== 'string') {
+        throw new Error('binary must be a hex string');
+    }
+    return binaryToJSON(binary, definitions);
+}
+exports.decode = decode;
+/**
+ * Encode a transaction
+ *
+ * @param json The JSON representation of a transaction
+ * @param definitions Custom xahaud types to use instead of the default. Used for sidechains and amendments.
+ *
+ * @returns A hex-string of the encoded transaction
+ */
+function encode(json, definitions) {
+    if (typeof json !== 'object') {
+        throw new Error();
+    }
+    return (0, utils_1.bytesToHex)(serializeObject(json, { definitions }));
+}
+exports.encode = encode;
+/**
+ * Encode a transaction and prepare for signing
+ *
+ * @param json JSON object representing the transaction
+ * @param signer string representing the account to sign the transaction with
+ * @param definitions Custom xahaud types to use instead of the default. Used for sidechains and amendments.
+ * @returns a hex string of the encoded transaction
+ */
+function encodeForSigning(json, definitions) {
+    if (typeof json !== 'object') {
+        throw new Error();
+    }
+    return (0, utils_1.bytesToHex)(signingData(json, coretypes_1.HashPrefix.transactionSig, {
+        definitions,
+    }));
+}
+exports.encodeForSigning = encodeForSigning;
+/**
+ * Encode a transaction and prepare for signing with a claim
+ *
+ * @param json JSON object representing the transaction
+ * @param signer string representing the account to sign the transaction with
+ * @param definitions Custom xahaud types to use instead of the default. Used for sidechains and amendments.
+ * @returns a hex string of the encoded transaction
+ */
+function encodeForSigningClaim(json) {
+    if (typeof json !== 'object') {
+        throw new Error();
+    }
+    return (0, utils_1.bytesToHex)(signingClaimData(json));
+}
+exports.encodeForSigningClaim = encodeForSigningClaim;
+/**
+ * Encode a transaction and prepare for multi-signing
+ *
+ * @param json JSON object representing the transaction
+ * @param signer string representing the account to sign the transaction with
+ * @param definitions Custom xahaud types to use instead of the default. Used for sidechains and amendments.
+ * @returns a hex string of the encoded transaction
+ */
+function encodeForMultisigning(json, signer, definitions) {
+    if (typeof json !== 'object') {
+        throw new Error();
+    }
+    if (json['SigningPubKey'] !== '') {
+        throw new Error();
+    }
+    const definitionsOpt = definitions ? { definitions } : undefined;
+    return (0, utils_1.bytesToHex)(multiSigningData(json, signer, definitionsOpt));
+}
+exports.encodeForMultisigning = encodeForMultisigning;
+/**
+ * Encode a quality value
+ *
+ * @param value string representation of a number
+ * @returns a hex-string representing the quality
+ */
+function encodeQuality(value) {
+    if (typeof value !== 'string') {
+        throw new Error();
+    }
+    return (0, utils_1.bytesToHex)(coretypes_1.quality.encode(value));
+}
+exports.encodeQuality = encodeQuality;
+/**
+ * Decode a quality value
+ *
+ * @param value hex-string of a quality
+ * @returns a string representing the quality
+ */
+function decodeQuality(value) {
+    if (typeof value !== 'string') {
+        throw new Error();
+    }
+    return coretypes_1.quality.decode(value).toString();
+}
+exports.decodeQuality = decodeQuality;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 831:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.decodeLedgerData = exports.ledgerHash = exports.transactionTreeHash = exports.accountStateHash = void 0;
+const shamap_1 = __nccwpck_require__(1661);
+const hash_prefixes_1 = __nccwpck_require__(525);
+const hashes_1 = __nccwpck_require__(2179);
+const binary_1 = __nccwpck_require__(3529);
+const hash_256_1 = __nccwpck_require__(9755);
+const st_object_1 = __nccwpck_require__(3057);
+const uint_64_1 = __nccwpck_require__(8930);
+const uint_32_1 = __nccwpck_require__(3996);
+const uint_8_1 = __nccwpck_require__(5426);
+const binary_parser_1 = __nccwpck_require__(5956);
+/**
+ * Computes the hash of a list of objects
+ *
+ * @param itemizer Converts an item into a format that can be added to SHAMap
+ * @param itemsJson Array of items to add to a SHAMap
+ * @returns the hash of the SHAMap
+ */
+function computeHash(itemizer, itemsJson) {
+    const map = new shamap_1.ShaMap();
+    itemsJson.forEach((item) => map.addItem(...itemizer(item)));
+    return map.hash();
+}
+/**
+ * Convert a transaction into an index and an item
+ *
+ * @param json transaction with metadata
+ * @returns a tuple of index and item to be added to SHAMap
+ */
+function transactionItemizer(json) {
+    if (!json.hash) {
+        throw new Error();
+    }
+    const index = hash_256_1.Hash256.from(json.hash);
+    const item = {
+        hashPrefix() {
+            return hash_prefixes_1.HashPrefix.transaction;
+        },
+        toBytesSink(sink) {
+            const serializer = new binary_1.BinarySerializer(sink);
+            serializer.writeLengthEncoded(st_object_1.STObject.from(json));
+            serializer.writeLengthEncoded(st_object_1.STObject.from(json.metaData));
+        },
+    };
+    return [index, item, undefined];
+}
+/**
+ * Convert an entry to a pair Hash256 and ShaMapNode
+ *
+ * @param json JSON describing a ledger entry item
+ * @returns a tuple of index and item to be added to SHAMap
+ */
+function entryItemizer(json) {
+    const index = hash_256_1.Hash256.from(json.index);
+    const bytes = (0, binary_1.serializeObject)(json);
+    const item = {
+        hashPrefix() {
+            return hash_prefixes_1.HashPrefix.accountStateEntry;
+        },
+        toBytesSink(sink) {
+            sink.put(bytes);
+        },
+    };
+    return [index, item, undefined];
+}
+/**
+ * Function computing the hash of a transaction tree
+ *
+ * @param param An array of transaction objects to hash
+ * @returns A Hash256 object
+ */
+function transactionTreeHash(param) {
+    const itemizer = transactionItemizer;
+    return computeHash(itemizer, param);
+}
+exports.transactionTreeHash = transactionTreeHash;
+/**
+ * Function computing the hash of accountState
+ *
+ * @param param A list of accountStates hash
+ * @returns A Hash256 object
+ */
+function accountStateHash(param) {
+    const itemizer = entryItemizer;
+    return computeHash(itemizer, param);
+}
+exports.accountStateHash = accountStateHash;
+/**
+ * Serialize and hash a ledger header
+ *
+ * @param header a ledger header
+ * @returns the hash of header
+ */
+function ledgerHash(header) {
+    const hash = new hashes_1.Sha512Half();
+    hash.put(hash_prefixes_1.HashPrefix.ledgerHeader);
+    if (header.parent_close_time === undefined ||
+        header.close_flags === undefined) {
+        throw new Error();
+    }
+    uint_32_1.UInt32.from(header.ledger_index).toBytesSink(hash);
+    uint_64_1.UInt64.from(BigInt(String(header.total_coins))).toBytesSink(hash);
+    hash_256_1.Hash256.from(header.parent_hash).toBytesSink(hash);
+    hash_256_1.Hash256.from(header.transaction_hash).toBytesSink(hash);
+    hash_256_1.Hash256.from(header.account_hash).toBytesSink(hash);
+    uint_32_1.UInt32.from(header.parent_close_time).toBytesSink(hash);
+    uint_32_1.UInt32.from(header.close_time).toBytesSink(hash);
+    uint_8_1.UInt8.from(header.close_time_resolution).toBytesSink(hash);
+    uint_8_1.UInt8.from(header.close_flags).toBytesSink(hash);
+    return hash.finish();
+}
+exports.ledgerHash = ledgerHash;
+/**
+ * Decodes a serialized ledger header
+ *
+ * @param binary A serialized ledger header
+ * @param definitions Type definitions to parse the ledger objects.
+ *      Used if there are non-default ledger objects to decode.
+ * @returns A JSON object describing a ledger header
+ */
+function decodeLedgerData(binary, definitions) {
+    if (typeof binary !== 'string') {
+        throw new Error('binary must be a hex string');
+    }
+    const parser = new binary_parser_1.BinaryParser(binary, definitions);
+    return {
+        ledger_index: parser.readUInt32(),
+        total_coins: parser.readType(uint_64_1.UInt64).valueOf().toString(),
+        parent_hash: parser.readType(hash_256_1.Hash256).toHex(),
+        transaction_hash: parser.readType(hash_256_1.Hash256).toHex(),
+        account_hash: parser.readType(hash_256_1.Hash256).toHex(),
+        parent_close_time: parser.readUInt32(),
+        close_time: parser.readUInt32(),
+        close_time_resolution: parser.readUInt8(),
+        close_flags: parser.readUInt8(),
+    };
+}
+exports.decodeLedgerData = decodeLedgerData;
+//# sourceMappingURL=ledger-hashes.js.map
+
+/***/ }),
+
+/***/ 4088:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.quality = void 0;
+const types_1 = __nccwpck_require__(3659);
+const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
+const utils_1 = __nccwpck_require__(3617);
+/**
+ * class for encoding and decoding quality
+ */
+class quality {
+    /**
+     * Encode quality amount
+     *
+     * @param arg string representation of an amount
+     * @returns Serialized quality
+     */
+    static encode(quality) {
+        const decimal = (0, bignumber_js_1.default)(quality);
+        const exponent = ((decimal === null || decimal === void 0 ? void 0 : decimal.e) || 0) - 15;
+        const qualityString = decimal.times(`1e${-exponent}`).abs().toString();
+        const bytes = types_1.coreTypes.UInt64.from(BigInt(qualityString)).toBytes();
+        bytes[0] = exponent + 100;
+        return bytes;
+    }
+    /**
+     * Decode quality amount
+     *
+     * @param arg hex-string denoting serialized quality
+     * @returns deserialized quality
+     */
+    static decode(quality) {
+        const bytes = (0, utils_1.hexToBytes)(quality).slice(-8);
+        const exponent = bytes[0] - 100;
+        const mantissa = new bignumber_js_1.default(`0x${(0, utils_1.bytesToHex)(bytes.slice(1))}`);
+        return mantissa.times(`1e${exponent}`);
+    }
+}
+exports.quality = quality;
+//# sourceMappingURL=quality.js.map
+
+/***/ }),
+
+/***/ 5956:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BinaryParser = void 0;
+const enums_1 = __nccwpck_require__(8039);
+const utils_1 = __nccwpck_require__(3617);
+/**
+ * BinaryParser is used to compute fields and values from a HexString
+ */
+class BinaryParser {
+    /**
+     * Initialize bytes to a hex string
+     *
+     * @param hexBytes a hex string
+     * @param definitions Rippled definitions used to parse the values of transaction types and such.
+     *                          Can be customized for sidechains and amendments.
+     */
+    constructor(hexBytes, definitions = enums_1.DEFAULT_DEFINITIONS) {
+        this.bytes = (0, utils_1.hexToBytes)(hexBytes);
+        this.definitions = definitions;
+    }
+    /**
+     * Peek the first byte of the BinaryParser
+     *
+     * @returns The first byte of the BinaryParser
+     */
+    peek() {
+        if (this.bytes.byteLength === 0) {
+            throw new Error();
+        }
+        return this.bytes[0];
+    }
+    /**
+     * Consume the first n bytes of the BinaryParser
+     *
+     * @param n the number of bytes to skip
+     */
+    skip(n) {
+        if (n > this.bytes.byteLength) {
+            throw new Error();
+        }
+        this.bytes = this.bytes.slice(n);
+    }
+    /**
+     * read the first n bytes from the BinaryParser
+     *
+     * @param n The number of bytes to read
+     * @return The bytes
+     */
+    read(n) {
+        if (n > this.bytes.byteLength) {
+            throw new Error();
+        }
+        const slice = this.bytes.slice(0, n);
+        this.skip(n);
+        return slice;
+    }
+    /**
+     * Read an integer of given size
+     *
+     * @param n The number of bytes to read
+     * @return The number represented by those bytes
+     */
+    readUIntN(n) {
+        if (0 >= n || n > 4) {
+            throw new Error('invalid n');
+        }
+        return this.read(n).reduce((a, b) => (a << 8) | b) >>> 0;
+    }
+    readUInt8() {
+        return this.readUIntN(1);
+    }
+    readUInt16() {
+        return this.readUIntN(2);
+    }
+    readUInt32() {
+        return this.readUIntN(4);
+    }
+    size() {
+        return this.bytes.byteLength;
+    }
+    end(customEnd) {
+        const length = this.bytes.byteLength;
+        return length === 0 || (customEnd !== undefined && length <= customEnd);
+    }
+    /**
+     * Reads variable length encoded bytes
+     *
+     * @return The variable length bytes
+     */
+    readVariableLength() {
+        return this.read(this.readVariableLengthLength());
+    }
+    /**
+     * Reads the length of the variable length encoded bytes
+     *
+     * @return The length of the variable length encoded bytes
+     */
+    readVariableLengthLength() {
+        const b1 = this.readUInt8();
+        if (b1 <= 192) {
+            return b1;
+        }
+        else if (b1 <= 240) {
+            const b2 = this.readUInt8();
+            return 193 + (b1 - 193) * 256 + b2;
+        }
+        else if (b1 <= 254) {
+            const b2 = this.readUInt8();
+            const b3 = this.readUInt8();
+            return 12481 + (b1 - 241) * 65536 + b2 * 256 + b3;
+        }
+        throw new Error('Invalid variable length indicator');
+    }
+    /**
+     * Reads the field ordinal from the BinaryParser
+     *
+     * @return Field ordinal
+     */
+    readFieldOrdinal() {
+        let type = this.readUInt8();
+        let nth = type & 15;
+        type >>= 4;
+        if (type === 0) {
+            type = this.readUInt8();
+            if (type === 0 || type < 16) {
+                throw new Error(`Cannot read FieldOrdinal, type_code ${type} out of range`);
+            }
+        }
+        if (nth === 0) {
+            nth = this.readUInt8();
+            if (nth === 0 || nth < 16) {
+                throw new Error(`Cannot read FieldOrdinal, field_code ${nth} out of range`);
+            }
+        }
+        return (type << 16) | nth;
+    }
+    /**
+     * Read the field from the BinaryParser
+     *
+     * @return The field represented by the bytes at the head of the BinaryParser
+     */
+    readField() {
+        return this.definitions.field.fromString(this.readFieldOrdinal().toString());
+    }
+    /**
+     * Read a given type from the BinaryParser
+     *
+     * @param type The type that you want to read from the BinaryParser
+     * @return The instance of that type read from the BinaryParser
+     */
+    readType(type) {
+        return type.fromParser(this);
+    }
+    /**
+     * Get the type associated with a given field
+     *
+     * @param field The field that you wan to get the type of
+     * @return The type associated with the given field
+     */
+    typeForField(field) {
+        return field.associatedType;
+    }
+    /**
+     * Read value of the type specified by field from the BinaryParser
+     *
+     * @param field The field that you want to get the associated value for
+     * @return The value associated with the given field
+     */
+    readFieldValue(field) {
+        const type = this.typeForField(field);
+        if (!type) {
+            throw new Error(`unsupported: (${field.name}, ${field.type.name})`);
+        }
+        const sizeHint = field.isVariableLengthEncoded
+            ? this.readVariableLengthLength()
+            : undefined;
+        const value = type.fromParser(this, sizeHint);
+        if (value === undefined) {
+            throw new Error(`fromParser for (${field.name}, ${field.type.name}) -> undefined `);
+        }
+        return value;
+    }
+    /**
+     * Get the next field and value from the BinaryParser
+     *
+     * @return The field and value
+     */
+    readFieldAndValue() {
+        const field = this.readField();
+        return [field, this.readFieldValue(field)];
+    }
+}
+exports.BinaryParser = BinaryParser;
+//# sourceMappingURL=binary-parser.js.map
+
+/***/ }),
+
+/***/ 2412:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BinarySerializer = exports.BytesList = void 0;
+const utils_1 = __nccwpck_require__(3617);
+/**
+ * Bytes list is a collection of Uint8Array objects
+ */
+class BytesList {
+    constructor() {
+        this.bytesArray = [];
+    }
+    /**
+     * Get the total number of bytes in the BytesList
+     *
+     * @return the number of bytes
+     */
+    getLength() {
+        return (0, utils_1.concat)(this.bytesArray).byteLength;
+    }
+    /**
+     * Put bytes in the BytesList
+     *
+     * @param bytesArg A Uint8Array
+     * @return this BytesList
+     */
+    put(bytesArg) {
+        const bytes = Uint8Array.from(bytesArg); // Temporary, to catch instances of Uint8Array being passed in
+        this.bytesArray.push(bytes);
+        return this;
+    }
+    /**
+     * Write this BytesList to the back of another bytes list
+     *
+     *  @param list The BytesList to write to
+     */
+    toBytesSink(list) {
+        list.put(this.toBytes());
+    }
+    toBytes() {
+        return (0, utils_1.concat)(this.bytesArray);
+    }
+    toHex() {
+        return (0, utils_1.bytesToHex)(this.toBytes());
+    }
+}
+exports.BytesList = BytesList;
+/**
+ * BinarySerializer is used to write fields and values to Uint8Arrays
+ */
+class BinarySerializer {
+    constructor(sink) {
+        this.sink = new BytesList();
+        this.sink = sink;
+    }
+    /**
+     * Write a value to this BinarySerializer
+     *
+     * @param value a SerializedType value
+     */
+    write(value) {
+        value.toBytesSink(this.sink);
+    }
+    /**
+     * Write bytes to this BinarySerializer
+     *
+     * @param bytes the bytes to write
+     */
+    put(bytes) {
+        this.sink.put(bytes);
+    }
+    /**
+     * Write a value of a given type to this BinarySerializer
+     *
+     * @param type the type to write
+     * @param value a value of that type
+     */
+    writeType(type, value) {
+        this.write(type.from(value));
+    }
+    /**
+     * Write BytesList to this BinarySerializer
+     *
+     * @param bl BytesList to write to BinarySerializer
+     */
+    writeBytesList(bl) {
+        bl.toBytesSink(this.sink);
+    }
+    /**
+     * Calculate the header of Variable Length encoded bytes
+     *
+     * @param length the length of the bytes
+     */
+    encodeVariableLength(length) {
+        const lenBytes = new Uint8Array(3);
+        if (length <= 192) {
+            lenBytes[0] = length;
+            return lenBytes.slice(0, 1);
+        }
+        else if (length <= 12480) {
+            length -= 193;
+            lenBytes[0] = 193 + (length >>> 8);
+            lenBytes[1] = length & 0xff;
+            return lenBytes.slice(0, 2);
+        }
+        else if (length <= 918744) {
+            length -= 12481;
+            lenBytes[0] = 241 + (length >>> 16);
+            lenBytes[1] = (length >> 8) & 0xff;
+            lenBytes[2] = length & 0xff;
+            return lenBytes.slice(0, 3);
+        }
+        throw new Error('Overflow error');
+    }
+    /**
+     * Write field and value to BinarySerializer
+     *
+     * @param field field to write to BinarySerializer
+     * @param value value to write to BinarySerializer
+     */
+    writeFieldAndValue(field, value, isUnlModifyWorkaround = false) {
+        const associatedValue = field.associatedType.from(value);
+        if (associatedValue.toBytesSink === undefined || field.name === undefined) {
+            throw new Error();
+        }
+        this.sink.put(field.header);
+        if (field.isVariableLengthEncoded) {
+            this.writeLengthEncoded(associatedValue, isUnlModifyWorkaround);
+        }
+        else {
+            associatedValue.toBytesSink(this.sink);
+        }
+    }
+    /**
+     * Write a variable length encoded value to the BinarySerializer
+     *
+     * @param value length encoded value to write to BytesList
+     */
+    writeLengthEncoded(value, isUnlModifyWorkaround = false) {
+        const bytes = new BytesList();
+        if (!isUnlModifyWorkaround) {
+            // this part doesn't happen for the Account field in a UNLModify transaction
+            value.toBytesSink(bytes);
+        }
+        this.put(this.encodeVariableLength(bytes.getLength()));
+        this.writeBytesList(bytes);
+    }
+}
+exports.BinarySerializer = BinarySerializer;
+//# sourceMappingURL=binary-serializer.js.map
+
+/***/ }),
+
+/***/ 1661:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ShaMapLeaf = exports.ShaMapNode = exports.ShaMap = void 0;
+const types_1 = __nccwpck_require__(3659);
+const hash_prefixes_1 = __nccwpck_require__(525);
+const hashes_1 = __nccwpck_require__(2179);
+/**
+ * Abstract class describing a SHAMapNode
+ */
+class ShaMapNode {
+}
+exports.ShaMapNode = ShaMapNode;
+/**
+ * Class describing a Leaf of SHAMap
+ */
+class ShaMapLeaf extends ShaMapNode {
+    constructor(index, item) {
+        super();
+        this.index = index;
+        this.item = item;
+    }
+    /**
+     * @returns true as ShaMapLeaf is a leaf node
+     */
+    isLeaf() {
+        return true;
+    }
+    /**
+     * @returns false as ShaMapLeaf is not an inner node
+     */
+    isInner() {
+        return false;
+    }
+    /**
+     * Get the prefix of the this.item
+     *
+     * @returns The hash prefix, unless this.item is undefined, then it returns an empty Uint8Array
+     */
+    hashPrefix() {
+        return this.item === undefined ? new Uint8Array(0) : this.item.hashPrefix();
+    }
+    /**
+     * Hash the bytes representation of this
+     *
+     * @returns hash of this.item concatenated with this.index
+     */
+    hash() {
+        const hash = hashes_1.Sha512Half.put(this.hashPrefix());
+        this.toBytesSink(hash);
+        return hash.finish();
+    }
+    /**
+     * Write the bytes representation of this to a BytesList
+     * @param list BytesList to write bytes to
+     */
+    toBytesSink(list) {
+        if (this.item !== undefined) {
+            this.item.toBytesSink(list);
+        }
+        this.index.toBytesSink(list);
+    }
+}
+exports.ShaMapLeaf = ShaMapLeaf;
+/**
+ * Class defining an Inner Node of a SHAMap
+ */
+class ShaMapInner extends ShaMapNode {
+    constructor(depth = 0) {
+        super();
+        this.depth = depth;
+        this.slotBits = 0;
+        this.branches = Array(16);
+    }
+    /**
+     * @returns true as ShaMapInner is an inner node
+     */
+    isInner() {
+        return true;
+    }
+    /**
+     * @returns false as ShaMapInner is not a leaf node
+     */
+    isLeaf() {
+        return false;
+    }
+    /**
+     * Get the hash prefix for this node
+     *
+     * @returns hash prefix describing an inner node
+     */
+    hashPrefix() {
+        return hash_prefixes_1.HashPrefix.innerNode;
+    }
+    /**
+     * Set a branch of this node to be another node
+     *
+     * @param slot Slot to add branch to this.branches
+     * @param branch Branch to add
+     */
+    setBranch(slot, branch) {
+        this.slotBits = this.slotBits | (1 << slot);
+        this.branches[slot] = branch;
+    }
+    /**
+     * @returns true if node is empty
+     */
+    empty() {
+        return this.slotBits === 0;
+    }
+    /**
+     * Compute the hash of this node
+     *
+     * @returns The hash of this node
+     */
+    hash() {
+        if (this.empty()) {
+            return types_1.coreTypes.Hash256.ZERO_256;
+        }
+        const hash = hashes_1.Sha512Half.put(this.hashPrefix());
+        this.toBytesSink(hash);
+        return hash.finish();
+    }
+    /**
+     * Writes the bytes representation of this node to a BytesList
+     *
+     * @param list BytesList to write bytes to
+     */
+    toBytesSink(list) {
+        for (let i = 0; i < this.branches.length; i++) {
+            const branch = this.branches[i];
+            const hash = branch
+                ? branch.hash()
+                : types_1.coreTypes.Hash256.ZERO_256;
+            hash.toBytesSink(list);
+        }
+    }
+    /**
+     * Add item to the SHAMap
+     *
+     * @param index Hash of the index of the item being inserted
+     * @param item Item to insert in the map
+     * @param leaf Leaf node to insert when branch doesn't exist
+     */
+    addItem(index, item, leaf) {
+        if (index === undefined) {
+            throw new Error();
+        }
+        if (index !== undefined) {
+            const nibble = index.nibblet(this.depth);
+            const existing = this.branches[nibble];
+            if (existing === undefined) {
+                this.setBranch(nibble, leaf || new ShaMapLeaf(index, item));
+            }
+            else if (existing instanceof ShaMapLeaf) {
+                const newInner = new ShaMapInner(this.depth + 1);
+                newInner.addItem(existing.index, undefined, existing);
+                newInner.addItem(index, item, leaf);
+                this.setBranch(nibble, newInner);
+            }
+            else if (existing instanceof ShaMapInner) {
+                existing.addItem(index, item, leaf);
+            }
+            else {
+                throw new Error('invalid ShaMap.addItem call');
+            }
+        }
+    }
+}
+class ShaMap extends ShaMapInner {
+}
+exports.ShaMap = ShaMap;
+//# sourceMappingURL=shamap.js.map
+
+/***/ }),
+
+/***/ 1601:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.AccountID = void 0;
+const xahau_address_codec_1 = __nccwpck_require__(647);
+const hash_160_1 = __nccwpck_require__(1981);
+const utils_1 = __nccwpck_require__(3617);
+const HEX_REGEX = /^[A-F0-9]{40}$/;
+/**
+ * Class defining how to encode and decode an AccountID
+ */
+class AccountID extends hash_160_1.Hash160 {
+    constructor(bytes) {
+        super(bytes !== null && bytes !== void 0 ? bytes : AccountID.defaultAccountID.bytes);
+    }
+    /**
+     * Defines how to construct an AccountID
+     *
+     * @param value either an existing AccountID, a hex-string, or a base58 r-Address
+     * @returns an AccountID object
+     */
+    static from(value) {
+        if (value instanceof AccountID) {
+            return value;
+        }
+        if (typeof value === 'string') {
+            if (value === '') {
+                return new AccountID();
+            }
+            return HEX_REGEX.test(value)
+                ? new AccountID((0, utils_1.hexToBytes)(value))
+                : this.fromBase58(value);
+        }
+        throw new Error('Cannot construct AccountID from value given');
+    }
+    /**
+     * Defines how to build an AccountID from a base58 r-Address
+     *
+     * @param value a base58 r-Address
+     * @returns an AccountID object
+     */
+    static fromBase58(value) {
+        if ((0, xahau_address_codec_1.isValidXAddress)(value)) {
+            const classic = (0, xahau_address_codec_1.xAddressToClassicAddress)(value);
+            if (classic.tag !== false)
+                throw new Error('Only allowed to have tag on Account or Destination');
+            value = classic.classicAddress;
+        }
+        return new AccountID(Uint8Array.from((0, xahau_address_codec_1.decodeAccountID)(value)));
+    }
+    /**
+     * Overload of toJSON
+     *
+     * @returns the base58 string for this AccountID
+     */
+    toJSON() {
+        return this.toBase58();
+    }
+    /**
+     * Defines how to encode AccountID into a base58 address
+     *
+     * @returns the base58 string defined by this.bytes
+     */
+    toBase58() {
+        return (0, xahau_address_codec_1.encodeAccountID)(this.bytes);
+    }
+}
+exports.AccountID = AccountID;
+AccountID.defaultAccountID = new AccountID(new Uint8Array(20));
+//# sourceMappingURL=account-id.js.map
+
+/***/ }),
+
+/***/ 3936:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Amount = void 0;
+const binary_parser_1 = __nccwpck_require__(5956);
+const account_id_1 = __nccwpck_require__(1601);
+const currency_1 = __nccwpck_require__(195);
+const serialized_type_1 = __nccwpck_require__(1375);
+const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
+const utils_1 = __nccwpck_require__(3617);
+const utils_2 = __nccwpck_require__(2758);
+/**
+ * Constants for validating amounts
+ */
+const MIN_IOU_EXPONENT = -96;
+const MAX_IOU_EXPONENT = 80;
+const MAX_IOU_PRECISION = 16;
+const MAX_DROPS = new bignumber_js_1.default('1e17');
+const MIN_XAH = new bignumber_js_1.default('1e-6');
+const mask = BigInt(0x00000000ffffffff);
+/**
+ * BigNumber configuration for Amount IOUs
+ */
+bignumber_js_1.default.config({
+    EXPONENTIAL_AT: [
+        MIN_IOU_EXPONENT - MAX_IOU_PRECISION,
+        MAX_IOU_EXPONENT + MAX_IOU_PRECISION,
+    ],
+});
+/**
+ * Type guard for AmountObject
+ */
+function isAmountObject(arg) {
+    const keys = Object.keys(arg).sort();
+    return (keys.length === 3 &&
+        keys[0] === 'currency' &&
+        keys[1] === 'issuer' &&
+        keys[2] === 'value');
+}
+/**
+ * Class for serializing/Deserializing Amounts
+ */
+class Amount extends serialized_type_1.SerializedType {
+    constructor(bytes) {
+        super(bytes !== null && bytes !== void 0 ? bytes : Amount.defaultAmount.bytes);
+    }
+    /**
+     * Construct an amount from an IOU or string amount
+     *
+     * @param value An Amount, object representing an IOU, or a string
+     *     representing an integer amount
+     * @returns An Amount object
+     */
+    static from(value) {
+        if (value instanceof Amount) {
+            return value;
+        }
+        let amount = new Uint8Array(8);
+        if (typeof value === 'string') {
+            Amount.assertXrpIsValid(value);
+            const number = BigInt(value);
+            const intBuf = [new Uint8Array(4), new Uint8Array(4)];
+            (0, utils_2.writeUInt32BE)(intBuf[0], Number(number >> BigInt(32)), 0);
+            (0, utils_2.writeUInt32BE)(intBuf[1], Number(number & BigInt(mask)), 0);
+            amount = (0, utils_1.concat)(intBuf);
+            amount[0] |= 0x40;
+            return new Amount(amount);
+        }
+        if (isAmountObject(value)) {
+            const number = new bignumber_js_1.default(value.value);
+            Amount.assertIouIsValid(number);
+            if (number.isZero()) {
+                amount[0] |= 0x80;
+            }
+            else {
+                const integerNumberString = number
+                    .times(`1e${-((number.e || 0) - 15)}`)
+                    .abs()
+                    .toString();
+                const num = BigInt(integerNumberString);
+                const intBuf = [new Uint8Array(4), new Uint8Array(4)];
+                (0, utils_2.writeUInt32BE)(intBuf[0], Number(num >> BigInt(32)), 0);
+                (0, utils_2.writeUInt32BE)(intBuf[1], Number(num & BigInt(mask)), 0);
+                amount = (0, utils_1.concat)(intBuf);
+                amount[0] |= 0x80;
+                if (number.gt(new bignumber_js_1.default(0))) {
+                    amount[0] |= 0x40;
+                }
+                const exponent = (number.e || 0) - 15;
+                const exponentByte = 97 + exponent;
+                amount[0] |= exponentByte >>> 2;
+                amount[1] |= (exponentByte & 0x03) << 6;
+            }
+            const currency = currency_1.Currency.from(value.currency).toBytes();
+            const issuer = account_id_1.AccountID.from(value.issuer).toBytes();
+            return new Amount((0, utils_1.concat)([amount, currency, issuer]));
+        }
+        throw new Error('Invalid type to construct an Amount');
+    }
+    /**
+     * Read an amount from a BinaryParser
+     *
+     * @param parser BinaryParser to read the Amount from
+     * @returns An Amount object
+     */
+    static fromParser(parser) {
+        const isXAH = parser.peek() & 0x80;
+        const numBytes = isXAH ? 48 : 8;
+        return new Amount(parser.read(numBytes));
+    }
+    /**
+     * Get the JSON representation of this Amount
+     *
+     * @returns the JSON interpretation of this.bytes
+     */
+    toJSON() {
+        if (this.isNative()) {
+            const bytes = this.bytes;
+            const isPositive = bytes[0] & 0x40;
+            const sign = isPositive ? '' : '-';
+            bytes[0] &= 0x3f;
+            const msb = BigInt((0, utils_2.readUInt32BE)(bytes.slice(0, 4), 0));
+            const lsb = BigInt((0, utils_2.readUInt32BE)(bytes.slice(4), 0));
+            const num = (msb << BigInt(32)) | lsb;
+            return `${sign}${num.toString()}`;
+        }
+        else {
+            const parser = new binary_parser_1.BinaryParser(this.toString());
+            const mantissa = parser.read(8);
+            const currency = currency_1.Currency.fromParser(parser);
+            const issuer = account_id_1.AccountID.fromParser(parser);
+            const b1 = mantissa[0];
+            const b2 = mantissa[1];
+            const isPositive = b1 & 0x40;
+            const sign = isPositive ? '' : '-';
+            const exponent = ((b1 & 0x3f) << 2) + ((b2 & 0xff) >> 6) - 97;
+            mantissa[0] = 0;
+            mantissa[1] &= 0x3f;
+            const value = new bignumber_js_1.default(`${sign}0x${(0, utils_1.bytesToHex)(mantissa)}`).times(`1e${exponent}`);
+            Amount.assertIouIsValid(value);
+            return {
+                value: value.toString(),
+                currency: currency.toJSON(),
+                issuer: issuer.toJSON(),
+            };
+        }
+    }
+    /**
+     * Validate XAH amount
+     *
+     * @param amount String representing XAH amount
+     * @returns void, but will throw if invalid amount
+     */
+    static assertXrpIsValid(amount) {
+        if (amount.indexOf('.') !== -1) {
+            throw new Error(`${amount.toString()} is an illegal amount`);
+        }
+        const decimal = new bignumber_js_1.default(amount);
+        if (!decimal.isZero()) {
+            if (decimal.lt(MIN_XAH) || decimal.gt(MAX_DROPS)) {
+                throw new Error(`${amount.toString()} is an illegal amount`);
+            }
+        }
+    }
+    /**
+     * Validate IOU.value amount
+     *
+     * @param decimal BigNumber object representing IOU.value
+     * @returns void, but will throw if invalid amount
+     */
+    static assertIouIsValid(decimal) {
+        if (!decimal.isZero()) {
+            const p = decimal.precision();
+            const e = (decimal.e || 0) - 15;
+            if (p > MAX_IOU_PRECISION ||
+                e > MAX_IOU_EXPONENT ||
+                e < MIN_IOU_EXPONENT) {
+                throw new Error('Decimal precision out of range');
+            }
+            this.verifyNoDecimal(decimal);
+        }
+    }
+    /**
+     * Ensure that the value after being multiplied by the exponent does not
+     * contain a decimal.
+     *
+     * @param decimal a Decimal object
+     * @returns a string of the object without a decimal
+     */
+    static verifyNoDecimal(decimal) {
+        const integerNumberString = decimal
+            .times(`1e${-((decimal.e || 0) - 15)}`)
+            .abs()
+            .toString();
+        if (integerNumberString.indexOf('.') !== -1) {
+            throw new Error('Decimal place found in integerNumberString');
+        }
+    }
+    /**
+     * Test if this amount is in units of Native Currency(XAH)
+     *
+     * @returns true if Native (XAH)
+     */
+    isNative() {
+        return (this.bytes[0] & 0x80) === 0;
+    }
+}
+exports.Amount = Amount;
+Amount.defaultAmount = new Amount((0, utils_1.hexToBytes)('4000000000000000'));
+//# sourceMappingURL=amount.js.map
+
+/***/ }),
+
+/***/ 2320:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Blob = void 0;
+const serialized_type_1 = __nccwpck_require__(1375);
+const utils_1 = __nccwpck_require__(3617);
+/**
+ * Variable length encoded type
+ */
+class Blob extends serialized_type_1.SerializedType {
+    constructor(bytes) {
+        super(bytes);
+    }
+    /**
+     * Defines how to read a Blob from a BinaryParser
+     *
+     * @param parser The binary parser to read the Blob from
+     * @param hint The length of the blob, computed by readVariableLengthLength() and passed in
+     * @returns A Blob object
+     */
+    static fromParser(parser, hint) {
+        return new Blob(parser.read(hint));
+    }
+    /**
+     * Create a Blob object from a hex-string
+     *
+     * @param value existing Blob object or a hex-string
+     * @returns A Blob object
+     */
+    static from(value) {
+        if (value instanceof Blob) {
+            return value;
+        }
+        if (typeof value === 'string') {
+            if (!/^[A-F0-9]*$/iu.test(value)) {
+                throw new Error('Cannot construct Blob from a non-hex string');
+            }
+            return new Blob((0, utils_1.hexToBytes)(value));
+        }
+        throw new Error('Cannot construct Blob from value given');
+    }
+}
+exports.Blob = Blob;
+//# sourceMappingURL=blob.js.map
+
+/***/ }),
+
+/***/ 195:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Currency = void 0;
+const hash_160_1 = __nccwpck_require__(1981);
+const utils_1 = __nccwpck_require__(3617);
+const XAH_HEX_REGEX = /^0{40}$/;
+const ISO_REGEX = /^[A-Z0-9a-z?!@#$%^&*(){}[\]|]{3}$/;
+const HEX_REGEX = /^[A-F0-9]{40}$/;
+// eslint-disable-next-line no-control-regex
+const STANDARD_FORMAT_HEX_REGEX = /^0{24}[\x00-\x7F]{6}0{10}$/;
+/**
+ * Convert an ISO code to a currency bytes representation
+ */
+function isoToBytes(iso) {
+    const bytes = new Uint8Array(20);
+    if (iso !== 'XAH') {
+        const isoBytes = iso.split('').map((c) => c.charCodeAt(0));
+        bytes.set(isoBytes, 12);
+    }
+    return bytes;
+}
+/**
+ * Tests if ISO is a valid iso code
+ */
+function isIsoCode(iso) {
+    return ISO_REGEX.test(iso);
+}
+function isoCodeFromHex(code) {
+    const iso = (0, utils_1.hexToString)((0, utils_1.bytesToHex)(code));
+    if (iso === 'XAH') {
+        return null;
+    }
+    if (isIsoCode(iso)) {
+        return iso;
+    }
+    return null;
+}
+/**
+ * Tests if hex is a valid hex-string
+ */
+function isHex(hex) {
+    return HEX_REGEX.test(hex);
+}
+/**
+ * Tests if a string is a valid representation of a currency
+ */
+function isStringRepresentation(input) {
+    return input.length === 3 || isHex(input);
+}
+/**
+ * Tests if a Uint8Array is a valid representation of a currency
+ */
+function isBytesArray(bytes) {
+    return bytes.byteLength === 20;
+}
+/**
+ * Ensures that a value is a valid representation of a currency
+ */
+function isValidRepresentation(input) {
+    return input instanceof Uint8Array
+        ? isBytesArray(input)
+        : isStringRepresentation(input);
+}
+/**
+ * Generate bytes from a string or UInt8Array representation of a currency
+ */
+function bytesFromRepresentation(input) {
+    if (!isValidRepresentation(input)) {
+        throw new Error(`Unsupported Currency representation: ${input}`);
+    }
+    return input.length === 3 ? isoToBytes(input) : (0, utils_1.hexToBytes)(input);
+}
+/**
+ * Class defining how to encode and decode Currencies
+ */
+class Currency extends hash_160_1.Hash160 {
+    constructor(byteBuf) {
+        super(byteBuf !== null && byteBuf !== void 0 ? byteBuf : Currency.XAH.bytes);
+        const hex = (0, utils_1.bytesToHex)(this.bytes);
+        if (XAH_HEX_REGEX.test(hex)) {
+            this._iso = 'XAH';
+        }
+        else if (STANDARD_FORMAT_HEX_REGEX.test(hex)) {
+            this._iso = isoCodeFromHex(this.bytes.slice(12, 15));
+        }
+        else {
+            this._iso = null;
+        }
+    }
+    /**
+     * Return the ISO code of this currency
+     *
+     * @returns ISO code if it exists, else null
+     */
+    iso() {
+        return this._iso;
+    }
+    /**
+     * Constructs a Currency object
+     *
+     * @param val Currency object or a string representation of a currency
+     */
+    static from(value) {
+        if (value instanceof Currency) {
+            return value;
+        }
+        if (typeof value === 'string') {
+            return new Currency(bytesFromRepresentation(value));
+        }
+        throw new Error('Cannot construct Currency from value given');
+    }
+    /**
+     * Gets the JSON representation of a currency
+     *
+     * @returns JSON representation
+     */
+    toJSON() {
+        const iso = this.iso();
+        if (iso !== null) {
+            return iso;
+        }
+        return (0, utils_1.bytesToHex)(this.bytes);
+    }
+}
+exports.Currency = Currency;
+Currency.XAH = new Currency(new Uint8Array(20));
+//# sourceMappingURL=currency.js.map
+
+/***/ }),
+
+/***/ 6908:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Hash128 = void 0;
+const hash_1 = __nccwpck_require__(8756);
+const utils_1 = __nccwpck_require__(3617);
+/**
+ * Hash with a width of 128 bits
+ */
+class Hash128 extends hash_1.Hash {
+    constructor(bytes) {
+        if (bytes && bytes.byteLength === 0) {
+            bytes = Hash128.ZERO_128.bytes;
+        }
+        super(bytes !== null && bytes !== void 0 ? bytes : Hash128.ZERO_128.bytes);
+    }
+    /**
+     * Get the hex representation of a hash-128 bytes, allowing unset
+     *
+     * @returns hex String of this.bytes
+     */
+    toHex() {
+        const hex = (0, utils_1.bytesToHex)(this.toBytes());
+        if (/^0+$/.exec(hex)) {
+            return '';
+        }
+        return hex;
+    }
+}
+exports.Hash128 = Hash128;
+Hash128.width = 16;
+Hash128.ZERO_128 = new Hash128(new Uint8Array(Hash128.width));
+//# sourceMappingURL=hash-128.js.map
+
+/***/ }),
+
+/***/ 1981:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Hash160 = void 0;
+const hash_1 = __nccwpck_require__(8756);
+/**
+ * Hash with a width of 160 bits
+ */
+class Hash160 extends hash_1.Hash {
+    constructor(bytes) {
+        if (bytes && bytes.byteLength === 0) {
+            bytes = Hash160.ZERO_160.bytes;
+        }
+        super(bytes !== null && bytes !== void 0 ? bytes : Hash160.ZERO_160.bytes);
+    }
+}
+exports.Hash160 = Hash160;
+Hash160.width = 20;
+Hash160.ZERO_160 = new Hash160(new Uint8Array(Hash160.width));
+//# sourceMappingURL=hash-160.js.map
+
+/***/ }),
+
+/***/ 9755:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Hash256 = void 0;
+const hash_1 = __nccwpck_require__(8756);
+/**
+ * Hash with a width of 256 bits
+ */
+class Hash256 extends hash_1.Hash {
+    constructor(bytes) {
+        super(bytes !== null && bytes !== void 0 ? bytes : Hash256.ZERO_256.bytes);
+    }
+}
+exports.Hash256 = Hash256;
+Hash256.width = 32;
+Hash256.ZERO_256 = new Hash256(new Uint8Array(Hash256.width));
+//# sourceMappingURL=hash-256.js.map
+
+/***/ }),
+
+/***/ 8756:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Hash = void 0;
+const serialized_type_1 = __nccwpck_require__(1375);
+const utils_1 = __nccwpck_require__(3617);
+const utils_2 = __nccwpck_require__(2758);
+/**
+ * Base class defining how to encode and decode hashes
+ */
+class Hash extends serialized_type_1.Comparable {
+    constructor(bytes) {
+        super(bytes);
+        if (this.bytes.length !== this.constructor.width) {
+            throw new Error(`Invalid Hash length ${this.bytes.byteLength}`);
+        }
+    }
+    /**
+     * Construct a Hash object from an existing Hash object or a hex-string
+     *
+     * @param value A hash object or hex-string of a hash
+     */
+    static from(value) {
+        if (value instanceof this) {
+            return value;
+        }
+        if (typeof value === 'string') {
+            return new this((0, utils_1.hexToBytes)(value));
+        }
+        throw new Error('Cannot construct Hash from given value');
+    }
+    /**
+     * Read a Hash object from a BinaryParser
+     *
+     * @param parser BinaryParser to read the hash from
+     * @param hint length of the bytes to read, optional
+     */
+    static fromParser(parser, hint) {
+        return new this(parser.read(hint !== null && hint !== void 0 ? hint : this.width));
+    }
+    /**
+     * Overloaded operator for comparing two hash objects
+     *
+     * @param other The Hash to compare this to
+     */
+    compareTo(other) {
+        return (0, utils_2.compare)(this.bytes, this.constructor.from(other).bytes);
+    }
+    /**
+     * @returns the hex-string representation of this Hash
+     */
+    toString() {
+        return this.toHex();
+    }
+    /**
+     * Returns four bits at the specified depth within a hash
+     *
+     * @param depth The depth of the four bits
+     * @returns The number represented by the four bits
+     */
+    nibblet(depth) {
+        const byteIx = depth > 0 ? (depth / 2) | 0 : 0;
+        let b = this.bytes[byteIx];
+        if (depth % 2 === 0) {
+            b = (b & 0xf0) >>> 4;
+        }
+        else {
+            b = b & 0x0f;
+        }
+        return b;
+    }
+}
+exports.Hash = Hash;
+//# sourceMappingURL=hash.js.map
+
+/***/ }),
+
+/***/ 3659:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Vector256 = exports.UInt64 = exports.UInt32 = exports.UInt16 = exports.UInt8 = exports.STObject = exports.STArray = exports.PathSet = exports.Hash256 = exports.Hash160 = exports.Hash128 = exports.Currency = exports.Blob = exports.Amount = exports.AccountID = exports.coreTypes = void 0;
+const account_id_1 = __nccwpck_require__(1601);
+Object.defineProperty(exports, "AccountID", ({ enumerable: true, get: function () { return account_id_1.AccountID; } }));
+const amount_1 = __nccwpck_require__(3936);
+Object.defineProperty(exports, "Amount", ({ enumerable: true, get: function () { return amount_1.Amount; } }));
+const blob_1 = __nccwpck_require__(2320);
+Object.defineProperty(exports, "Blob", ({ enumerable: true, get: function () { return blob_1.Blob; } }));
+const currency_1 = __nccwpck_require__(195);
+Object.defineProperty(exports, "Currency", ({ enumerable: true, get: function () { return currency_1.Currency; } }));
+const hash_128_1 = __nccwpck_require__(6908);
+Object.defineProperty(exports, "Hash128", ({ enumerable: true, get: function () { return hash_128_1.Hash128; } }));
+const hash_160_1 = __nccwpck_require__(1981);
+Object.defineProperty(exports, "Hash160", ({ enumerable: true, get: function () { return hash_160_1.Hash160; } }));
+const hash_256_1 = __nccwpck_require__(9755);
+Object.defineProperty(exports, "Hash256", ({ enumerable: true, get: function () { return hash_256_1.Hash256; } }));
+const issue_1 = __nccwpck_require__(4271);
+const path_set_1 = __nccwpck_require__(6099);
+Object.defineProperty(exports, "PathSet", ({ enumerable: true, get: function () { return path_set_1.PathSet; } }));
+const st_array_1 = __nccwpck_require__(6695);
+Object.defineProperty(exports, "STArray", ({ enumerable: true, get: function () { return st_array_1.STArray; } }));
+const st_object_1 = __nccwpck_require__(3057);
+Object.defineProperty(exports, "STObject", ({ enumerable: true, get: function () { return st_object_1.STObject; } }));
+const uint_16_1 = __nccwpck_require__(8615);
+Object.defineProperty(exports, "UInt16", ({ enumerable: true, get: function () { return uint_16_1.UInt16; } }));
+const uint_32_1 = __nccwpck_require__(3996);
+Object.defineProperty(exports, "UInt32", ({ enumerable: true, get: function () { return uint_32_1.UInt32; } }));
+const uint_64_1 = __nccwpck_require__(8930);
+Object.defineProperty(exports, "UInt64", ({ enumerable: true, get: function () { return uint_64_1.UInt64; } }));
+const uint_8_1 = __nccwpck_require__(5426);
+Object.defineProperty(exports, "UInt8", ({ enumerable: true, get: function () { return uint_8_1.UInt8; } }));
+const vector_256_1 = __nccwpck_require__(1987);
+Object.defineProperty(exports, "Vector256", ({ enumerable: true, get: function () { return vector_256_1.Vector256; } }));
+const xchain_bridge_1 = __nccwpck_require__(6146);
+const enums_1 = __nccwpck_require__(8039);
+const coreTypes = {
+    AccountID: account_id_1.AccountID,
+    Amount: amount_1.Amount,
+    Blob: blob_1.Blob,
+    Currency: currency_1.Currency,
+    Hash128: hash_128_1.Hash128,
+    Hash160: hash_160_1.Hash160,
+    Hash256: hash_256_1.Hash256,
+    Issue: issue_1.Issue,
+    PathSet: path_set_1.PathSet,
+    STArray: st_array_1.STArray,
+    STObject: st_object_1.STObject,
+    UInt8: uint_8_1.UInt8,
+    UInt16: uint_16_1.UInt16,
+    UInt32: uint_32_1.UInt32,
+    UInt64: uint_64_1.UInt64,
+    Vector256: vector_256_1.Vector256,
+    XChainBridge: xchain_bridge_1.XChainBridge,
+};
+exports.coreTypes = coreTypes;
+// Ensures that the DEFAULT_DEFINITIONS object connects these types to fields for serializing/deserializing
+// This is done here instead of in enums/index.ts to avoid a circular dependency
+// because some of the above types depend on BinarySerializer which depends on enums/index.ts.
+enums_1.DEFAULT_DEFINITIONS.associateTypes(coreTypes);
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 4271:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Issue = void 0;
+const utils_1 = __nccwpck_require__(3617);
+const binary_parser_1 = __nccwpck_require__(5956);
+const account_id_1 = __nccwpck_require__(1601);
+const currency_1 = __nccwpck_require__(195);
+const serialized_type_1 = __nccwpck_require__(1375);
+/**
+ * Type guard for AmountObject
+ */
+function isIssueObject(arg) {
+    const keys = Object.keys(arg).sort();
+    if (keys.length === 1) {
+        return keys[0] === 'currency';
+    }
+    return keys.length === 2 && keys[0] === 'currency' && keys[1] === 'issuer';
+}
+/**
+ * Class for serializing/Deserializing Amounts
+ */
+class Issue extends serialized_type_1.SerializedType {
+    constructor(bytes) {
+        super(bytes !== null && bytes !== void 0 ? bytes : Issue.ZERO_ISSUED_CURRENCY.bytes);
+    }
+    /**
+     * Construct an amount from an IOU or string amount
+     *
+     * @param value An Amount, object representing an IOU, or a string
+     *     representing an integer amount
+     * @returns An Amount object
+     */
+    static from(value) {
+        if (value instanceof Issue) {
+            return value;
+        }
+        if (isIssueObject(value)) {
+            const currency = currency_1.Currency.from(value.currency).toBytes();
+            if (value.issuer == null) {
+                return new Issue(currency);
+            }
+            const issuer = account_id_1.AccountID.from(value.issuer).toBytes();
+            return new Issue((0, utils_1.concat)([currency, issuer]));
+        }
+        throw new Error('Invalid type to construct an Amount');
+    }
+    /**
+     * Read an amount from a BinaryParser
+     *
+     * @param parser BinaryParser to read the Amount from
+     * @returns An Amount object
+     */
+    static fromParser(parser) {
+        const currency = parser.read(20);
+        if (new currency_1.Currency(currency).toJSON() === 'XAH') {
+            return new Issue(currency);
+        }
+        const currencyAndIssuer = [currency, parser.read(20)];
+        return new Issue((0, utils_1.concat)(currencyAndIssuer));
+    }
+    /**
+     * Get the JSON representation of this Amount
+     *
+     * @returns the JSON interpretation of this.bytes
+     */
+    toJSON() {
+        const parser = new binary_parser_1.BinaryParser(this.toString());
+        const currency = currency_1.Currency.fromParser(parser);
+        if (currency.toJSON() === 'XAH') {
+            return { currency: currency.toJSON() };
+        }
+        const issuer = account_id_1.AccountID.fromParser(parser);
+        return {
+            currency: currency.toJSON(),
+            issuer: issuer.toJSON(),
+        };
+    }
+}
+exports.Issue = Issue;
+Issue.ZERO_ISSUED_CURRENCY = new Issue(new Uint8Array(20));
+//# sourceMappingURL=issue.js.map
+
+/***/ }),
+
+/***/ 6099:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PathSet = void 0;
+const account_id_1 = __nccwpck_require__(1601);
+const currency_1 = __nccwpck_require__(195);
+const binary_parser_1 = __nccwpck_require__(5956);
+const serialized_type_1 = __nccwpck_require__(1375);
+const utils_1 = __nccwpck_require__(3617);
+/**
+ * Constants for separating Paths in a PathSet
+ */
+const PATHSET_END_BYTE = 0x00;
+const PATH_SEPARATOR_BYTE = 0xff;
+/**
+ * Constant for masking types of a Hop
+ */
+const TYPE_ACCOUNT = 0x01;
+const TYPE_CURRENCY = 0x10;
+const TYPE_ISSUER = 0x20;
+/**
+ * TypeGuard for HopObject
+ */
+function isHopObject(arg) {
+    return (arg.issuer !== undefined ||
+        arg.account !== undefined ||
+        arg.currency !== undefined);
+}
+/**
+ * TypeGuard for PathSet
+ */
+function isPathSet(arg) {
+    return ((Array.isArray(arg) && arg.length === 0) ||
+        (Array.isArray(arg) && Array.isArray(arg[0]) && arg[0].length === 0) ||
+        (Array.isArray(arg) && Array.isArray(arg[0]) && isHopObject(arg[0][0])));
+}
+/**
+ * Serialize and Deserialize a Hop
+ */
+class Hop extends serialized_type_1.SerializedType {
+    /**
+     * Create a Hop from a HopObject
+     *
+     * @param value Either a hop or HopObject to create a hop with
+     * @returns a Hop
+     */
+    static from(value) {
+        if (value instanceof Hop) {
+            return value;
+        }
+        const bytes = [Uint8Array.from([0])];
+        if (value.account) {
+            bytes.push(account_id_1.AccountID.from(value.account).toBytes());
+            bytes[0][0] |= TYPE_ACCOUNT;
+        }
+        if (value.currency) {
+            bytes.push(currency_1.Currency.from(value.currency).toBytes());
+            bytes[0][0] |= TYPE_CURRENCY;
+        }
+        if (value.issuer) {
+            bytes.push(account_id_1.AccountID.from(value.issuer).toBytes());
+            bytes[0][0] |= TYPE_ISSUER;
+        }
+        return new Hop((0, utils_1.concat)(bytes));
+    }
+    /**
+     * Construct a Hop from a BinaryParser
+     *
+     * @param parser BinaryParser to read the Hop from
+     * @returns a Hop
+     */
+    static fromParser(parser) {
+        const type = parser.readUInt8();
+        const bytes = [Uint8Array.from([type])];
+        if (type & TYPE_ACCOUNT) {
+            bytes.push(parser.read(account_id_1.AccountID.width));
+        }
+        if (type & TYPE_CURRENCY) {
+            bytes.push(parser.read(currency_1.Currency.width));
+        }
+        if (type & TYPE_ISSUER) {
+            bytes.push(parser.read(account_id_1.AccountID.width));
+        }
+        return new Hop((0, utils_1.concat)(bytes));
+    }
+    /**
+     * Get the JSON interpretation of this hop
+     *
+     * @returns a HopObject, an JS object with optional account, issuer, and currency
+     */
+    toJSON() {
+        const hopParser = new binary_parser_1.BinaryParser((0, utils_1.bytesToHex)(this.bytes));
+        const type = hopParser.readUInt8();
+        let account, currency, issuer;
+        if (type & TYPE_ACCOUNT) {
+            account = account_id_1.AccountID.fromParser(hopParser).toJSON();
+        }
+        if (type & TYPE_CURRENCY) {
+            currency = currency_1.Currency.fromParser(hopParser).toJSON();
+        }
+        if (type & TYPE_ISSUER) {
+            issuer = account_id_1.AccountID.fromParser(hopParser).toJSON();
+        }
+        const result = {};
+        if (account) {
+            result.account = account;
+        }
+        if (issuer) {
+            result.issuer = issuer;
+        }
+        if (currency) {
+            result.currency = currency;
+        }
+        return result;
+    }
+    /**
+     * get a number representing the type of this hop
+     *
+     * @returns a number to be bitwise and-ed with TYPE_ constants to describe the types in the hop
+     */
+    type() {
+        return this.bytes[0];
+    }
+}
+/**
+ * Class for serializing/deserializing Paths
+ */
+class Path extends serialized_type_1.SerializedType {
+    /**
+     * construct a Path from an array of Hops
+     *
+     * @param value Path or array of HopObjects to construct a Path
+     * @returns the Path
+     */
+    static from(value) {
+        if (value instanceof Path) {
+            return value;
+        }
+        const bytes = [];
+        value.forEach((hop) => {
+            bytes.push(Hop.from(hop).toBytes());
+        });
+        return new Path((0, utils_1.concat)(bytes));
+    }
+    /**
+     * Read a Path from a BinaryParser
+     *
+     * @param parser BinaryParser to read Path from
+     * @returns the Path represented by the bytes read from the BinaryParser
+     */
+    static fromParser(parser) {
+        const bytes = [];
+        while (!parser.end()) {
+            bytes.push(Hop.fromParser(parser).toBytes());
+            if (parser.peek() === PATHSET_END_BYTE ||
+                parser.peek() === PATH_SEPARATOR_BYTE) {
+                break;
+            }
+        }
+        return new Path((0, utils_1.concat)(bytes));
+    }
+    /**
+     * Get the JSON representation of this Path
+     *
+     * @returns an Array of HopObject constructed from this.bytes
+     */
+    toJSON() {
+        const json = [];
+        const pathParser = new binary_parser_1.BinaryParser(this.toString());
+        while (!pathParser.end()) {
+            json.push(Hop.fromParser(pathParser).toJSON());
+        }
+        return json;
+    }
+}
+/**
+ * Deserialize and Serialize the PathSet type
+ */
+class PathSet extends serialized_type_1.SerializedType {
+    /**
+     * Construct a PathSet from an Array of Arrays representing paths
+     *
+     * @param value A PathSet or Array of Array of HopObjects
+     * @returns the PathSet constructed from value
+     */
+    static from(value) {
+        if (value instanceof PathSet) {
+            return value;
+        }
+        if (isPathSet(value)) {
+            const bytes = [];
+            value.forEach((path) => {
+                bytes.push(Path.from(path).toBytes());
+                bytes.push(Uint8Array.from([PATH_SEPARATOR_BYTE]));
+            });
+            bytes[bytes.length - 1] = Uint8Array.from([PATHSET_END_BYTE]);
+            return new PathSet((0, utils_1.concat)(bytes));
+        }
+        throw new Error('Cannot construct PathSet from given value');
+    }
+    /**
+     * Construct a PathSet from a BinaryParser
+     *
+     * @param parser A BinaryParser to read PathSet from
+     * @returns the PathSet read from parser
+     */
+    static fromParser(parser) {
+        const bytes = [];
+        while (!parser.end()) {
+            bytes.push(Path.fromParser(parser).toBytes());
+            bytes.push(parser.read(1));
+            if (bytes[bytes.length - 1][0] == PATHSET_END_BYTE) {
+                break;
+            }
+        }
+        return new PathSet((0, utils_1.concat)(bytes));
+    }
+    /**
+     * Get the JSON representation of this PathSet
+     *
+     * @returns an Array of Array of HopObjects, representing this PathSet
+     */
+    toJSON() {
+        const json = [];
+        const pathParser = new binary_parser_1.BinaryParser(this.toString());
+        while (!pathParser.end()) {
+            json.push(Path.fromParser(pathParser).toJSON());
+            pathParser.skip(1);
+        }
+        return json;
+    }
+}
+exports.PathSet = PathSet;
+//# sourceMappingURL=path-set.js.map
+
+/***/ }),
+
+/***/ 1375:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Comparable = exports.SerializedType = void 0;
+const binary_serializer_1 = __nccwpck_require__(2412);
+const utils_1 = __nccwpck_require__(3617);
+/**
+ * The base class for all binary-codec types
+ */
+class SerializedType {
+    constructor(bytes) {
+        this.bytes = new Uint8Array(0);
+        this.bytes = bytes !== null && bytes !== void 0 ? bytes : new Uint8Array(0);
+    }
+    static fromParser(parser, hint) {
+        throw new Error('fromParser not implemented');
+        return this.fromParser(parser, hint);
+    }
+    static from(value) {
+        throw new Error('from not implemented');
+        return this.from(value);
+    }
+    /**
+     * Write the bytes representation of a SerializedType to a BytesList
+     *
+     * @param list The BytesList to write SerializedType bytes to
+     */
+    toBytesSink(list) {
+        list.put(this.bytes);
+    }
+    /**
+     * Get the hex representation of a SerializedType's bytes
+     *
+     * @returns hex String of this.bytes
+     */
+    toHex() {
+        return (0, utils_1.bytesToHex)(this.toBytes());
+    }
+    /**
+     * Get the bytes representation of a SerializedType
+     *
+     * @returns A Uint8Array of the bytes
+     */
+    toBytes() {
+        if (this.bytes) {
+            return this.bytes;
+        }
+        const bytes = new binary_serializer_1.BytesList();
+        this.toBytesSink(bytes);
+        return bytes.toBytes();
+    }
+    /**
+     * Return the JSON representation of a SerializedType
+     *
+     * @param _definitions xahaud definitions used to parse the values of transaction types and such.
+     *                          Unused in default, but used in STObject, STArray
+     *                          Can be customized for sidechains and amendments.
+     * @returns any type, if not overloaded returns hexString representation of bytes
+     */
+    toJSON(_definitions) {
+        return this.toHex();
+    }
+    /**
+     * @returns hexString representation of this.bytes
+     */
+    toString() {
+        return this.toHex();
+    }
+}
+exports.SerializedType = SerializedType;
+/**
+ * Base class for SerializedTypes that are comparable.
+ *
+ * @template T - What types you want to allow comparisons between. You must specify all types. Primarily used to allow
+ * comparisons between built-in types (like `string`) and SerializedType subclasses (like `Hash`).
+ *
+ * Ex. `class Hash extends Comparable<Hash | string>`
+ */
+class Comparable extends SerializedType {
+    lt(other) {
+        return this.compareTo(other) < 0;
+    }
+    eq(other) {
+        return this.compareTo(other) === 0;
+    }
+    gt(other) {
+        return this.compareTo(other) > 0;
+    }
+    gte(other) {
+        return this.compareTo(other) > -1;
+    }
+    lte(other) {
+        return this.compareTo(other) < 1;
+    }
+    /**
+     * Overload this method to define how two Comparable SerializedTypes are compared
+     *
+     * @param other The comparable object to compare this to
+     * @returns A number denoting the relationship of this and other
+     */
+    compareTo(other) {
+        throw new Error(`cannot compare ${this.toString()} and ${other.toString()}`);
+    }
+}
+exports.Comparable = Comparable;
+//# sourceMappingURL=serialized-type.js.map
+
+/***/ }),
+
+/***/ 6695:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.STArray = void 0;
+const enums_1 = __nccwpck_require__(8039);
+const serialized_type_1 = __nccwpck_require__(1375);
+const st_object_1 = __nccwpck_require__(3057);
+const binary_parser_1 = __nccwpck_require__(5956);
+const utils_1 = __nccwpck_require__(3617);
+const ARRAY_END_MARKER = Uint8Array.from([0xf1]);
+const ARRAY_END_MARKER_NAME = 'ArrayEndMarker';
+const OBJECT_END_MARKER = Uint8Array.from([0xe1]);
+/**
+ * TypeGuard for Array<JsonObject>
+ */
+function isObjects(args) {
+    return (Array.isArray(args) &&
+        args.every((arg) => typeof arg === 'object' &&
+            Object.keys(arg).length === 1 &&
+            typeof Object.values(arg)[0] === 'object'));
+}
+/**
+ * Class for serializing and deserializing Arrays of Objects
+ */
+class STArray extends serialized_type_1.SerializedType {
+    /**
+     * Construct an STArray from a BinaryParser
+     *
+     * @param parser BinaryParser to parse an STArray from
+     * @returns An STArray Object
+     */
+    static fromParser(parser) {
+        const bytes = [];
+        while (!parser.end()) {
+            const field = parser.readField();
+            if (field.name === ARRAY_END_MARKER_NAME) {
+                break;
+            }
+            bytes.push(field.header, parser.readFieldValue(field).toBytes(), OBJECT_END_MARKER);
+        }
+        bytes.push(ARRAY_END_MARKER);
+        return new STArray((0, utils_1.concat)(bytes));
+    }
+    /**
+     * Construct an STArray from an Array of JSON Objects
+     *
+     * @param value STArray or Array of Objects to parse into an STArray
+     * @param definitions optional, types and values to use to encode/decode a transaction
+     * @returns An STArray object
+     */
+    static from(value, definitions = enums_1.DEFAULT_DEFINITIONS) {
+        if (value instanceof STArray) {
+            return value;
+        }
+        if (isObjects(value)) {
+            const bytes = [];
+            value.forEach((obj) => {
+                bytes.push(st_object_1.STObject.from(obj, undefined, definitions).toBytes());
+            });
+            bytes.push(ARRAY_END_MARKER);
+            return new STArray((0, utils_1.concat)(bytes));
+        }
+        throw new Error('Cannot construct STArray from value given');
+    }
+    /**
+     * Return the JSON representation of this.bytes
+     *
+     * @param definitions optional, types and values to use to encode/decode a transaction
+     * @returns An Array of JSON objects
+     */
+    toJSON(definitions = enums_1.DEFAULT_DEFINITIONS) {
+        const result = [];
+        const arrayParser = new binary_parser_1.BinaryParser(this.toString(), definitions);
+        while (!arrayParser.end()) {
+            const field = arrayParser.readField();
+            if (field.name === ARRAY_END_MARKER_NAME) {
+                break;
+            }
+            const outer = {};
+            outer[field.name] = st_object_1.STObject.fromParser(arrayParser).toJSON(definitions);
+            result.push(outer);
+        }
+        return result;
+    }
+}
+exports.STArray = STArray;
+//# sourceMappingURL=st-array.js.map
+
+/***/ }),
+
+/***/ 3057:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.STObject = void 0;
+const enums_1 = __nccwpck_require__(8039);
+const serialized_type_1 = __nccwpck_require__(1375);
+const xahau_address_codec_1 = __nccwpck_require__(647);
+const binary_parser_1 = __nccwpck_require__(5956);
+const binary_serializer_1 = __nccwpck_require__(2412);
+const st_array_1 = __nccwpck_require__(6695);
+const OBJECT_END_MARKER_BYTE = Uint8Array.from([0xe1]);
+const OBJECT_END_MARKER = 'ObjectEndMarker';
+const ST_OBJECT = 'STObject';
+const DESTINATION = 'Destination';
+const ACCOUNT = 'Account';
+const SOURCE_TAG = 'SourceTag';
+const DEST_TAG = 'DestinationTag';
+/**
+ * Break down an X-Address into an account and a tag
+ *
+ * @param field Name of field
+ * @param xAddress X-Address corresponding to the field
+ */
+function handleXAddress(field, xAddress) {
+    const decoded = (0, xahau_address_codec_1.xAddressToClassicAddress)(xAddress);
+    let tagName;
+    if (field === DESTINATION)
+        tagName = DEST_TAG;
+    else if (field === ACCOUNT)
+        tagName = SOURCE_TAG;
+    else if (decoded.tag !== false)
+        throw new Error(`${field} cannot have an associated tag`);
+    return decoded.tag !== false
+        ? { [field]: decoded.classicAddress, [tagName]: decoded.tag }
+        : { [field]: decoded.classicAddress };
+}
+/**
+ * Validate that two objects don't both have the same tag fields
+ *
+ * @param obj1 First object to check for tags
+ * @param obj2 Second object to check for tags
+ * @throws When both objects have SourceTag or DestinationTag
+ */
+function checkForDuplicateTags(obj1, obj2) {
+    if (!(obj1[SOURCE_TAG] === undefined || obj2[SOURCE_TAG] === undefined))
+        throw new Error('Cannot have Account X-Address and SourceTag');
+    if (!(obj1[DEST_TAG] === undefined || obj2[DEST_TAG] === undefined))
+        throw new Error('Cannot have Destination X-Address and DestinationTag');
+}
+/**
+ * Class for Serializing/Deserializing objects
+ */
+class STObject extends serialized_type_1.SerializedType {
+    /**
+     * Construct a STObject from a BinaryParser
+     *
+     * @param parser BinaryParser to read STObject from
+     * @returns A STObject object
+     */
+    static fromParser(parser) {
+        const list = new binary_serializer_1.BytesList();
+        const bytes = new binary_serializer_1.BinarySerializer(list);
+        while (!parser.end()) {
+            const field = parser.readField();
+            if (field.name === OBJECT_END_MARKER) {
+                break;
+            }
+            const associatedValue = parser.readFieldValue(field);
+            bytes.writeFieldAndValue(field, associatedValue);
+            if (field.type.name === ST_OBJECT) {
+                bytes.put(OBJECT_END_MARKER_BYTE);
+            }
+        }
+        return new STObject(list.toBytes());
+    }
+    /**
+     * Construct a STObject from a JSON object
+     *
+     * @param value An object to include
+     * @param filter optional, denote which field to include in serialized object
+     * @param definitions optional, types and values to use to encode/decode a transaction
+     * @returns a STObject object
+     */
+    static from(value, filter, definitions = enums_1.DEFAULT_DEFINITIONS) {
+        if (value instanceof STObject) {
+            return value;
+        }
+        const list = new binary_serializer_1.BytesList();
+        const bytes = new binary_serializer_1.BinarySerializer(list);
+        let isUnlModify = false;
+        const xAddressDecoded = Object.entries(value).reduce((acc, [key, val]) => {
+            let handled = undefined;
+            if (val && (0, xahau_address_codec_1.isValidXAddress)(val.toString())) {
+                handled = handleXAddress(key, val.toString());
+                checkForDuplicateTags(handled, value);
+            }
+            return Object.assign(acc, handled !== null && handled !== void 0 ? handled : { [key]: val });
+        }, {});
+        let sorted = Object.keys(xAddressDecoded)
+            .map((f) => definitions.field[f])
+            .filter((f) => f !== undefined &&
+            xAddressDecoded[f.name] !== undefined &&
+            f.isSerialized)
+            .sort((a, b) => {
+            return a.ordinal - b.ordinal;
+        });
+        if (filter !== undefined) {
+            sorted = sorted.filter(filter);
+        }
+        sorted.forEach((field) => {
+            const associatedValue = field.type.name === ST_OBJECT
+                ? this.from(xAddressDecoded[field.name], undefined, definitions)
+                : field.type.name === 'STArray'
+                    ? st_array_1.STArray.from(xAddressDecoded[field.name], definitions)
+                    : field.associatedType.from(xAddressDecoded[field.name]);
+            if (associatedValue == undefined) {
+                throw new TypeError(`Unable to interpret "${field.name}: ${xAddressDecoded[field.name]}".`);
+            }
+            if (associatedValue.name === 'UNLModify') {
+                // triggered when the TransactionType field has a value of 'UNLModify'
+                isUnlModify = true;
+            }
+            // true when in the UNLModify pseudotransaction (after the transaction type has been processed) and working with the
+            // Account field
+            // The Account field must not be a part of the UNLModify pseudotransaction encoding, due to a bug in xahaud
+            const isUnlModifyWorkaround = field.name == 'Account' && isUnlModify;
+            bytes.writeFieldAndValue(field, associatedValue, isUnlModifyWorkaround);
+            if (field.type.name === ST_OBJECT) {
+                bytes.put(OBJECT_END_MARKER_BYTE);
+            }
+        });
+        return new STObject(list.toBytes());
+    }
+    /**
+     * Get the JSON interpretation of this.bytes
+     * @param definitions xahaud definitions used to parse the values of transaction types and such.
+     *                          Can be customized for sidechains and amendments.
+     * @returns a JSON object
+     */
+    toJSON(definitions) {
+        const objectParser = new binary_parser_1.BinaryParser(this.toString(), definitions);
+        const accumulator = {};
+        while (!objectParser.end()) {
+            const field = objectParser.readField();
+            if (field.name === OBJECT_END_MARKER) {
+                break;
+            }
+            accumulator[field.name] = objectParser
+                .readFieldValue(field)
+                .toJSON(definitions);
+        }
+        return accumulator;
+    }
+}
+exports.STObject = STObject;
+//# sourceMappingURL=st-object.js.map
+
+/***/ }),
+
+/***/ 8615:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UInt16 = void 0;
+const uint_1 = __nccwpck_require__(8853);
+const utils_1 = __nccwpck_require__(2758);
+/**
+ * Derived UInt class for serializing/deserializing 16 bit UInt
+ */
+class UInt16 extends uint_1.UInt {
+    constructor(bytes) {
+        super(bytes !== null && bytes !== void 0 ? bytes : UInt16.defaultUInt16.bytes);
+    }
+    static fromParser(parser) {
+        return new UInt16(parser.read(UInt16.width));
+    }
+    /**
+     * Construct a UInt16 object from a number
+     *
+     * @param val UInt16 object or number
+     */
+    static from(val) {
+        if (val instanceof UInt16) {
+            return val;
+        }
+        if (typeof val === 'number') {
+            UInt16.checkUintRange(val, 0, 0xffff);
+            const buf = new Uint8Array(UInt16.width);
+            (0, utils_1.writeUInt16BE)(buf, val, 0);
+            return new UInt16(buf);
+        }
+        throw new Error('Can not construct UInt16 with given value');
+    }
+    /**
+     * get the value of a UInt16 object
+     *
+     * @returns the number represented by this.bytes
+     */
+    valueOf() {
+        return parseInt((0, utils_1.readUInt16BE)(this.bytes, 0));
+    }
+}
+exports.UInt16 = UInt16;
+UInt16.width = 16 / 8; // 2
+UInt16.defaultUInt16 = new UInt16(new Uint8Array(UInt16.width));
+//# sourceMappingURL=uint-16.js.map
+
+/***/ }),
+
+/***/ 3996:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UInt32 = void 0;
+const uint_1 = __nccwpck_require__(8853);
+const utils_1 = __nccwpck_require__(2758);
+/**
+ * Derived UInt class for serializing/deserializing 32 bit UInt
+ */
+class UInt32 extends uint_1.UInt {
+    constructor(bytes) {
+        super(bytes !== null && bytes !== void 0 ? bytes : UInt32.defaultUInt32.bytes);
+    }
+    static fromParser(parser) {
+        return new UInt32(parser.read(UInt32.width));
+    }
+    /**
+     * Construct a UInt32 object from a number
+     *
+     * @param val UInt32 object or number
+     */
+    static from(val) {
+        if (val instanceof UInt32) {
+            return val;
+        }
+        const buf = new Uint8Array(UInt32.width);
+        if (typeof val === 'string') {
+            const num = Number.parseInt(val);
+            (0, utils_1.writeUInt32BE)(buf, num, 0);
+            return new UInt32(buf);
+        }
+        if (typeof val === 'number') {
+            UInt32.checkUintRange(val, 0, 0xffffffff);
+            (0, utils_1.writeUInt32BE)(buf, val, 0);
+            return new UInt32(buf);
+        }
+        throw new Error('Cannot construct UInt32 from given value');
+    }
+    /**
+     * get the value of a UInt32 object
+     *
+     * @returns the number represented by this.bytes
+     */
+    valueOf() {
+        return parseInt((0, utils_1.readUInt32BE)(this.bytes, 0), 10);
+    }
+}
+exports.UInt32 = UInt32;
+UInt32.width = 32 / 8; // 4
+UInt32.defaultUInt32 = new UInt32(new Uint8Array(UInt32.width));
+//# sourceMappingURL=uint-32.js.map
+
+/***/ }),
+
+/***/ 8930:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UInt64 = void 0;
+const uint_1 = __nccwpck_require__(8853);
+const utils_1 = __nccwpck_require__(3617);
+const utils_2 = __nccwpck_require__(2758);
+const HEX_REGEX = /^[a-fA-F0-9]{1,16}$/;
+const mask = BigInt(0x00000000ffffffff);
+/**
+ * Derived UInt class for serializing/deserializing 64 bit UInt
+ */
+class UInt64 extends uint_1.UInt {
+    constructor(bytes) {
+        super(bytes !== null && bytes !== void 0 ? bytes : UInt64.defaultUInt64.bytes);
+    }
+    static fromParser(parser) {
+        return new UInt64(parser.read(UInt64.width));
+    }
+    /**
+     * Construct a UInt64 object
+     *
+     * @param val A UInt64, hex-string, bigInt, or number
+     * @returns A UInt64 object
+     */
+    static from(val) {
+        if (val instanceof UInt64) {
+            return val;
+        }
+        let buf = new Uint8Array(UInt64.width);
+        if (typeof val === 'number') {
+            if (val < 0) {
+                throw new Error('value must be an unsigned integer');
+            }
+            const number = BigInt(val);
+            const intBuf = [new Uint8Array(4), new Uint8Array(4)];
+            (0, utils_2.writeUInt32BE)(intBuf[0], Number(number >> BigInt(32)), 0);
+            (0, utils_2.writeUInt32BE)(intBuf[1], Number(number & BigInt(mask)), 0);
+            return new UInt64((0, utils_1.concat)(intBuf));
+        }
+        if (typeof val === 'string') {
+            if (!HEX_REGEX.test(val)) {
+                throw new Error(`${val} is not a valid hex-string`);
+            }
+            const strBuf = val.padStart(16, '0');
+            buf = (0, utils_1.hexToBytes)(strBuf);
+            return new UInt64(buf);
+        }
+        if (typeof val === 'bigint') {
+            const intBuf = [new Uint8Array(4), new Uint8Array(4)];
+            (0, utils_2.writeUInt32BE)(intBuf[0], Number(Number(val >> BigInt(32))), 0);
+            (0, utils_2.writeUInt32BE)(intBuf[1], Number(val & BigInt(mask)), 0);
+            return new UInt64((0, utils_1.concat)(intBuf));
+        }
+        throw new Error('Cannot construct UInt64 from given value');
+    }
+    /**
+     * The JSON representation of a UInt64 object
+     *
+     * @returns a hex-string
+     */
+    toJSON() {
+        return (0, utils_1.bytesToHex)(this.bytes);
+    }
+    /**
+     * Get the value of the UInt64
+     *
+     * @returns the number represented buy this.bytes
+     */
+    valueOf() {
+        const msb = BigInt((0, utils_2.readUInt32BE)(this.bytes.slice(0, 4), 0));
+        const lsb = BigInt((0, utils_2.readUInt32BE)(this.bytes.slice(4), 0));
+        return (msb << BigInt(32)) | lsb;
+    }
+    /**
+     * Get the bytes representation of the UInt64 object
+     *
+     * @returns 8 bytes representing the UInt64
+     */
+    toBytes() {
+        return this.bytes;
+    }
+}
+exports.UInt64 = UInt64;
+UInt64.width = 64 / 8; // 8
+UInt64.defaultUInt64 = new UInt64(new Uint8Array(UInt64.width));
+//# sourceMappingURL=uint-64.js.map
+
+/***/ }),
+
+/***/ 5426:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UInt8 = void 0;
+const uint_1 = __nccwpck_require__(8853);
+const utils_1 = __nccwpck_require__(3617);
+const utils_2 = __nccwpck_require__(2758);
+/**
+ * Derived UInt class for serializing/deserializing 8 bit UInt
+ */
+class UInt8 extends uint_1.UInt {
+    constructor(bytes) {
+        super(bytes !== null && bytes !== void 0 ? bytes : UInt8.defaultUInt8.bytes);
+    }
+    static fromParser(parser) {
+        return new UInt8(parser.read(UInt8.width));
+    }
+    /**
+     * Construct a UInt8 object from a number
+     *
+     * @param val UInt8 object or number
+     */
+    static from(val) {
+        if (val instanceof UInt8) {
+            return val;
+        }
+        if (typeof val === 'number') {
+            UInt8.checkUintRange(val, 0, 0xff);
+            const buf = new Uint8Array(UInt8.width);
+            (0, utils_2.writeUInt8)(buf, val, 0);
+            return new UInt8(buf);
+        }
+        throw new Error('Cannot construct UInt8 from given value');
+    }
+    /**
+     * get the value of a UInt8 object
+     *
+     * @returns the number represented by this.bytes
+     */
+    valueOf() {
+        return parseInt((0, utils_1.bytesToHex)(this.bytes), 16);
+    }
+}
+exports.UInt8 = UInt8;
+UInt8.width = 8 / 8; // 1
+UInt8.defaultUInt8 = new UInt8(new Uint8Array(UInt8.width));
+//# sourceMappingURL=uint-8.js.map
+
+/***/ }),
+
+/***/ 8853:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UInt = void 0;
+const serialized_type_1 = __nccwpck_require__(1375);
+/**
+ * Compare numbers and bigInts n1 and n2
+ *
+ * @param n1 First object to compare
+ * @param n2 Second object to compare
+ * @returns -1, 0, or 1, depending on how the two objects compare
+ */
+function compare(n1, n2) {
+    return n1 < n2 ? -1 : n1 == n2 ? 0 : 1;
+}
+/**
+ * Base class for serializing and deserializing unsigned integers.
+ */
+class UInt extends serialized_type_1.Comparable {
+    constructor(bytes) {
+        super(bytes);
+    }
+    /**
+     * Overload of compareTo for Comparable
+     *
+     * @param other other UInt to compare this to
+     * @returns -1, 0, or 1 depending on how the objects relate to each other
+     */
+    compareTo(other) {
+        return compare(this.valueOf(), other.valueOf());
+    }
+    /**
+     * Convert a UInt object to JSON
+     *
+     * @returns number or string represented by this.bytes
+     */
+    toJSON() {
+        const val = this.valueOf();
+        return typeof val === 'number' ? val : val.toString();
+    }
+    static checkUintRange(val, min, max) {
+        if (val < min || val > max) {
+            throw new Error(`Invalid ${this.constructor.name}: ${val} must be >= ${min} and <= ${max}`);
+        }
+    }
+}
+exports.UInt = UInt;
+//# sourceMappingURL=uint.js.map
+
+/***/ }),
+
+/***/ 1987:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Vector256 = void 0;
+const serialized_type_1 = __nccwpck_require__(1375);
+const hash_256_1 = __nccwpck_require__(9755);
+const binary_serializer_1 = __nccwpck_require__(2412);
+const utils_1 = __nccwpck_require__(3617);
+/**
+ * TypeGuard for Array<string>
+ */
+function isStrings(arg) {
+    return Array.isArray(arg) && (arg.length === 0 || typeof arg[0] === 'string');
+}
+/**
+ * Class for serializing and deserializing vectors of Hash256
+ */
+class Vector256 extends serialized_type_1.SerializedType {
+    constructor(bytes) {
+        super(bytes);
+    }
+    /**
+     * Construct a Vector256 from a BinaryParser
+     *
+     * @param parser BinaryParser to
+     * @param hint length of the vector, in bytes, optional
+     * @returns a Vector256 object
+     */
+    static fromParser(parser, hint) {
+        const bytesList = new binary_serializer_1.BytesList();
+        const bytes = hint !== null && hint !== void 0 ? hint : parser.size();
+        const hashes = bytes / 32;
+        for (let i = 0; i < hashes; i++) {
+            hash_256_1.Hash256.fromParser(parser).toBytesSink(bytesList);
+        }
+        return new Vector256(bytesList.toBytes());
+    }
+    /**
+     * Construct a Vector256 object from an array of hashes
+     *
+     * @param value A Vector256 object or array of hex-strings representing Hash256's
+     * @returns a Vector256 object
+     */
+    static from(value) {
+        if (value instanceof Vector256) {
+            return value;
+        }
+        if (isStrings(value)) {
+            const bytesList = new binary_serializer_1.BytesList();
+            value.forEach((hash) => {
+                hash_256_1.Hash256.from(hash).toBytesSink(bytesList);
+            });
+            return new Vector256(bytesList.toBytes());
+        }
+        throw new Error('Cannot construct Vector256 from given value');
+    }
+    /**
+     * Return an Array of hex-strings represented by this.bytes
+     *
+     * @returns An Array of strings representing the Hash256 objects
+     */
+    toJSON() {
+        if (this.bytes.byteLength % 32 !== 0) {
+            throw new Error('Invalid bytes for Vector256');
+        }
+        const result = [];
+        for (let i = 0; i < this.bytes.byteLength; i += 32) {
+            result.push((0, utils_1.bytesToHex)(this.bytes.slice(i, i + 32)));
+        }
+        return result;
+    }
+}
+exports.Vector256 = Vector256;
+//# sourceMappingURL=vector-256.js.map
+
+/***/ }),
+
+/***/ 6146:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.XChainBridge = void 0;
+const binary_parser_1 = __nccwpck_require__(5956);
+const account_id_1 = __nccwpck_require__(1601);
+const serialized_type_1 = __nccwpck_require__(1375);
+const issue_1 = __nccwpck_require__(4271);
+const utils_1 = __nccwpck_require__(3617);
+/**
+ * Type guard for XChainBridgeObject
+ */
+function isXChainBridgeObject(arg) {
+    const keys = Object.keys(arg).sort();
+    return (keys.length === 4 &&
+        keys[0] === 'IssuingChainDoor' &&
+        keys[1] === 'IssuingChainIssue' &&
+        keys[2] === 'LockingChainDoor' &&
+        keys[3] === 'LockingChainIssue');
+}
+/**
+ * Class for serializing/deserializing XChainBridges
+ */
+class XChainBridge extends serialized_type_1.SerializedType {
+    constructor(bytes) {
+        super(bytes !== null && bytes !== void 0 ? bytes : XChainBridge.ZERO_XCHAIN_BRIDGE.bytes);
+    }
+    /**
+     * Construct a cross-chain bridge from a JSON
+     *
+     * @param value XChainBridge or JSON to parse into an XChainBridge
+     * @returns An XChainBridge object
+     */
+    static from(value) {
+        if (value instanceof XChainBridge) {
+            return value;
+        }
+        if (!isXChainBridgeObject(value)) {
+            throw new Error('Invalid type to construct an XChainBridge');
+        }
+        const bytes = [];
+        this.TYPE_ORDER.forEach((item) => {
+            const { name, type } = item;
+            if (type === account_id_1.AccountID) {
+                bytes.push(Uint8Array.from([0x14]));
+            }
+            const object = type.from(value[name]);
+            bytes.push(object.toBytes());
+        });
+        return new XChainBridge((0, utils_1.concat)(bytes));
+    }
+    /**
+     * Read an XChainBridge from a BinaryParser
+     *
+     * @param parser BinaryParser to read the XChainBridge from
+     * @returns An XChainBridge object
+     */
+    static fromParser(parser) {
+        const bytes = [];
+        this.TYPE_ORDER.forEach((item) => {
+            const { type } = item;
+            if (type === account_id_1.AccountID) {
+                parser.skip(1);
+                bytes.push(Uint8Array.from([0x14]));
+            }
+            const object = type.fromParser(parser);
+            bytes.push(object.toBytes());
+        });
+        return new XChainBridge((0, utils_1.concat)(bytes));
+    }
+    /**
+     * Get the JSON representation of this XChainBridge
+     *
+     * @returns the JSON interpretation of this.bytes
+     */
+    toJSON() {
+        const parser = new binary_parser_1.BinaryParser(this.toString());
+        const json = {};
+        XChainBridge.TYPE_ORDER.forEach((item) => {
+            const { name, type } = item;
+            if (type === account_id_1.AccountID) {
+                parser.skip(1);
+            }
+            const object = type.fromParser(parser).toJSON();
+            json[name] = object;
+        });
+        return json;
+    }
+}
+exports.XChainBridge = XChainBridge;
+XChainBridge.ZERO_XCHAIN_BRIDGE = new XChainBridge((0, utils_1.concat)([
+    Uint8Array.from([0x14]),
+    new Uint8Array(40),
+    Uint8Array.from([0x14]),
+    new Uint8Array(40),
+]));
+XChainBridge.TYPE_ORDER = [
+    { name: 'LockingChainDoor', type: account_id_1.AccountID },
+    { name: 'LockingChainIssue', type: issue_1.Issue },
+    { name: 'IssuingChainDoor', type: account_id_1.AccountID },
+    { name: 'IssuingChainIssue', type: issue_1.Issue },
+];
+//# sourceMappingURL=xchain-bridge.js.map
+
+/***/ }),
+
+/***/ 2758:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.compare = exports.equal = exports.readUInt32BE = exports.readUInt16BE = exports.writeUInt32BE = exports.writeUInt16BE = exports.writeUInt8 = void 0;
+/**
+ * Writes value to array at the specified offset. The value must be a valid unsigned 8-bit integer.
+ * @param array Uint8Array to be written to
+ * @param value Number to be written to array.
+ * @param offset plus the number of bytes written.
+ */
+function writeUInt8(array, value, offset) {
+    value = Number(value);
+    array[offset] = value;
+}
+exports.writeUInt8 = writeUInt8;
+/**
+ * Writes value to array at the specified offset as big-endian. The value must be a valid unsigned 16-bit integer.
+ * @param array Uint8Array to be written to
+ * @param value Number to be written to array.
+ * @param offset plus the number of bytes written.
+ */
+function writeUInt16BE(array, value, offset) {
+    value = Number(value);
+    array[offset] = value >>> 8;
+    array[offset + 1] = value;
+}
+exports.writeUInt16BE = writeUInt16BE;
+/**
+ * Writes value to array at the specified offset as big-endian. The value must be a valid unsigned 32-bit integer.
+ * @param array Uint8Array to be written to
+ * @param value Number to be written to array.
+ * @param offset plus the number of bytes written.
+ */
+function writeUInt32BE(array, value, offset) {
+    array[offset] = (value >>> 24) & 0xff;
+    array[offset + 1] = (value >>> 16) & 0xff;
+    array[offset + 2] = (value >>> 8) & 0xff;
+    array[offset + 3] = value & 0xff;
+}
+exports.writeUInt32BE = writeUInt32BE;
+/**
+ * Reads an unsigned, big-endian 16-bit integer from the array at the specified offset.
+ * @param array Uint8Array to read
+ * @param offset Number of bytes to skip before starting to read. Must satisfy 0 <= offset <= buf.length - 2
+ */
+function readUInt16BE(array, offset) {
+    return new DataView(array.buffer).getUint16(offset, false).toString(10);
+}
+exports.readUInt16BE = readUInt16BE;
+/**
+ * Reads an unsigned, big-endian 16-bit integer from the array at the specified offset.
+ * @param array Uint8Array to read
+ * @param offset Number of bytes to skip before starting to read. Must satisfy 0 <= offset <= buf.length - 4
+ */
+function readUInt32BE(array, offset) {
+    return new DataView(array.buffer).getUint32(offset, false).toString(10);
+}
+exports.readUInt32BE = readUInt32BE;
+/**
+ * Compares two Uint8Array or ArrayBuffers
+ * @param a first array to compare
+ * @param b second array to compare
+ */
+function equal(a, b) {
+    const aUInt = a instanceof ArrayBuffer ? new Uint8Array(a, 0) : a;
+    const bUInt = b instanceof ArrayBuffer ? new Uint8Array(b, 0) : b;
+    if (aUInt.byteLength != bUInt.byteLength)
+        return false;
+    if (aligned32(aUInt) && aligned32(bUInt))
+        return compare32(aUInt, bUInt) === 0;
+    if (aligned16(aUInt) && aligned16(bUInt))
+        return compare16(aUInt, bUInt) === 0;
+    return compare8(aUInt, bUInt) === 0;
+}
+exports.equal = equal;
+/**
+ * Compares two 8 bit aligned arrays
+ * @param a first array to compare
+ * @param b second array to compare
+ */
+function compare8(a, b) {
+    const ua = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+    const ub = new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
+    return compare(ua, ub);
+}
+/**
+ * Compares two 16 bit aligned arrays
+ * @param a first array to compare
+ * @param b second array to compare
+ */
+function compare16(a, b) {
+    const ua = new Uint16Array(a.buffer, a.byteOffset, a.byteLength / 2);
+    const ub = new Uint16Array(b.buffer, b.byteOffset, b.byteLength / 2);
+    return compare(ua, ub);
+}
+/**
+ * Compares two 32 bit aligned arrays
+ * @param a first array to compare
+ * @param b second array to compare
+ */
+function compare32(a, b) {
+    const ua = new Uint32Array(a.buffer, a.byteOffset, a.byteLength / 4);
+    const ub = new Uint32Array(b.buffer, b.byteOffset, b.byteLength / 4);
+    return compare(ua, ub);
+}
+/**
+ * Compare two TypedArrays
+ * @param a first array to compare
+ * @param b second array to compare
+ */
+function compare(a, b) {
+    if (a.byteLength !== b.byteLength) {
+        throw new Error('Cannot compare arrays of different length');
+    }
+    for (let i = 0; i < a.length - 1; i += 1) {
+        if (a[i] > b[i])
+            return 1;
+        if (a[i] < b[i])
+            return -1;
+    }
+    return 0;
+}
+exports.compare = compare;
+/**
+ * Determine if TypedArray is 16 bit aligned
+ * @param array The array to check
+ */
+function aligned16(array) {
+    return array.byteOffset % 2 === 0 && array.byteLength % 2 === 0;
+}
+/**
+ * Determine if TypedArray is 32 bit aligned
+ * @param array The array to check
+ */
+function aligned32(array) {
+    return array.byteOffset % 4 === 0 && array.byteLength % 4 === 0;
+}
+//# sourceMappingURL=utils.js.map
+
+/***/ }),
+
+/***/ 4095:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.decodeSeed = exports.deriveNodeAddress = exports.deriveAddress = exports.verify = exports.sign = exports.deriveKeypair = exports.generateSeed = void 0;
+const xahau_address_codec_1 = __nccwpck_require__(647);
+Object.defineProperty(exports, "decodeSeed", ({ enumerable: true, get: function () { return xahau_address_codec_1.decodeSeed; } }));
+const ripemd160_1 = __nccwpck_require__(8841);
+const sha256_1 = __nccwpck_require__(8093);
+const utils_1 = __nccwpck_require__(3617);
+const utils_2 = __nccwpck_require__(1951);
+const Sha512_1 = __importDefault(__nccwpck_require__(5086));
+const assert_1 = __importDefault(__nccwpck_require__(8649));
+const getAlgorithmFromKey_1 = __nccwpck_require__(352);
+const secp256k1_1 = __importDefault(__nccwpck_require__(3163));
+const ed25519_1 = __importDefault(__nccwpck_require__(2149));
+function getSigningScheme(algorithm) {
+    const schemes = { 'ecdsa-secp256k1': secp256k1_1.default, ed25519: ed25519_1.default };
+    return schemes[algorithm];
+}
+function generateSeed(options = {}) {
+    assert_1.default.ok(!options.entropy || options.entropy.length >= 16, 'entropy too short');
+    const entropy = options.entropy
+        ? options.entropy.slice(0, 16)
+        : (0, utils_1.randomBytes)(16);
+    const type = options.algorithm === 'ed25519' ? 'ed25519' : 'secp256k1';
+    return (0, xahau_address_codec_1.encodeSeed)(entropy, type);
+}
+exports.generateSeed = generateSeed;
+function deriveKeypair(seed, options) {
+    var _a;
+    const decoded = (0, xahau_address_codec_1.decodeSeed)(seed);
+    const proposedAlgorithm = (_a = options === null || options === void 0 ? void 0 : options.algorithm) !== null && _a !== void 0 ? _a : decoded.type;
+    const algorithm = proposedAlgorithm === 'ed25519' ? 'ed25519' : 'ecdsa-secp256k1';
+    const scheme = getSigningScheme(algorithm);
+    const keypair = scheme.deriveKeypair(decoded.bytes, options);
+    const messageToVerify = Sha512_1.default.half('This test message should verify.');
+    const signature = scheme.sign(messageToVerify, keypair.privateKey);
+    /* istanbul ignore if */
+    if (!scheme.verify(messageToVerify, signature, keypair.publicKey)) {
+        throw new Error('derived keypair did not generate verifiable signature');
+    }
+    return keypair;
+}
+exports.deriveKeypair = deriveKeypair;
+function sign(messageHex, privateKey) {
+    const algorithm = (0, getAlgorithmFromKey_1.getAlgorithmFromPrivateKey)(privateKey);
+    return getSigningScheme(algorithm).sign((0, utils_1.hexToBytes)(messageHex), privateKey);
+}
+exports.sign = sign;
+function verify(messageHex, signature, publicKey) {
+    const algorithm = (0, getAlgorithmFromKey_1.getAlgorithmFromPublicKey)(publicKey);
+    return getSigningScheme(algorithm).verify((0, utils_1.hexToBytes)(messageHex), signature, publicKey);
+}
+exports.verify = verify;
+function computePublicKeyHash(publicKeyBytes) {
+    return (0, ripemd160_1.ripemd160)((0, sha256_1.sha256)(publicKeyBytes));
+}
+function deriveAddressFromBytes(publicKeyBytes) {
+    return (0, xahau_address_codec_1.encodeAccountID)(computePublicKeyHash(publicKeyBytes));
+}
+function deriveAddress(publicKey) {
+    return deriveAddressFromBytes((0, utils_1.hexToBytes)(publicKey));
+}
+exports.deriveAddress = deriveAddress;
+function deriveNodeAddress(publicKey) {
+    const generatorBytes = (0, xahau_address_codec_1.decodeNodePublic)(publicKey);
+    const accountPublicBytes = (0, utils_2.accountPublicFromPublicGenerator)(generatorBytes);
+    return deriveAddressFromBytes(accountPublicBytes);
+}
+exports.deriveNodeAddress = deriveNodeAddress;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 2149:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const ed25519_1 = __nccwpck_require__(9038);
+const utils_1 = __nccwpck_require__(3617);
+const assert_1 = __importDefault(__nccwpck_require__(8649));
+const Sha512_1 = __importDefault(__nccwpck_require__(5086));
+const ED_PREFIX = 'ED';
+const ed25519 = {
+    deriveKeypair(entropy) {
+        const rawPrivateKey = Sha512_1.default.half(entropy);
+        const privateKey = ED_PREFIX + (0, utils_1.bytesToHex)(rawPrivateKey);
+        const publicKey = ED_PREFIX + (0, utils_1.bytesToHex)(ed25519_1.ed25519.getPublicKey(rawPrivateKey));
+        return { privateKey, publicKey };
+    },
+    sign(message, privateKey) {
+        assert_1.default.ok(message instanceof Uint8Array, 'message must be array of octets');
+        assert_1.default.ok(privateKey.length === 66, 'private key must be 33 bytes including prefix');
+        return (0, utils_1.bytesToHex)(ed25519_1.ed25519.sign(message, privateKey.slice(2)));
+    },
+    verify(message, signature, publicKey) {
+        // Unlikely to be triggered as these are internal and guarded by getAlgorithmFromKey
+        assert_1.default.ok(publicKey.length === 66, 'public key must be 33 bytes including prefix');
+        return ed25519_1.ed25519.verify(signature, message, 
+        // Remove the 0xED prefix
+        publicKey.slice(2), 
+        // By default, set zip215 to false for compatibility reasons.
+        // ZIP 215 is a stricter Ed25519 signature verification scheme.
+        // However, setting it to false adheres to the more commonly used
+        // RFC8032 / NIST186-5 standards, making it compatible with systems
+        // like the XAH Ledger.
+        { zip215: false });
+    },
+};
+exports["default"] = ed25519;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 3163:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const utils_1 = __nccwpck_require__(2210);
+const secp256k1_1 = __nccwpck_require__(6379);
+const utils_2 = __nccwpck_require__(3617);
+const utils_3 = __nccwpck_require__(1951);
+const assert_1 = __importDefault(__nccwpck_require__(8649));
+const Sha512_1 = __importDefault(__nccwpck_require__(5086));
+const SECP256K1_PREFIX = '00';
+const secp256k1 = {
+    deriveKeypair(entropy, options) {
+        const derived = (0, utils_3.derivePrivateKey)(entropy, options);
+        const privateKey = SECP256K1_PREFIX + (0, utils_2.bytesToHex)((0, utils_1.numberToBytesBE)(derived, 32));
+        const publicKey = (0, utils_2.bytesToHex)(secp256k1_1.secp256k1.getPublicKey(derived, true));
+        return { privateKey, publicKey };
+    },
+    sign(message, privateKey) {
+        // Some callers pass the privateKey with the prefix, others without.
+        // @noble/curves will throw if the key is not exactly 32 bytes, so we
+        // normalize it before passing to the sign method.
+        assert_1.default.ok((privateKey.length === 66 && privateKey.startsWith(SECP256K1_PREFIX)) ||
+            privateKey.length === 64);
+        const normedPrivateKey = privateKey.length === 66 ? privateKey.slice(2) : privateKey;
+        return secp256k1_1.secp256k1
+            .sign(Sha512_1.default.half(message), normedPrivateKey, {
+            // "Canonical" signatures
+            lowS: true,
+            // Would fail tests if signatures aren't deterministic
+            extraEntropy: undefined,
+        })
+            .toDERHex(true)
+            .toUpperCase();
+    },
+    verify(message, signature, publicKey) {
+        const decoded = secp256k1_1.secp256k1.Signature.fromDER(signature);
+        return secp256k1_1.secp256k1.verify(decoded, Sha512_1.default.half(message), publicKey);
+    },
+};
+exports["default"] = secp256k1;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 1951:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.accountPublicFromPublicGenerator = exports.derivePrivateKey = void 0;
+const secp256k1_1 = __nccwpck_require__(6379);
+const Sha512_1 = __importDefault(__nccwpck_require__(5086));
+const ZERO = BigInt(0);
+function deriveScalar(bytes, discrim) {
+    const order = secp256k1_1.secp256k1.CURVE.n;
+    for (let i = 0; i <= 4294967295; i++) {
+        // We hash the bytes to find a 256-bit number, looping until we are sure it
+        // is less than the order of the curve.
+        const hasher = new Sha512_1.default().add(bytes);
+        // If the optional discriminator index was passed in, update the hash.
+        if (discrim !== undefined) {
+            hasher.addU32(discrim);
+        }
+        hasher.addU32(i);
+        const key = hasher.first256BigInt();
+        /* istanbul ignore else */
+        if (key > ZERO && key < order) {
+            return key;
+        }
+    }
+    // This error is practically impossible to reach.
+    // The order of the curve describes the (finite) amount of points on the curve
+    // https://github.com/indutny/elliptic/blob/master/lib/elliptic/curves.js#L182
+    // How often will an (essentially) random number generated by Sha512 be larger than that?
+    // There's 2^32 chances (the for loop) to get a number smaller than the order,
+    // and it's rare that you'll even get past the first loop iteration.
+    // Note that in TypeScript we actually need the throw, otherwise the function signature would be bigint | undefined
+    //
+    /* istanbul ignore next */
+    throw new Error('impossible unicorn ;)');
+}
+/**
+ * @param seed - Bytes.
+ * @param [opts] - Object.
+ * @param [opts.accountIndex=0] - The account number to generate.
+ * @param [opts.validator=false] - Generate root key-pair,
+ *                                              as used by validators.
+ * @returns {bigint} 256 bit scalar value.
+ *
+ */
+function derivePrivateKey(seed, opts = {}) {
+    const root = opts.validator;
+    const order = secp256k1_1.secp256k1.CURVE.n;
+    // This private generator represents the `root` private key, and is what's
+    // used by validators for signing when a keypair is generated from a seed.
+    const privateGen = deriveScalar(seed);
+    if (root) {
+        // As returned by validation_create for a given seed
+        return privateGen;
+    }
+    const publicGen = secp256k1_1.secp256k1.ProjectivePoint.BASE.multiply(privateGen).toRawBytes(true);
+    // A seed can generate many keypairs as a function of the seed and a uint32.
+    // Almost everyone just uses the first account, `0`.
+    const accountIndex = opts.accountIndex || 0;
+    return (deriveScalar(publicGen, accountIndex) + privateGen) % order;
+}
+exports.derivePrivateKey = derivePrivateKey;
+function accountPublicFromPublicGenerator(publicGenBytes) {
+    const rootPubPoint = secp256k1_1.secp256k1.ProjectivePoint.fromHex(publicGenBytes);
+    const scalar = deriveScalar(publicGenBytes, 0);
+    const point = secp256k1_1.secp256k1.ProjectivePoint.BASE.multiply(scalar);
+    const offset = rootPubPoint.add(point);
+    return offset.toRawBytes(true);
+}
+exports.accountPublicFromPublicGenerator = accountPublicFromPublicGenerator;
+//# sourceMappingURL=utils.js.map
+
+/***/ }),
+
+/***/ 5086:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const sha512_1 = __nccwpck_require__(65);
+const utils_1 = __nccwpck_require__(2210);
+class Sha512 {
+    constructor() {
+        // instantiate empty sha512 hash
+        this.hash = sha512_1.sha512.create();
+    }
+    static half(input) {
+        return new Sha512().add(input).first256();
+    }
+    add(bytes) {
+        this.hash.update(bytes);
+        return this;
+    }
+    addU32(i) {
+        const buffer = new Uint8Array(4);
+        new DataView(buffer.buffer).setUint32(0, i);
+        return this.add(buffer);
+    }
+    finish() {
+        return this.hash.digest();
+    }
+    first256() {
+        return this.finish().slice(0, 32);
+    }
+    first256BigInt() {
+        return (0, utils_1.bytesToNumberBE)(this.first256());
+    }
+}
+exports["default"] = Sha512;
+//# sourceMappingURL=Sha512.js.map
+
+/***/ }),
+
+/***/ 8649:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const assertHelper = {
+    ok(cond, message) {
+        if (!cond) {
+            throw new Error(message);
+        }
+    },
+};
+exports["default"] = assertHelper;
+//# sourceMappingURL=assert.js.map
+
+/***/ }),
+
+/***/ 352:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getAlgorithmFromPrivateKey = exports.getAlgorithmFromPublicKey = exports.getAlgorithmFromKey = void 0;
+var Prefix;
+(function (Prefix) {
+    Prefix[Prefix["NONE"] = -1] = "NONE";
+    Prefix[Prefix["ED25519"] = 237] = "ED25519";
+    Prefix[Prefix["SECP256K1_PUB_X"] = 2] = "SECP256K1_PUB_X";
+    Prefix[Prefix["SECP256K1_PUB_X_ODD_Y"] = 3] = "SECP256K1_PUB_X_ODD_Y";
+    Prefix[Prefix["SECP256K1_PUB_XY"] = 4] = "SECP256K1_PUB_XY";
+    Prefix[Prefix["SECP256K1_PRIVATE"] = 0] = "SECP256K1_PRIVATE";
+})(Prefix || (Prefix = {}));
+/**
+ * | Curve     | Type        | Prefix | Length | Description                                           | Algorithm       |
+ * |-----------|-------------|:------:|:------:|-------------------------------------------------------|----------------:|
+ * | ed25519   | Private     |  0xED  |   33   | prefix + Uint256LE (0 < n < order )                   |         ed25519 |
+ * | ed25519   | Public      |  0xED  |   33   | prefix + 32 y-bytes                                   |         ed25519 |
+ * | secp256k1 | Public (1)  |  0x02  |   33   | prefix + 32 x-bytes                                   | ecdsa-secp256k1 |
+ * | secp256k1 | Public (2)  |  0x03  |   33   | prefix + 32 x-bytes (y is odd)                        | ecdsa-secp256k1 |
+ * | secp256k1 | Public (3)  |  0x04  |   65   | prefix + 32 x-bytes + 32 y-bytes                      | ecdsa-secp256k1 |
+ * | secp256k1 | Private (1) |  None  |   32   | Uint256BE (0 < n < order)                             | ecdsa-secp256k1 |
+ * | secp256k1 | Private (2) |  0x00  |   33   | prefix + Uint256BE (0 < n < order)                    | ecdsa-secp256k1 |
+ *
+ * Note: The 0x00 prefix for secpk256k1 Private (2) essentially 0 pads the number
+ *       and the interpreted number is the same as 32 bytes.
+ */
+const KEY_TYPES = {
+    [`private_${Prefix.NONE}_32`]: 'ecdsa-secp256k1',
+    [`private_${Prefix.SECP256K1_PRIVATE}_33`]: 'ecdsa-secp256k1',
+    [`private_${Prefix.ED25519}_33`]: 'ed25519',
+    [`public_${Prefix.ED25519}_33`]: 'ed25519',
+    [`public_${Prefix.SECP256K1_PUB_X}_33`]: 'ecdsa-secp256k1',
+    [`public_${Prefix.SECP256K1_PUB_X_ODD_Y}_33`]: 'ecdsa-secp256k1',
+    [`public_${Prefix.SECP256K1_PUB_XY}_65`]: 'ecdsa-secp256k1',
+};
+function getKeyInfo(key) {
+    return {
+        prefix: key.length < 2 ? Prefix.NONE : parseInt(key.slice(0, 2), 16),
+        len: key.length / 2,
+    };
+}
+function prefixRepr(prefix) {
+    return prefix === Prefix.NONE
+        ? 'None'
+        : `0x${prefix.toString(16).padStart(2, '0')}`;
+}
+function getValidFormatsTable(type) {
+    // No need overkill with renderTable method
+    const padding = 2;
+    const colWidth = {
+        algorithm: 'ecdsa-secp256k1'.length + padding,
+        prefix: '0x00'.length + padding,
+    };
+    return Object.entries(KEY_TYPES)
+        .filter(([key]) => key.startsWith(type))
+        .map(([key, algorithm]) => {
+        const [, prefix, length] = key.split('_');
+        const paddedAlgo = algorithm.padEnd(colWidth.algorithm);
+        const paddedPrefix = prefixRepr(Number(prefix)).padEnd(colWidth.prefix);
+        return `${paddedAlgo} - Prefix: ${paddedPrefix} Length: ${length} bytes`;
+    })
+        .join('\n');
+}
+function keyError({ key, type, prefix, len, }) {
+    const validFormats = getValidFormatsTable(type);
+    return `invalid_key:
+
+Type: ${type}
+Key: ${key}
+Prefix: ${prefixRepr(prefix)} 
+Length: ${len} bytes
+
+Acceptable ${type} formats are:
+${validFormats}
+`;
+}
+/**
+ * Determines the algorithm associated with a given key (public/private).
+ *
+ * @param key - hexadecimal string representation of the key.
+ * @param type - whether expected key is public or private
+ * @returns Algorithm algorithm for signing/verifying
+ * @throws Error when key is invalid
+ */
+function getAlgorithmFromKey(key, type) {
+    const { prefix, len } = getKeyInfo(key);
+    // Special case back compat support for no prefix
+    const usedPrefix = type === 'private' && len === 32 ? Prefix.NONE : prefix;
+    const algorithm = KEY_TYPES[`${type}_${usedPrefix}_${len}`];
+    if (!algorithm) {
+        throw new Error(keyError({ key, type, len, prefix: usedPrefix }));
+    }
+    return algorithm;
+}
+exports.getAlgorithmFromKey = getAlgorithmFromKey;
+function getAlgorithmFromPublicKey(key) {
+    return getAlgorithmFromKey(key, 'public');
+}
+exports.getAlgorithmFromPublicKey = getAlgorithmFromPublicKey;
+function getAlgorithmFromPrivateKey(key) {
+    return getAlgorithmFromKey(key, 'private');
+}
+exports.getAlgorithmFromPrivateKey = getAlgorithmFromPrivateKey;
+//# sourceMappingURL=getAlgorithmFromKey.js.map
+
+/***/ }),
+
+/***/ 5657:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -23246,295 +23485,45 @@ exports["default"] = ECDSA;
 
 /***/ }),
 
-/***/ 7338:
+/***/ 7428:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.authorizeChannel = void 0;
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-function authorizeChannel(wallet, channelId, amount) {
-    const signingData = (0, ripple_binary_codec_1.encodeForSigningClaim)({
-        channel: channelId,
-        amount,
-    });
-    return (0, ripple_keypairs_1.sign)(signingData, wallet.privateKey);
-}
-exports.authorizeChannel = authorizeChannel;
-//# sourceMappingURL=authorizeChannel.js.map
-
-/***/ }),
-
-/***/ 9720:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.combineBatchSigners = exports.signMultiBatch = void 0;
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-const errors_1 = __nccwpck_require__(7919);
-const models_1 = __nccwpck_require__(813);
-const batch_1 = __nccwpck_require__(2269);
-const hashes_1 = __nccwpck_require__(9445);
-const utils_1 = __nccwpck_require__(3210);
-function constructBatchSignerObject(batchAccount, wallet, signature, multisignAddress = false) {
-    let batchSigner;
-    if (multisignAddress) {
-        batchSigner = {
-            BatchSigner: {
-                Account: batchAccount,
-                Signers: [
-                    {
-                        Signer: {
-                            Account: multisignAddress,
-                            SigningPubKey: wallet.publicKey,
-                            TxnSignature: signature,
-                        },
-                    },
-                ],
-            },
-        };
-    }
-    else {
-        batchSigner = {
-            BatchSigner: {
-                Account: batchAccount,
-                SigningPubKey: wallet.publicKey,
-                TxnSignature: signature,
-            },
-        };
-    }
-    return batchSigner;
-}
-function signMultiBatch(wallet, transaction, opts = {}) {
-    var _a;
-    const batchAccount = (_a = opts.batchAccount) !== null && _a !== void 0 ? _a : wallet.classicAddress;
-    let multisignAddress = false;
-    if (typeof opts.multisign === 'string') {
-        multisignAddress = opts.multisign;
-    }
-    else if (opts.multisign) {
-        multisignAddress = wallet.classicAddress;
-    }
-    if (transaction.TransactionType !== 'Batch') {
-        throw new errors_1.ValidationError('Must be a Batch transaction.');
-    }
-    (0, models_1.validate)(transaction);
-    const involvedAccounts = new Set(transaction.RawTransactions.map((raw) => raw.RawTransaction.Account));
-    if (!involvedAccounts.has(batchAccount)) {
-        throw new errors_1.ValidationError('Must be signing for an address submitting a transaction in the Batch.');
-    }
-    const fieldsToSign = {
-        flags: transaction.Flags,
-        txIDs: transaction.RawTransactions.map((rawTx) => (0, hashes_1.hashSignedTx)(rawTx.RawTransaction)),
-    };
-    const signature = (0, ripple_keypairs_1.sign)((0, ripple_binary_codec_1.encodeForSigningBatch)(fieldsToSign), wallet.privateKey);
-    transaction.BatchSigners = [
-        constructBatchSignerObject(batchAccount, wallet, signature, multisignAddress),
-    ];
-}
-exports.signMultiBatch = signMultiBatch;
-function combineBatchSigners(transactions) {
-    if (transactions.length === 0) {
-        throw new errors_1.ValidationError('There are 0 transactions to combine.');
-    }
-    const decodedTransactions = transactions.map((txOrBlob) => {
-        return (0, utils_1.getDecodedTransaction)(txOrBlob);
-    });
-    decodedTransactions.forEach((tx) => {
-        if (tx.TransactionType !== 'Batch') {
-            throw new errors_1.ValidationError('TransactionType must be `Batch`.');
-        }
-        (0, batch_1.validateBatch)(tx);
-        if (tx.BatchSigners == null || tx.BatchSigners.length === 0) {
-            throw new errors_1.ValidationError('For combining Batch transaction signatures, all transactions must include a BatchSigners field containing an array of signatures.');
-        }
-        if (tx.TxnSignature != null || tx.Signers != null) {
-            throw new errors_1.ValidationError('Batch transaction must be unsigned.');
-        }
-    });
-    const batchTransactions = decodedTransactions;
-    validateBatchTransactionEquivalence(batchTransactions);
-    return (0, ripple_binary_codec_1.encode)(getTransactionWithAllBatchSigners(batchTransactions));
-}
-exports.combineBatchSigners = combineBatchSigners;
-function validateBatchTransactionEquivalence(transactions) {
-    const exampleTransaction = JSON.stringify({
-        flags: transactions[0].Flags,
-        transactionIDs: transactions[0].RawTransactions.map((rawTx) => (0, hashes_1.hashSignedTx)(rawTx.RawTransaction)),
-    });
-    if (transactions.slice(1).some((tx) => JSON.stringify({
-        flags: tx.Flags,
-        transactionIDs: tx.RawTransactions.map((rawTx) => (0, hashes_1.hashSignedTx)(rawTx.RawTransaction)),
-    }) !== exampleTransaction)) {
-        throw new errors_1.ValidationError('Flags and transaction hashes are not the same for all provided transactions.');
-    }
-}
-function getTransactionWithAllBatchSigners(transactions) {
-    const sortedSigners = transactions
-        .flatMap((tx) => { var _a; return (_a = tx.BatchSigners) !== null && _a !== void 0 ? _a : []; })
-        .filter((signer) => signer.BatchSigner.Account !== transactions[0].Account)
-        .sort((signer1, signer2) => (0, utils_1.compareSigners)(signer1.BatchSigner, signer2.BatchSigner));
-    return Object.assign(Object.assign({}, transactions[0]), { BatchSigners: sortedSigners });
-}
-//# sourceMappingURL=batchSigner.js.map
-
-/***/ }),
-
-/***/ 9158:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.combineLoanSetCounterpartySigners = exports.signLoanSetByCounterparty = void 0;
-const fast_json_stable_stringify_1 = __importDefault(__nccwpck_require__(969));
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const errors_1 = __nccwpck_require__(7919);
-const models_1 = __nccwpck_require__(813);
-const hashes_1 = __nccwpck_require__(9445);
-const utils_1 = __nccwpck_require__(3210);
-function signLoanSetByCounterparty(wallet, transaction, opts = {}) {
-    const tx = (0, utils_1.getDecodedTransaction)(transaction);
-    if (tx.TransactionType !== 'LoanSet') {
-        throw new errors_1.ValidationError('Transaction must be a LoanSet transaction.');
-    }
-    if (tx.CounterpartySignature) {
-        throw new errors_1.ValidationError('Transaction is already signed by the counterparty.');
-    }
-    if (tx.TxnSignature == null || tx.SigningPubKey == null) {
-        throw new errors_1.ValidationError('Transaction must be first signed by first party.');
-    }
-    (0, models_1.validate)(tx);
-    let multisignAddress = false;
-    if (typeof opts.multisign === 'string') {
-        multisignAddress = opts.multisign;
-    }
-    else if (opts.multisign) {
-        multisignAddress = wallet.classicAddress;
-    }
-    if (multisignAddress) {
-        tx.CounterpartySignature = {
-            Signers: [
-                {
-                    Signer: {
-                        Account: multisignAddress,
-                        SigningPubKey: wallet.publicKey,
-                        TxnSignature: (0, utils_1.computeSignature)(tx, wallet.privateKey, multisignAddress),
-                    },
-                },
-            ],
-        };
-    }
-    else {
-        tx.CounterpartySignature = {
-            SigningPubKey: wallet.publicKey,
-            TxnSignature: (0, utils_1.computeSignature)(tx, wallet.privateKey),
-        };
-    }
-    const serialized = (0, ripple_binary_codec_1.encode)(tx);
-    return {
-        tx,
-        tx_blob: serialized,
-        hash: (0, hashes_1.hashSignedTx)(serialized),
-    };
-}
-exports.signLoanSetByCounterparty = signLoanSetByCounterparty;
-function combineLoanSetCounterpartySigners(transactions) {
-    if (transactions.length === 0) {
-        throw new errors_1.ValidationError('There are 0 transactions to combine.');
-    }
-    const decodedTransactions = transactions.map((txOrBlob) => {
-        return (0, utils_1.getDecodedTransaction)(txOrBlob);
-    });
-    decodedTransactions.forEach((tx) => {
-        var _a;
-        (0, models_1.validate)(tx);
-        if (tx.TransactionType !== 'LoanSet') {
-            throw new errors_1.ValidationError('Transaction must be a LoanSet transaction.');
-        }
-        if (((_a = tx.CounterpartySignature) === null || _a === void 0 ? void 0 : _a.Signers) == null ||
-            tx.CounterpartySignature.Signers.length === 0) {
-            throw new errors_1.ValidationError('CounterpartySignature must have Signers.');
-        }
-        if (tx.TxnSignature == null || tx.SigningPubKey == null) {
-            throw new errors_1.ValidationError('Transaction must be first signed by first party.');
-        }
-    });
-    const loanSetTransactions = decodedTransactions;
-    validateLoanSetTransactionEquivalence(loanSetTransactions);
-    const tx = getTransactionWithAllLoanSetCounterpartySigners(loanSetTransactions);
-    return {
-        tx,
-        tx_blob: (0, ripple_binary_codec_1.encode)(tx),
-    };
-}
-exports.combineLoanSetCounterpartySigners = combineLoanSetCounterpartySigners;
-function validateLoanSetTransactionEquivalence(transactions) {
-    const exampleTransaction = (0, fast_json_stable_stringify_1.default)(Object.assign(Object.assign({}, transactions[0]), { CounterpartySignature: Object.assign(Object.assign({}, transactions[0].CounterpartySignature), { Signers: null }) }));
-    if (transactions.slice(1).some((tx) => (0, fast_json_stable_stringify_1.default)(Object.assign(Object.assign({}, tx), { CounterpartySignature: Object.assign(Object.assign({}, tx.CounterpartySignature), { Signers: null }) })) !== exampleTransaction)) {
-        throw new errors_1.ValidationError('LoanSet transactions are not the same.');
-    }
-}
-function getTransactionWithAllLoanSetCounterpartySigners(transactions) {
-    const sortedSigners = transactions
-        .flatMap((tx) => { var _a, _b; return (_b = (_a = tx.CounterpartySignature) === null || _a === void 0 ? void 0 : _a.Signers) !== null && _b !== void 0 ? _b : []; })
-        .sort((signer1, signer2) => (0, utils_1.compareSigners)(signer1.Signer, signer2.Signer));
-    return Object.assign(Object.assign({}, transactions[0]), { CounterpartySignature: { Signers: sortedSigners } });
-}
-//# sourceMappingURL=counterpartySigner.js.map
-
-/***/ }),
-
-/***/ 6297:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getFaucetPath = exports.getFaucetHost = exports.faucetNetworkIDs = exports.faucetNetworkPaths = exports.FaucetNetwork = void 0;
-const errors_1 = __nccwpck_require__(7919);
+exports.getDefaultFaucetPath = exports.getFaucetHost = exports.FaucetNetworkPaths = exports.FaucetNetwork = void 0;
+const errors_1 = __nccwpck_require__(842);
 var FaucetNetwork;
 (function (FaucetNetwork) {
-    FaucetNetwork["Testnet"] = "faucet.altnet.rippletest.net";
-    FaucetNetwork["Devnet"] = "faucet.devnet.rippletest.net";
+    FaucetNetwork["Testnet"] = "xahau-test.net";
+    FaucetNetwork["Devnet"] = "jshooks.xahau-test.net";
 })(FaucetNetwork || (exports.FaucetNetwork = FaucetNetwork = {}));
-exports.faucetNetworkPaths = {
+exports.FaucetNetworkPaths = {
     [FaucetNetwork.Testnet]: '/accounts',
     [FaucetNetwork.Devnet]: '/accounts',
 };
-exports.faucetNetworkIDs = new Map([
-    [1, FaucetNetwork.Testnet],
-    [2, FaucetNetwork.Devnet],
-]);
 function getFaucetHost(client) {
-    if (client.networkID == null) {
-        throw new errors_1.XRPLFaucetError('Cannot create faucet URL without networkID or the faucetHost information');
+    const connectionUrl = client.url;
+    if (connectionUrl.includes('jshooks')) {
+        return FaucetNetwork.Devnet;
     }
-    if (exports.faucetNetworkIDs.has(client.networkID)) {
-        return exports.faucetNetworkIDs.get(client.networkID);
-    }
-    if (client.networkID === 0) {
-        throw new errors_1.XRPLFaucetError('Faucet is not available for mainnet.');
+    if (connectionUrl.includes('test')) {
+        return FaucetNetwork.Testnet;
     }
     throw new errors_1.XRPLFaucetError('Faucet URL is not defined or inferrable.');
 }
 exports.getFaucetHost = getFaucetHost;
-function getFaucetPath(hostname) {
+function getDefaultFaucetPath(hostname) {
     if (hostname === undefined) {
         return '/accounts';
     }
-    return exports.faucetNetworkPaths[hostname] || '/accounts';
+    return exports.FaucetNetworkPaths[hostname] || '/accounts';
 }
-exports.getFaucetPath = getFaucetPath;
+exports.getDefaultFaucetPath = getDefaultFaucetPath;
 //# sourceMappingURL=defaultFaucets.js.map
 
 /***/ }),
 
-/***/ 9974:
+/***/ 1730:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -23549,14 +23538,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.requestFunding = exports.getStartingBalance = exports.generateWalletToFund = void 0;
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const errors_1 = __nccwpck_require__(7919);
-const defaultFaucets_1 = __nccwpck_require__(6297);
-const _1 = __nccwpck_require__(5963);
+const xahau_address_codec_1 = __nccwpck_require__(647);
+const errors_1 = __nccwpck_require__(842);
+const defaultFaucets_1 = __nccwpck_require__(7428);
+const _1 = __nccwpck_require__(2586);
 const INTERVAL_SECONDS = 1;
 const MAX_ATTEMPTS = 20;
 function generateWalletToFund(wallet) {
-    if (wallet && (0, ripple_address_codec_1.isValidClassicAddress)(wallet.classicAddress)) {
+    if (wallet && (0, xahau_address_codec_1.isValidClassicAddress)(wallet.classicAddress)) {
         return wallet;
     }
     return _1.Wallet.generate();
@@ -23575,28 +23564,27 @@ function getStartingBalance(client, classicAddress) {
 }
 exports.getStartingBalance = getStartingBalance;
 function requestFunding(options, client, startingBalance, walletToFund, postBody) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
         const hostname = (_a = options.faucetHost) !== null && _a !== void 0 ? _a : (0, defaultFaucets_1.getFaucetHost)(client);
         if (!hostname) {
             throw new errors_1.XRPLFaucetError('No faucet hostname could be derived');
         }
-        const pathname = (_b = options.faucetPath) !== null && _b !== void 0 ? _b : (0, defaultFaucets_1.getFaucetPath)(hostname);
-        const protocol = (_c = options.faucetProtocol) !== null && _c !== void 0 ? _c : 'https';
-        const response = yield fetch(`${protocol}://${hostname}${pathname}`, {
+        const pathname = (_b = options.faucetPath) !== null && _b !== void 0 ? _b : (0, defaultFaucets_1.getDefaultFaucetPath)(hostname);
+        const response = yield fetch(`https://${hostname}${pathname}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(postBody),
         });
+        const body = yield response.json();
         if (response.ok &&
-            ((_d = response.headers.get('Content-Type')) === null || _d === void 0 ? void 0 : _d.startsWith('application/json'))) {
-            const body = yield response.json();
+            ((_c = response.headers.get('Content-Type')) === null || _c === void 0 ? void 0 : _c.startsWith('application/json'))) {
             const classicAddress = body.account.classicAddress;
             return processSuccessfulResponse(client, classicAddress, walletToFund, startingBalance);
         }
-        return processError(response);
+        return processError(response, body);
     });
 }
 exports.requestFunding = requestFunding;
@@ -23605,32 +23593,31 @@ function processSuccessfulResponse(client, classicAddress, walletToFund, startin
         if (!classicAddress) {
             return Promise.reject(new errors_1.XRPLFaucetError(`The faucet account is undefined`));
         }
-        const updatedBalance = yield getUpdatedBalance(client, classicAddress, startingBalance);
-        if (updatedBalance > startingBalance) {
-            return {
-                wallet: walletToFund,
-                balance: updatedBalance,
-            };
+        try {
+            const updatedBalance = yield getUpdatedBalance(client, classicAddress, startingBalance);
+            if (updatedBalance > startingBalance) {
+                return {
+                    wallet: walletToFund,
+                    balance: updatedBalance,
+                };
+            }
+            throw new errors_1.XRPLFaucetError(`Unable to fund address with faucet after waiting ${INTERVAL_SECONDS * MAX_ATTEMPTS} seconds`);
         }
-        throw new errors_1.XRPLFaucetError(`Unable to fund address with faucet after waiting ${INTERVAL_SECONDS * MAX_ATTEMPTS} seconds`);
+        catch (err) {
+            if (err instanceof Error) {
+                throw new errors_1.XRPLFaucetError(err.message);
+            }
+            throw err;
+        }
     });
 }
-function processError(response) {
-    var _a;
+function processError(response, body) {
     return __awaiter(this, void 0, void 0, function* () {
-        const errorData = {
-            contentType: (_a = response.headers.get('Content-Type')) !== null && _a !== void 0 ? _a : undefined,
+        return Promise.reject(new errors_1.XRPLFaucetError(`Request failed: ${JSON.stringify({
+            body: body || {},
+            contentType: response.headers.get('Content-Type'),
             statusCode: response.status,
-        };
-        const clone = response.clone();
-        try {
-            const body = yield response.json();
-            errorData.body = body;
-        }
-        catch (_b) {
-            errorData.body = yield clone.text();
-        }
-        return Promise.reject(new errors_1.XRPLFaucetError(`Request failed: ${JSON.stringify(errorData)}`));
+        })}`));
     });
 }
 function getUpdatedBalance(client, address, originalBalance) {
@@ -23672,7 +23659,7 @@ function getUpdatedBalance(client, address, originalBalance) {
 
 /***/ }),
 
-/***/ 5963:
+/***/ 2586:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -23680,26 +23667,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.combineLoanSetCounterpartySigners = exports.signLoanSetByCounterparty = exports.authorizeChannel = exports.verifySignature = exports.multisign = exports.combineBatchSigners = exports.signMultiBatch = exports.Wallet = void 0;
+exports.Wallet = void 0;
 const bip32_1 = __nccwpck_require__(2452);
 const bip39_1 = __nccwpck_require__(5587);
 const english_1 = __nccwpck_require__(2502);
 const utils_1 = __nccwpck_require__(3617);
 const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-const ECDSA_1 = __importDefault(__nccwpck_require__(7514));
-const errors_1 = __nccwpck_require__(7919);
-const transactions_1 = __nccwpck_require__(2931);
-const common_1 = __nccwpck_require__(9180);
-const utils_2 = __nccwpck_require__(296);
-const utils_3 = __nccwpck_require__(614);
-const collections_1 = __nccwpck_require__(3405);
-const hashLedger_1 = __nccwpck_require__(5690);
-const rfc1751_1 = __nccwpck_require__(2767);
-const signer_1 = __nccwpck_require__(7157);
-const utils_4 = __nccwpck_require__(3210);
+const xahau_address_codec_1 = __nccwpck_require__(647);
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const xahau_keypairs_1 = __nccwpck_require__(4095);
+const ECDSA_1 = __importDefault(__nccwpck_require__(5657));
+const errors_1 = __nccwpck_require__(842);
+const transactions_1 = __nccwpck_require__(1736);
+const utils_2 = __nccwpck_require__(9659);
+const collections_1 = __nccwpck_require__(991);
+const hashLedger_1 = __nccwpck_require__(9716);
+const rfc1751_1 = __nccwpck_require__(6051);
+const signer_1 = __nccwpck_require__(8857);
 const DEFAULT_ALGORITHM = ECDSA_1.default.ed25519;
 const DEFAULT_DERIVATION_PATH = "m/44'/144'/0'/0/0";
 function validateKey(node) {
@@ -23715,8 +23699,8 @@ class Wallet {
         this.publicKey = publicKey;
         this.privateKey = privateKey;
         this.classicAddress = opts.masterAddress
-            ? (0, utils_3.ensureClassicAddress)(opts.masterAddress)
-            : (0, ripple_keypairs_1.deriveAddress)(publicKey);
+            ? (0, utils_2.ensureClassicAddress)(opts.masterAddress)
+            : (0, xahau_keypairs_1.deriveAddress)(publicKey);
         this.seed = opts.seed;
     }
     get address() {
@@ -23726,7 +23710,7 @@ class Wallet {
         if (!Object.values(ECDSA_1.default).includes(algorithm)) {
             throw new errors_1.ValidationError('Invalid cryptographic signing algorithm');
         }
-        const seed = (0, ripple_keypairs_1.generateSeed)({ algorithm });
+        const seed = (0, xahau_keypairs_1.generateSeed)({ algorithm });
         return Wallet.fromSeed(seed, { algorithm });
     }
     static fromSeed(seed, opts = {}) {
@@ -23742,7 +23726,7 @@ class Wallet {
             entropy: Uint8Array.from(entropy),
             algorithm,
         };
-        const seed = (0, ripple_keypairs_1.generateSeed)(options);
+        const seed = (0, xahau_keypairs_1.generateSeed)(options);
         return Wallet.deriveWallet(seed, {
             algorithm,
             masterAddress: opts.masterAddress,
@@ -23778,7 +23762,7 @@ class Wallet {
         else {
             encodeAlgorithm = 'secp256k1';
         }
-        const encodedSeed = (0, ripple_address_codec_1.encodeSeed)(seed, encodeAlgorithm);
+        const encodedSeed = (0, xahau_address_codec_1.encodeSeed)(seed, encodeAlgorithm);
         return Wallet.fromSeed(encodedSeed, {
             masterAddress: opts.masterAddress,
             algorithm: opts.algorithm,
@@ -23786,7 +23770,7 @@ class Wallet {
     }
     static deriveWallet(seed, opts = {}) {
         var _a;
-        const { publicKey, privateKey } = (0, ripple_keypairs_1.deriveKeypair)(seed, {
+        const { publicKey, privateKey } = (0, xahau_keypairs_1.deriveKeypair)(seed, {
             algorithm: (_a = opts.algorithm) !== null && _a !== void 0 ? _a : DEFAULT_ALGORITHM,
         });
         return new Wallet(publicKey, privateKey, {
@@ -23796,7 +23780,7 @@ class Wallet {
     }
     sign(transaction, multisign) {
         let multisignAddress = false;
-        if (typeof multisign === 'string') {
+        if (typeof multisign === 'string' && multisign.startsWith('X')) {
             multisignAddress = multisign;
         }
         else if (multisign) {
@@ -23808,24 +23792,20 @@ class Wallet {
         }
         removeTrailingZeros(tx);
         (0, transactions_1.validate)(tx);
-        if ((0, utils_2.hasFlag)(tx, common_1.GlobalFlags.tfInnerBatchTxn, 'tfInnerBatchTxn')) {
-            throw new errors_1.ValidationError('Cannot sign a Batch inner transaction.');
-        }
         const txToSignAndEncode = Object.assign({}, tx);
+        txToSignAndEncode.SigningPubKey = multisignAddress ? '' : this.publicKey;
         if (multisignAddress) {
-            txToSignAndEncode.SigningPubKey = '';
             const signer = {
                 Account: multisignAddress,
                 SigningPubKey: this.publicKey,
-                TxnSignature: (0, utils_4.computeSignature)(txToSignAndEncode, this.privateKey, multisignAddress),
+                TxnSignature: computeSignature(txToSignAndEncode, this.privateKey, multisignAddress),
             };
             txToSignAndEncode.Signers = [{ Signer: signer }];
         }
         else {
-            txToSignAndEncode.SigningPubKey = this.publicKey;
-            txToSignAndEncode.TxnSignature = (0, utils_4.computeSignature)(txToSignAndEncode, this.privateKey);
+            txToSignAndEncode.TxnSignature = computeSignature(txToSignAndEncode, this.privateKey);
         }
-        const serialized = (0, ripple_binary_codec_1.encode)(txToSignAndEncode);
+        const serialized = (0, xahau_binary_codec_1.encode)(txToSignAndEncode);
         return {
             tx_blob: serialized,
             hash: (0, hashLedger_1.hashSignedTx)(serialized),
@@ -23835,11 +23815,20 @@ class Wallet {
         return (0, signer_1.verifySignature)(signedTransaction, this.publicKey);
     }
     getXAddress(tag = false, isTestnet = false) {
-        return (0, ripple_address_codec_1.classicAddressToXAddress)(this.classicAddress, tag, isTestnet);
+        return (0, xahau_address_codec_1.classicAddressToXAddress)(this.classicAddress, tag, isTestnet);
     }
 }
 exports.Wallet = Wallet;
 Wallet.fromSecret = Wallet.fromSeed;
+function computeSignature(tx, privateKey, signAs) {
+    if (signAs) {
+        const classicAddress = (0, xahau_address_codec_1.isValidXAddress)(signAs)
+            ? (0, xahau_address_codec_1.xAddressToClassicAddress)(signAs).classicAddress
+            : signAs;
+        return (0, xahau_keypairs_1.sign)((0, xahau_binary_codec_1.encodeForMultisigning)(tx, classicAddress), privateKey);
+    }
+    return (0, xahau_keypairs_1.sign)((0, xahau_binary_codec_1.encodeForSigning)(tx), privateKey);
+}
 function removeTrailingZeros(tx) {
     if (tx.TransactionType === 'Payment' &&
         typeof tx.Amount !== 'string' &&
@@ -23849,22 +23838,11 @@ function removeTrailingZeros(tx) {
         tx.Amount.value = new bignumber_js_1.default(tx.Amount.value).toString();
     }
 }
-var batchSigner_1 = __nccwpck_require__(9720);
-Object.defineProperty(exports, "signMultiBatch", ({ enumerable: true, get: function () { return batchSigner_1.signMultiBatch; } }));
-Object.defineProperty(exports, "combineBatchSigners", ({ enumerable: true, get: function () { return batchSigner_1.combineBatchSigners; } }));
-var signer_2 = __nccwpck_require__(7157);
-Object.defineProperty(exports, "multisign", ({ enumerable: true, get: function () { return signer_2.multisign; } }));
-Object.defineProperty(exports, "verifySignature", ({ enumerable: true, get: function () { return signer_2.verifySignature; } }));
-var authorizeChannel_1 = __nccwpck_require__(7338);
-Object.defineProperty(exports, "authorizeChannel", ({ enumerable: true, get: function () { return authorizeChannel_1.authorizeChannel; } }));
-var counterpartySigner_1 = __nccwpck_require__(9158);
-Object.defineProperty(exports, "signLoanSetByCounterparty", ({ enumerable: true, get: function () { return counterpartySigner_1.signLoanSetByCounterparty; } }));
-Object.defineProperty(exports, "combineLoanSetCounterpartySigners", ({ enumerable: true, get: function () { return counterpartySigner_1.combineLoanSetCounterpartySigners; } }));
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 2767:
+/***/ 6051:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -23874,7 +23852,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.keyToRFC1751Mnemonic = exports.rfc1751MnemonicToKey = void 0;
 const utils_1 = __nccwpck_require__(3617);
-const rfc1751Words_json_1 = __importDefault(__nccwpck_require__(4171));
+const rfc1751Words_json_1 = __importDefault(__nccwpck_require__(2103));
 const rfc1751WordList = rfc1751Words_json_1.default;
 const BINARY = ['0000', '0001', '0010', '0011', '0100', '0101', '0110', '0111',
     '1000', '1001', '1010', '1011', '1100', '1101', '1110', '1111'];
@@ -23999,23 +23977,25 @@ function swap128(arr) {
 
 /***/ }),
 
-/***/ 7157:
+/***/ 8857:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.multisign = exports.verifySignature = void 0;
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-const errors_1 = __nccwpck_require__(7919);
-const transactions_1 = __nccwpck_require__(2931);
-const utils_1 = __nccwpck_require__(3210);
+const utils_1 = __nccwpck_require__(3617);
+const bignumber_js_1 = __nccwpck_require__(7558);
+const xahau_address_codec_1 = __nccwpck_require__(647);
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const xahau_keypairs_1 = __nccwpck_require__(4095);
+const errors_1 = __nccwpck_require__(842);
+const transactions_1 = __nccwpck_require__(1736);
 function multisign(transactions) {
     if (transactions.length === 0) {
         throw new errors_1.ValidationError('There were 0 transactions to multisign');
     }
     const decodedTransactions = transactions.map((txOrBlob) => {
-        return (0, utils_1.getDecodedTransaction)(txOrBlob);
+        return getDecodedTransaction(txOrBlob);
     });
     decodedTransactions.forEach((tx) => {
         (0, transactions_1.validate)(tx);
@@ -24027,11 +24007,11 @@ function multisign(transactions) {
         }
     });
     validateTransactionEquivalence(decodedTransactions);
-    return (0, ripple_binary_codec_1.encode)(getTransactionWithAllSigners(decodedTransactions));
+    return (0, xahau_binary_codec_1.encode)(getTransactionWithAllSigners(decodedTransactions));
 }
 exports.multisign = multisign;
 function verifySignature(tx, publicKey) {
-    const decodedTx = (0, utils_1.getDecodedTransaction)(tx);
+    const decodedTx = getDecodedTransaction(tx);
     let key = publicKey;
     if (typeof decodedTx.TxnSignature !== 'string' || !decodedTx.TxnSignature) {
         throw new Error('Transaction is missing a signature, TxnSignature');
@@ -24043,7 +24023,7 @@ function verifySignature(tx, publicKey) {
         }
         key = decodedTx.SigningPubKey;
     }
-    return (0, ripple_keypairs_1.verify)((0, ripple_binary_codec_1.encodeForSigning)(decodedTx), decodedTx.TxnSignature, key);
+    return (0, xahau_keypairs_1.verify)((0, xahau_binary_codec_1.encodeForSigning)(decodedTx), decodedTx.TxnSignature, key);
 }
 exports.verifySignature = verifySignature;
 function validateTransactionEquivalence(transactions) {
@@ -24057,66 +24037,28 @@ function validateTransactionEquivalence(transactions) {
 function getTransactionWithAllSigners(transactions) {
     const sortedSigners = transactions
         .flatMap((tx) => { var _a; return (_a = tx.Signers) !== null && _a !== void 0 ? _a : []; })
-        .sort((signer1, signer2) => (0, utils_1.compareSigners)(signer1.Signer, signer2.Signer));
+        .sort(compareSigners);
     return Object.assign(Object.assign({}, transactions[0]), { Signers: sortedSigners });
+}
+function compareSigners(left, right) {
+    return addressToBigNumber(left.Signer.Account).comparedTo(addressToBigNumber(right.Signer.Account));
+}
+const NUM_BITS_IN_HEX = 16;
+function addressToBigNumber(address) {
+    const hex = (0, utils_1.bytesToHex)((0, xahau_address_codec_1.decodeAccountID)(address));
+    return new bignumber_js_1.BigNumber(hex, NUM_BITS_IN_HEX);
+}
+function getDecodedTransaction(txOrBlob) {
+    if (typeof txOrBlob === 'object') {
+        return (0, xahau_binary_codec_1.decode)((0, xahau_binary_codec_1.encode)(txOrBlob));
+    }
+    return (0, xahau_binary_codec_1.decode)(txOrBlob);
 }
 //# sourceMappingURL=signer.js.map
 
 /***/ }),
 
-/***/ 3210:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.computeSignature = exports.getDecodedTransaction = exports.addressToBigNumber = exports.NUM_BITS_IN_HEX = exports.compareSigners = void 0;
-const utils_1 = __nccwpck_require__(3617);
-const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-function compareSigners(left, right) {
-    if (!left.Account || !right.Account) {
-        throw new Error('compareSigners: Account cannot be null or undefined');
-    }
-    const result = addressToBigNumber(left.Account).comparedTo(addressToBigNumber(right.Account));
-    if (result === null) {
-        throw new Error('compareSigners: Invalid account address comparison resulted in NaN');
-    }
-    return result;
-}
-exports.compareSigners = compareSigners;
-exports.NUM_BITS_IN_HEX = 16;
-function addressToBigNumber(address) {
-    const hex = (0, utils_1.bytesToHex)((0, ripple_address_codec_1.decodeAccountID)(address));
-    return new bignumber_js_1.default(hex, exports.NUM_BITS_IN_HEX);
-}
-exports.addressToBigNumber = addressToBigNumber;
-function getDecodedTransaction(txOrBlob) {
-    if (typeof txOrBlob === 'object') {
-        return (0, ripple_binary_codec_1.decode)((0, ripple_binary_codec_1.encode)(txOrBlob));
-    }
-    return (0, ripple_binary_codec_1.decode)(txOrBlob);
-}
-exports.getDecodedTransaction = getDecodedTransaction;
-function computeSignature(tx, privateKey, signAs) {
-    if (signAs) {
-        const classicAddress = (0, ripple_address_codec_1.isValidXAddress)(signAs)
-            ? (0, ripple_address_codec_1.xAddressToClassicAddress)(signAs).classicAddress
-            : signAs;
-        return (0, ripple_keypairs_1.sign)((0, ripple_binary_codec_1.encodeForMultisigning)(tx, classicAddress), privateKey);
-    }
-    return (0, ripple_keypairs_1.sign)((0, ripple_binary_codec_1.encodeForSigning)(tx), privateKey);
-}
-exports.computeSignature = computeSignature;
-//# sourceMappingURL=utils.js.map
-
-/***/ }),
-
-/***/ 6924:
+/***/ 3536:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -24125,9 +24067,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.walletFromSecretNumbers = void 0;
-const secret_numbers_1 = __nccwpck_require__(3497);
-const ECDSA_1 = __importDefault(__nccwpck_require__(7514));
-const _1 = __nccwpck_require__(5963);
+const secret_numbers_1 = __nccwpck_require__(2594);
+const ECDSA_1 = __importDefault(__nccwpck_require__(5657));
+const _1 = __nccwpck_require__(2586);
 function walletFromSecretNumbers(secretNumbers, opts) {
     var _a;
     const secret = new secret_numbers_1.Account(secretNumbers).getFamilySeed();
@@ -24149,7 +24091,7 @@ exports.walletFromSecretNumbers = walletFromSecretNumbers;
 
 /***/ }),
 
-/***/ 7995:
+/***/ 735:
 /***/ (function(__unused_webpack_module, exports) {
 
 
@@ -24188,7 +24130,7 @@ exports["default"] = ConnectionManager;
 
 /***/ }),
 
-/***/ 7584:
+/***/ 9719:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -24220,7 +24162,7 @@ exports["default"] = ExponentialBackoff;
 
 /***/ }),
 
-/***/ 3072:
+/***/ 3815:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -24234,7 +24176,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const errors_1 = __nccwpck_require__(7919);
+const errors_1 = __nccwpck_require__(842);
 class RequestManager {
     constructor() {
         this.nextId = 0;
@@ -24254,7 +24196,7 @@ class RequestManager {
     resolve(id, response) {
         const promise = this.promisesAwaitingResponse.get(id);
         if (promise == null) {
-            throw new errors_1.XrplError(`No existing promise with id ${id}`, {
+            throw new errors_1.XahlError(`No existing promise with id ${id}`, {
                 type: 'resolve',
                 response,
             });
@@ -24266,7 +24208,7 @@ class RequestManager {
     reject(id, error) {
         const promise = this.promisesAwaitingResponse.get(id);
         if (promise == null) {
-            throw new errors_1.XrplError(`No existing promise with id ${id}`, {
+            throw new errors_1.XahlError(`No existing promise with id ${id}`, {
                 type: 'reject',
                 error,
             });
@@ -24300,7 +24242,7 @@ class RequestManager {
         }
         if (this.promisesAwaitingResponse.has(newId)) {
             clearTimeout(timer);
-            throw new errors_1.XrplError(`Response with id '${newId}' is already pending`, request);
+            throw new errors_1.XahlError(`Response with id '${newId}' is already pending`, request);
         }
         const newPromise = new Promise((resolve, reject) => {
             this.promisesAwaitingResponse.set(newId, {
@@ -24312,7 +24254,7 @@ class RequestManager {
         return [newId, newRequest, newPromise];
     }
     handleResponse(response) {
-        var _a, _b, _c;
+        var _a, _b;
         if (response.id == null ||
             !(typeof response.id === 'string' || typeof response.id === 'number')) {
             throw new errors_1.ResponseFormatError('valid id not found in response', response);
@@ -24326,12 +24268,12 @@ class RequestManager {
         }
         if (response.status === 'error') {
             const errorResponse = response;
-            const error = new errors_1.RippledError((_b = (_a = errorResponse.error_message) !== null && _a !== void 0 ? _a : errorResponse.error_exception) !== null && _b !== void 0 ? _b : errorResponse.error, errorResponse);
+            const error = new errors_1.XahaudError((_a = errorResponse.error_message) !== null && _a !== void 0 ? _a : errorResponse.error, errorResponse);
             this.reject(response.id, error);
             return;
         }
         if (response.status !== 'success') {
-            const error = new errors_1.ResponseFormatError(`unrecognized response.status: ${(_c = response.status) !== null && _c !== void 0 ? _c : ''}`, response);
+            const error = new errors_1.ResponseFormatError(`unrecognized response.status: ${(_b = response.status) !== null && _b !== void 0 ? _b : ''}`, response);
             this.reject(response.id, error);
             return;
         }
@@ -24347,7 +24289,7 @@ exports["default"] = RequestManager;
 
 /***/ }),
 
-/***/ 514:
+/***/ 2808:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -24368,10 +24310,10 @@ exports.Connection = exports.INTENTIONAL_DISCONNECT_CODE = void 0;
 const utils_1 = __nccwpck_require__(3617);
 const ws_1 = __importDefault(__nccwpck_require__(5634));
 const eventemitter3_1 = __nccwpck_require__(1848);
-const errors_1 = __nccwpck_require__(7919);
-const ConnectionManager_1 = __importDefault(__nccwpck_require__(7995));
-const ExponentialBackoff_1 = __importDefault(__nccwpck_require__(7584));
-const RequestManager_1 = __importDefault(__nccwpck_require__(3072));
+const errors_1 = __nccwpck_require__(842);
+const ConnectionManager_1 = __importDefault(__nccwpck_require__(735));
+const ExponentialBackoff_1 = __importDefault(__nccwpck_require__(9719));
+const RequestManager_1 = __importDefault(__nccwpck_require__(3815));
 const SECONDS_PER_MINUTE = 60;
 const TIMEOUT = 20;
 const CONNECTION_TIMEOUT = 5;
@@ -24446,17 +24388,17 @@ class Connection extends eventemitter3_1.EventEmitter {
                 return Promise.reject(new errors_1.ConnectionError('Cannot connect because no server was specified'));
             }
             if (this.ws != null) {
-                return Promise.reject(new errors_1.XrplError('Websocket connection never cleaned up.', {
+                return Promise.reject(new errors_1.XahlError('Websocket connection never cleaned up.', {
                     state: this.state,
                 }));
             }
             const connectionTimeoutID = setTimeout(() => {
                 this.onConnectionFailed(new errors_1.ConnectionError(`Error: connect() timed out after ${this.config.connectionTimeout} ms. If your internet connection is working, the ` +
-                    `rippled server may be blocked or inaccessible. You can also try setting the 'connectionTimeout' option in the Client constructor.`));
+                    `xahaud server may be blocked or inaccessible. You can also try setting the 'connectionTimeout' option in the Client constructor.`));
             }, this.config.connectionTimeout);
             this.ws = createWebSocket(this.url, this.config);
             if (this.ws == null) {
-                throw new errors_1.XrplError('Connect: created null websocket');
+                throw new errors_1.XahlError('Connect: created null websocket');
             }
             this.ws.on('error', (error) => this.onConnectionFailed(error));
             this.ws.on('error', () => clearTimeout(connectionTimeoutID));
@@ -24509,17 +24451,7 @@ class Connection extends eventemitter3_1.EventEmitter {
             const [id, message, responsePromise] = this.requestManager.createRequest(request, timeout !== null && timeout !== void 0 ? timeout : this.config.timeout);
             this.trace('send', message);
             websocketSendAsync(this.ws, message).catch((error) => {
-                try {
-                    this.requestManager.reject(id, error);
-                }
-                catch (err) {
-                    if (err instanceof errors_1.XrplError) {
-                        this.trace('send', `send errored after connection was closed: ${err.toString()}`);
-                    }
-                    else {
-                        this.trace('send', String(err));
-                    }
-                }
+                this.requestManager.reject(id, error);
             });
             return responsePromise;
         });
@@ -24564,7 +24496,7 @@ class Connection extends eventemitter3_1.EventEmitter {
     onceOpen(connectionTimeoutID) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.ws == null) {
-                throw new errors_1.XrplError('onceOpen: ws is null');
+                throw new errors_1.XahlError('onceOpen: ws is null');
             }
             this.ws.removeAllListeners();
             clearTimeout(connectionTimeoutID);
@@ -24572,7 +24504,7 @@ class Connection extends eventemitter3_1.EventEmitter {
             this.ws.on('error', (error) => this.emit('error', 'websocket', error.message, error));
             this.ws.once('close', (code, reason) => {
                 if (this.ws == null) {
-                    throw new errors_1.XrplError('onceClose: ws is null');
+                    throw new errors_1.XahlError('onceClose: ws is null');
                 }
                 this.clearHeartbeatInterval();
                 this.requestManager.rejectAll(new errors_1.DisconnectedError(`websocket was closed, ${reason ? (0, utils_1.hexToString)((0, utils_1.bytesToHex)(reason)) : ''}`));
@@ -24659,7 +24591,7 @@ exports.Connection = Connection;
 
 /***/ }),
 
-/***/ 3277:
+/***/ 6812:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -24675,18 +24607,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Client = void 0;
 const eventemitter3_1 = __nccwpck_require__(1848);
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(1261);
-const flags_1 = __nccwpck_require__(7836);
-const sugar_1 = __nccwpck_require__(7104);
-const autofill_1 = __nccwpck_require__(4991);
-const balances_1 = __nccwpck_require__(2485);
-const getOrderbook_1 = __nccwpck_require__(5197);
-const utils_1 = __nccwpck_require__(1);
-const Wallet_1 = __nccwpck_require__(5963);
-const fundWallet_1 = __nccwpck_require__(9974);
-const connection_1 = __nccwpck_require__(514);
-const partialPayment_1 = __nccwpck_require__(5600);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(4215);
+const flags_1 = __nccwpck_require__(7945);
+const sugar_1 = __nccwpck_require__(2028);
+const autofill_1 = __nccwpck_require__(7522);
+const balances_1 = __nccwpck_require__(6680);
+const getOrderbook_1 = __nccwpck_require__(5685);
+const utils_1 = __nccwpck_require__(8329);
+const Wallet_1 = __nccwpck_require__(2586);
+const fundWallet_1 = __nccwpck_require__(1730);
+const connection_1 = __nccwpck_require__(2808);
+const partialPayment_1 = __nccwpck_require__(8813);
 function getCollectKeyFromCommand(command) {
     switch (command) {
         case 'account_channels':
@@ -24713,7 +24645,7 @@ function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
 const DEFAULT_FEE_CUSHION = 1.2;
-const DEFAULT_MAX_FEE_XRP = '2';
+const DEFAULT_MAX_FEE_XAH = '2';
 const MIN_LIMIT = 10;
 const MAX_LIMIT = 400;
 const NORMAL_DISCONNECT_CODE = 1000;
@@ -24726,7 +24658,7 @@ class Client extends eventemitter3_1.EventEmitter {
             throw new errors_1.ValidationError('server URI must start with `wss://`, `ws://`, `wss+unix://`, or `ws+unix://`.');
         }
         this.feeCushion = (_a = options.feeCushion) !== null && _a !== void 0 ? _a : DEFAULT_FEE_CUSHION;
-        this.maxFeeXRP = (_b = options.maxFeeXRP) !== null && _b !== void 0 ? _b : DEFAULT_MAX_FEE_XRP;
+        this.maxFeeXAH = (_b = options.maxFeeXAH) !== null && _b !== void 0 ? _b : DEFAULT_MAX_FEE_XAH;
         this.connection = new connection_1.Connection(server, options);
         this.connection.on('error', (errorCode, errorMessage, data) => {
             this.emit('error', errorCode, errorMessage, data);
@@ -24791,13 +24723,12 @@ class Client extends eventemitter3_1.EventEmitter {
         return super.on(eventName, listener);
     }
     requestAll(request, collect) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
             const collectKey = collect !== null && collect !== void 0 ? collect : getCollectKeyFromCommand(request.command);
             if (!collectKey) {
                 throw new errors_1.ValidationError(`no collect key for command ${request.command}`);
             }
-            const countTo = (_a = request.limit) !== null && _a !== void 0 ? _a : Infinity;
+            const countTo = request.limit == null ? Infinity : request.limit;
             let count = 0;
             let marker = request.marker;
             const results = [];
@@ -24807,7 +24738,7 @@ class Client extends eventemitter3_1.EventEmitter {
                 const singleResponse = yield this.connection.request(repeatProps);
                 const singleResult = singleResponse.result;
                 if (!(collectKey in singleResult)) {
-                    throw new errors_1.XrplError(`${collectKey} not in result`);
+                    throw new errors_1.XahlError(`${collectKey} not in result`);
                 }
                 const collectedData = singleResult[collectKey];
                 marker = singleResult.marker;
@@ -24851,42 +24782,25 @@ class Client extends eventemitter3_1.EventEmitter {
         return this.connection.isConnected();
     }
     autofill(transaction, signersCount) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
             const tx = Object.assign({}, transaction);
             (0, autofill_1.setValidAddresses)(tx);
-            tx.Flags = (0, flags_1.convertTxFlagsToNumber)(tx);
+            (0, flags_1.setTransactionFlagsToNumber)(tx);
             const promises = [];
-            (_a = tx.NetworkID) !== null && _a !== void 0 ? _a : (tx.NetworkID = (0, autofill_1.txNeedsNetworkID)(this) ? this.networkID : undefined);
+            if (tx.NetworkID == null) {
+                tx.NetworkID = (0, autofill_1.txNeedsNetworkID)(this) ? this.networkID : undefined;
+            }
             if (tx.Sequence == null) {
                 promises.push((0, autofill_1.setNextValidSequenceNumber)(this, tx));
-            }
-            if (tx.Fee == null) {
-                promises.push((0, autofill_1.getTransactionFee)(this, tx, signersCount));
             }
             if (tx.LastLedgerSequence == null) {
                 promises.push((0, autofill_1.setLatestValidatedLedgerSequence)(this, tx));
             }
-            if (tx.TransactionType === 'AccountDelete') {
-                promises.push((0, autofill_1.checkAccountDeleteBlockers)(this, tx));
+            yield Promise.all(promises).then(() => tx);
+            if (tx.Fee == null) {
+                yield (0, autofill_1.calculateFeePerTransactionType)(this, tx, signersCount);
             }
-            if (tx.TransactionType === 'Batch') {
-                promises.push((0, autofill_1.autofillBatchTxn)(this, tx));
-            }
-            if (tx.TransactionType === 'Payment' && tx.DeliverMax != null) {
-                (0, autofill_1.handleDeliverMax)(tx);
-            }
-            return Promise.all(promises).then(() => tx);
-        });
-    }
-    simulate(transaction, opts) {
-        var _a;
-        return __awaiter(this, void 0, void 0, function* () {
-            const binary = (_a = opts === null || opts === void 0 ? void 0 : opts.binary) !== null && _a !== void 0 ? _a : false;
-            const request = typeof transaction === 'string'
-                ? { command: 'simulate', tx_blob: transaction, binary }
-                : { command: 'simulate', tx_json: transaction, binary };
-            return this.request(request);
+            return tx;
         });
     }
     submit(transaction, opts) {
@@ -24903,9 +24817,6 @@ class Client extends eventemitter3_1.EventEmitter {
                 throw new errors_1.ValidationError('Transaction must contain a LastLedgerSequence value for reliable submission.');
             }
             const response = yield (0, sugar_1.submitRequest)(this, signedTx, opts === null || opts === void 0 ? void 0 : opts.failHard);
-            if (response.result.engine_result.startsWith('tem')) {
-                throw new errors_1.XrplError(`Transaction failed, ${response.result.engine_result}: ${response.result.engine_result_message}`);
-            }
             const txHash = utils_1.hashes.hashSignedTx(signedTx);
             return (0, sugar_1.waitForFinalTransactionOutcome)(this, txHash, lastLedger, response.result.engine_result);
         });
@@ -24925,7 +24836,7 @@ class Client extends eventemitter3_1.EventEmitter {
                 ledger_hash: options.ledger_hash,
             };
             const response = yield this.request(xrpRequest);
-            return (0, utils_1.dropsToXrp)(response.result.account_data.Balance);
+            return (0, utils_1.dropsToXah)(response.result.account_data.Balance);
         });
     }
     getBalances(address, options = {}) {
@@ -24951,7 +24862,7 @@ class Client extends eventemitter3_1.EventEmitter {
             yield Promise.all([xrpPromise, linesPromise]).then(([xrpBalance, linesResponses]) => {
                 const accountLinesBalance = linesResponses.flatMap((response) => (0, balances_1.formatBalances)(response.result.lines));
                 if (xrpBalance !== 0) {
-                    balances.push({ currency: 'XRP', value: xrpBalance.toString() });
+                    balances.push({ currency: 'XAH', value: xrpBalance.toString() });
                 }
                 balances.push(...accountLinesBalance);
             });
@@ -24986,7 +24897,7 @@ class Client extends eventemitter3_1.EventEmitter {
     fundWallet(wallet, options = {}) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.isConnected()) {
-                throw new errors_1.RippledError('Client not connected, cannot call faucet');
+                throw new errors_1.XahaudError('Client not connected, cannot call faucet');
             }
             const existingWallet = Boolean(wallet);
             const walletToFund = wallet && (0, utils_1.isValidClassicAddress)(wallet.classicAddress)
@@ -24996,7 +24907,7 @@ class Client extends eventemitter3_1.EventEmitter {
                 destination: walletToFund.classicAddress,
                 xrpAmount: options.amount,
                 usageContext: options.usageContext,
-                userAgent: 'xrpl.js',
+                userAgent: 'xahau.js',
             };
             let startingBalance = 0;
             if (existingWallet) {
@@ -25015,7 +24926,7 @@ exports.Client = Client;
 
 /***/ }),
 
-/***/ 5600:
+/***/ 8813:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -25025,23 +24936,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.handleStreamPartialPayment = exports.handlePartialPayment = void 0;
 const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const transactions_1 = __nccwpck_require__(2931);
-const utils_1 = __nccwpck_require__(296);
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const transactions_1 = __nccwpck_require__(1736);
+const utils_1 = __nccwpck_require__(8429);
 const WARN_PARTIAL_PAYMENT_CODE = 2001;
 function amountsEqual(amt1, amt2) {
     if (typeof amt1 === 'string' && typeof amt2 === 'string') {
         return amt1 === amt2;
     }
     if (typeof amt1 === 'string' || typeof amt2 === 'string') {
-        return false;
-    }
-    if ((0, transactions_1.isMPTAmount)(amt1) && (0, transactions_1.isMPTAmount)(amt2)) {
-        const aValue = new bignumber_js_1.default(amt1.value);
-        const bValue = new bignumber_js_1.default(amt2.value);
-        return (amt1.mpt_issuance_id === amt2.mpt_issuance_id && aValue.isEqualTo(bValue));
-    }
-    if ((0, transactions_1.isMPTAmount)(amt1) || (0, transactions_1.isMPTAmount)(amt2)) {
         return false;
     }
     const aValue = new bignumber_js_1.default(amt1.value);
@@ -25051,7 +24954,7 @@ function amountsEqual(amt1, amt2) {
         aValue.isEqualTo(bValue));
 }
 function isPartialPayment(tx, metadata) {
-    var _a, _b;
+    var _a;
     if (tx == null || metadata == null || tx.TransactionType !== 'Payment') {
         return false;
     }
@@ -25060,7 +24963,7 @@ function isPartialPayment(tx, metadata) {
         if (meta === 'unavailable') {
             return false;
         }
-        meta = (0, ripple_binary_codec_1.decode)(meta);
+        meta = (0, xahau_binary_codec_1.decode)(meta);
     }
     const tfPartial = typeof tx.Flags === 'number'
         ? (0, utils_1.isFlagEnabled)(tx.Flags, transactions_1.PaymentFlags.tfPartialPayment)
@@ -25069,7 +24972,7 @@ function isPartialPayment(tx, metadata) {
         return false;
     }
     const delivered = meta.delivered_amount;
-    const amount = (_b = tx.DeliverMax) !== null && _b !== void 0 ? _b : tx.Amount;
+    const amount = tx.DeliverMax;
     if (delivered === undefined) {
         return false;
     }
@@ -25136,13 +25039,13 @@ exports.handleStreamPartialPayment = handleStreamPartialPayment;
 
 /***/ }),
 
-/***/ 7919:
+/***/ 842:
 /***/ ((__unused_webpack_module, exports) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.XRPLFaucetError = exports.NotFoundError = exports.ValidationError = exports.ResponseFormatError = exports.TimeoutError = exports.RippledNotInitializedError = exports.DisconnectedError = exports.NotConnectedError = exports.RippledError = exports.ConnectionError = exports.UnexpectedError = exports.XrplError = void 0;
-class XrplError extends Error {
+exports.XRPLFaucetError = exports.NotFoundError = exports.ValidationError = exports.ResponseFormatError = exports.TimeoutError = exports.XahaudNotInitializedError = exports.DisconnectedError = exports.NotConnectedError = exports.XahaudError = exports.ConnectionError = exports.UnexpectedError = exports.XahlError = void 0;
+class XahlError extends Error {
     constructor(message = '', data) {
         super(message);
         this.name = this.constructor.name;
@@ -25164,14 +25067,14 @@ class XrplError extends Error {
         return this.toString();
     }
 }
-exports.XrplError = XrplError;
-class RippledError extends XrplError {
+exports.XahlError = XahlError;
+class XahaudError extends XahlError {
 }
-exports.RippledError = RippledError;
-class UnexpectedError extends XrplError {
+exports.XahaudError = XahaudError;
+class UnexpectedError extends XahlError {
 }
 exports.UnexpectedError = UnexpectedError;
-class ConnectionError extends XrplError {
+class ConnectionError extends XahlError {
 }
 exports.ConnectionError = ConnectionError;
 class NotConnectedError extends ConnectionError {
@@ -25180,22 +25083,22 @@ exports.NotConnectedError = NotConnectedError;
 class DisconnectedError extends ConnectionError {
 }
 exports.DisconnectedError = DisconnectedError;
-class RippledNotInitializedError extends ConnectionError {
+class XahaudNotInitializedError extends ConnectionError {
 }
-exports.RippledNotInitializedError = RippledNotInitializedError;
+exports.XahaudNotInitializedError = XahaudNotInitializedError;
 class TimeoutError extends ConnectionError {
 }
 exports.TimeoutError = TimeoutError;
 class ResponseFormatError extends ConnectionError {
 }
 exports.ResponseFormatError = ResponseFormatError;
-class ValidationError extends XrplError {
+class ValidationError extends XahlError {
 }
 exports.ValidationError = ValidationError;
-class XRPLFaucetError extends XrplError {
+class XRPLFaucetError extends XahlError {
 }
 exports.XRPLFaucetError = XRPLFaucetError;
-class NotFoundError extends XrplError {
+class NotFoundError extends XahlError {
     constructor(message = 'Not found') {
         super(message);
     }
@@ -25205,7 +25108,7 @@ exports.NotFoundError = NotFoundError;
 
 /***/ }),
 
-/***/ 1235:
+/***/ 2365:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -25227,38 +25130,40 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.rfc1751MnemonicToKey = exports.keyToRFC1751Mnemonic = exports.walletFromSecretNumbers = exports.ECDSA = exports.Client = void 0;
-var client_1 = __nccwpck_require__(3277);
+exports.rfc1751MnemonicToKey = exports.keyToRFC1751Mnemonic = exports.walletFromSecretNumbers = exports.Wallet = exports.ECDSA = exports.Client = void 0;
+var client_1 = __nccwpck_require__(6812);
 Object.defineProperty(exports, "Client", ({ enumerable: true, get: function () { return client_1.Client; } }));
-__exportStar(__nccwpck_require__(813), exports);
-__exportStar(__nccwpck_require__(1), exports);
-var ECDSA_1 = __nccwpck_require__(7514);
+__exportStar(__nccwpck_require__(8902), exports);
+__exportStar(__nccwpck_require__(8329), exports);
+var ECDSA_1 = __nccwpck_require__(5657);
 Object.defineProperty(exports, "ECDSA", ({ enumerable: true, get: function () { return __importDefault(ECDSA_1).default; } }));
-__exportStar(__nccwpck_require__(7919), exports);
-__exportStar(__nccwpck_require__(5963), exports);
-var walletFromSecretNumbers_1 = __nccwpck_require__(6924);
+__exportStar(__nccwpck_require__(842), exports);
+var Wallet_1 = __nccwpck_require__(2586);
+Object.defineProperty(exports, "Wallet", ({ enumerable: true, get: function () { return Wallet_1.Wallet; } }));
+var walletFromSecretNumbers_1 = __nccwpck_require__(3536);
 Object.defineProperty(exports, "walletFromSecretNumbers", ({ enumerable: true, get: function () { return walletFromSecretNumbers_1.walletFromSecretNumbers; } }));
-var rfc1751_1 = __nccwpck_require__(2767);
+var rfc1751_1 = __nccwpck_require__(6051);
 Object.defineProperty(exports, "keyToRFC1751Mnemonic", ({ enumerable: true, get: function () { return rfc1751_1.keyToRFC1751Mnemonic; } }));
 Object.defineProperty(exports, "rfc1751MnemonicToKey", ({ enumerable: true, get: function () { return rfc1751_1.rfc1751MnemonicToKey; } }));
+__exportStar(__nccwpck_require__(8857), exports);
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 1261:
+/***/ 4215:
 /***/ ((__unused_webpack_module, exports) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DEFAULT_API_VERSION = exports.RIPPLED_API_V2 = exports.RIPPLED_API_V1 = void 0;
-exports.RIPPLED_API_V1 = 1;
-exports.RIPPLED_API_V2 = 2;
-exports.DEFAULT_API_VERSION = exports.RIPPLED_API_V2;
+exports.DEFAULT_API_VERSION = exports.XAHAUD_API_V2 = exports.XAHAUD_API_V1 = void 0;
+exports.XAHAUD_API_V1 = 1;
+exports.XAHAUD_API_V2 = 2;
+exports.DEFAULT_API_VERSION = exports.XAHAUD_API_V1;
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 813:
+/***/ 8902:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -25289,25 +25194,20 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.encodeMPTokenMetadata = exports.decodeMPTokenMetadata = exports.validateMPTokenMetadata = exports.parseTransactionFlags = exports.convertTxFlagsToNumber = exports.setTransactionFlagsToNumber = exports.parseAccountRootFlags = exports.LedgerEntry = void 0;
-exports.LedgerEntry = __importStar(__nccwpck_require__(2592));
-var flags_1 = __nccwpck_require__(7836);
-Object.defineProperty(exports, "parseAccountRootFlags", ({ enumerable: true, get: function () { return flags_1.parseAccountRootFlags; } }));
+exports.parseTransactionFlags = exports.parseAccountRootFlags = exports.setTransactionFlagsToNumber = exports.LedgerEntry = void 0;
+exports.LedgerEntry = __importStar(__nccwpck_require__(5904));
+var flags_1 = __nccwpck_require__(7945);
 Object.defineProperty(exports, "setTransactionFlagsToNumber", ({ enumerable: true, get: function () { return flags_1.setTransactionFlagsToNumber; } }));
-Object.defineProperty(exports, "convertTxFlagsToNumber", ({ enumerable: true, get: function () { return flags_1.convertTxFlagsToNumber; } }));
+Object.defineProperty(exports, "parseAccountRootFlags", ({ enumerable: true, get: function () { return flags_1.parseAccountRootFlags; } }));
 Object.defineProperty(exports, "parseTransactionFlags", ({ enumerable: true, get: function () { return flags_1.parseTransactionFlags; } }));
-var mptokenMetadata_1 = __nccwpck_require__(3166);
-Object.defineProperty(exports, "validateMPTokenMetadata", ({ enumerable: true, get: function () { return mptokenMetadata_1.validateMPTokenMetadata; } }));
-Object.defineProperty(exports, "decodeMPTokenMetadata", ({ enumerable: true, get: function () { return mptokenMetadata_1.decodeMPTokenMetadata; } }));
-Object.defineProperty(exports, "encodeMPTokenMetadata", ({ enumerable: true, get: function () { return mptokenMetadata_1.encodeMPTokenMetadata; } }));
-__exportStar(__nccwpck_require__(2969), exports);
-__exportStar(__nccwpck_require__(2931), exports);
-__exportStar(__nccwpck_require__(1261), exports);
+__exportStar(__nccwpck_require__(2657), exports);
+__exportStar(__nccwpck_require__(1736), exports);
+__exportStar(__nccwpck_require__(4215), exports);
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 3689:
+/***/ 9341:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -25318,25 +25218,25 @@ var AccountRootFlags;
     AccountRootFlags[AccountRootFlags["lsfPasswordSpent"] = 65536] = "lsfPasswordSpent";
     AccountRootFlags[AccountRootFlags["lsfRequireDestTag"] = 131072] = "lsfRequireDestTag";
     AccountRootFlags[AccountRootFlags["lsfRequireAuth"] = 262144] = "lsfRequireAuth";
-    AccountRootFlags[AccountRootFlags["lsfDisallowXRP"] = 524288] = "lsfDisallowXRP";
+    AccountRootFlags[AccountRootFlags["lsfDisallowXAH"] = 524288] = "lsfDisallowXAH";
     AccountRootFlags[AccountRootFlags["lsfDisableMaster"] = 1048576] = "lsfDisableMaster";
     AccountRootFlags[AccountRootFlags["lsfNoFreeze"] = 2097152] = "lsfNoFreeze";
     AccountRootFlags[AccountRootFlags["lsfGlobalFreeze"] = 4194304] = "lsfGlobalFreeze";
     AccountRootFlags[AccountRootFlags["lsfDefaultRipple"] = 8388608] = "lsfDefaultRipple";
     AccountRootFlags[AccountRootFlags["lsfDepositAuth"] = 16777216] = "lsfDepositAuth";
-    AccountRootFlags[AccountRootFlags["lsfAMM"] = 33554432] = "lsfAMM";
     AccountRootFlags[AccountRootFlags["lsfDisallowIncomingNFTokenOffer"] = 67108864] = "lsfDisallowIncomingNFTokenOffer";
     AccountRootFlags[AccountRootFlags["lsfDisallowIncomingCheck"] = 134217728] = "lsfDisallowIncomingCheck";
     AccountRootFlags[AccountRootFlags["lsfDisallowIncomingPayChan"] = 268435456] = "lsfDisallowIncomingPayChan";
     AccountRootFlags[AccountRootFlags["lsfDisallowIncomingTrustline"] = 536870912] = "lsfDisallowIncomingTrustline";
-    AccountRootFlags[AccountRootFlags["lsfAllowTrustLineClawback"] = 2147483648] = "lsfAllowTrustLineClawback";
-    AccountRootFlags[AccountRootFlags["lsfAllowTrustLineLocking"] = 1073741824] = "lsfAllowTrustLineLocking";
+    AccountRootFlags[AccountRootFlags["lsfURITokenIssuer"] = 1073741824] = "lsfURITokenIssuer";
+    AccountRootFlags[AccountRootFlags["lsfDisallowIncomingRemit"] = 2147483648] = "lsfDisallowIncomingRemit";
+    AccountRootFlags[AccountRootFlags["lsfAllowTrustLineClawback"] = 4096] = "lsfAllowTrustLineClawback";
 })(AccountRootFlags || (exports.AccountRootFlags = AccountRootFlags = {}));
 //# sourceMappingURL=AccountRoot.js.map
 
 /***/ }),
 
-/***/ 2924:
+/***/ 641:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -25347,7 +25247,7 @@ exports.AMENDMENTS_ID = '7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B
 
 /***/ }),
 
-/***/ 5489:
+/***/ 2887:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -25358,23 +25258,7 @@ exports.FEE_SETTINGS_ID = '4BC50C9B0D8515D3EAAE1E74B29A95804346C491EE1A95BF25E4A
 
 /***/ }),
 
-/***/ 9049:
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.LoanFlags = void 0;
-var LoanFlags;
-(function (LoanFlags) {
-    LoanFlags[LoanFlags["lsfLoanDefault"] = 65536] = "lsfLoanDefault";
-    LoanFlags[LoanFlags["lsfLoanImpaired"] = 131072] = "lsfLoanImpaired";
-    LoanFlags[LoanFlags["lsfLoanOverpayment"] = 262144] = "lsfLoanOverpayment";
-})(LoanFlags || (exports.LoanFlags = LoanFlags = {}));
-//# sourceMappingURL=Loan.js.map
-
-/***/ }),
-
-/***/ 8359:
+/***/ 7039:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -25385,7 +25269,7 @@ exports.NEGATIVE_UNL_ID = '2E8A59AA9D3B5B186B0B9E0F62E6C02587CA74A4D778938E957B6
 
 /***/ }),
 
-/***/ 4105:
+/***/ 3178:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -25395,13 +25279,12 @@ var OfferFlags;
 (function (OfferFlags) {
     OfferFlags[OfferFlags["lsfPassive"] = 65536] = "lsfPassive";
     OfferFlags[OfferFlags["lsfSell"] = 131072] = "lsfSell";
-    OfferFlags[OfferFlags["lsfHybrid"] = 262144] = "lsfHybrid";
 })(OfferFlags || (exports.OfferFlags = OfferFlags = {}));
 //# sourceMappingURL=Offer.js.map
 
 /***/ }),
 
-/***/ 469:
+/***/ 7573:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -25425,7 +25308,7 @@ var RippleStateFlags;
 
 /***/ }),
 
-/***/ 1222:
+/***/ 1389:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -25439,49 +25322,31 @@ var SignerListFlags;
 
 /***/ }),
 
-/***/ 9392:
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.VaultFlags = void 0;
-var VaultFlags;
-(function (VaultFlags) {
-    VaultFlags[VaultFlags["lsfVaultPrivate"] = 65536] = "lsfVaultPrivate";
-})(VaultFlags || (exports.VaultFlags = VaultFlags = {}));
-//# sourceMappingURL=Vault.js.map
-
-/***/ }),
-
-/***/ 2592:
+/***/ 5904:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.VaultFlags = exports.SignerListFlags = exports.RippleStateFlags = exports.OfferFlags = exports.NEGATIVE_UNL_ID = exports.LoanFlags = exports.FEE_SETTINGS_ID = exports.AMENDMENTS_ID = exports.AccountRootFlags = void 0;
-const AccountRoot_1 = __nccwpck_require__(3689);
+exports.SignerListFlags = exports.RippleStateFlags = exports.OfferFlags = exports.NEGATIVE_UNL_ID = exports.FEE_SETTINGS_ID = exports.AMENDMENTS_ID = exports.AccountRootFlags = void 0;
+const AccountRoot_1 = __nccwpck_require__(9341);
 Object.defineProperty(exports, "AccountRootFlags", ({ enumerable: true, get: function () { return AccountRoot_1.AccountRootFlags; } }));
-const Amendments_1 = __nccwpck_require__(2924);
+const Amendments_1 = __nccwpck_require__(641);
 Object.defineProperty(exports, "AMENDMENTS_ID", ({ enumerable: true, get: function () { return Amendments_1.AMENDMENTS_ID; } }));
-const FeeSettings_1 = __nccwpck_require__(5489);
+const FeeSettings_1 = __nccwpck_require__(2887);
 Object.defineProperty(exports, "FEE_SETTINGS_ID", ({ enumerable: true, get: function () { return FeeSettings_1.FEE_SETTINGS_ID; } }));
-const Loan_1 = __nccwpck_require__(9049);
-Object.defineProperty(exports, "LoanFlags", ({ enumerable: true, get: function () { return Loan_1.LoanFlags; } }));
-const NegativeUNL_1 = __nccwpck_require__(8359);
+const NegativeUNL_1 = __nccwpck_require__(7039);
 Object.defineProperty(exports, "NEGATIVE_UNL_ID", ({ enumerable: true, get: function () { return NegativeUNL_1.NEGATIVE_UNL_ID; } }));
-const Offer_1 = __nccwpck_require__(4105);
+const Offer_1 = __nccwpck_require__(3178);
 Object.defineProperty(exports, "OfferFlags", ({ enumerable: true, get: function () { return Offer_1.OfferFlags; } }));
-const RippleState_1 = __nccwpck_require__(469);
+const RippleState_1 = __nccwpck_require__(7573);
 Object.defineProperty(exports, "RippleStateFlags", ({ enumerable: true, get: function () { return RippleState_1.RippleStateFlags; } }));
-const SignerList_1 = __nccwpck_require__(1222);
+const SignerList_1 = __nccwpck_require__(1389);
 Object.defineProperty(exports, "SignerListFlags", ({ enumerable: true, get: function () { return SignerList_1.SignerListFlags; } }));
-const Vault_1 = __nccwpck_require__(9392);
-Object.defineProperty(exports, "VaultFlags", ({ enumerable: true, get: function () { return Vault_1.VaultFlags; } }));
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 2969:
+/***/ 2657:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -25490,993 +25355,19 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 
 /***/ }),
 
-/***/ 5429:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateAMMBid = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-const MAX_AUTH_ACCOUNTS = 4;
-function validateAMMBid(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (tx.Asset == null) {
-        throw new errors_1.ValidationError('AMMBid: missing field Asset');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset)) {
-        throw new errors_1.ValidationError('AMMBid: Asset must be a Currency');
-    }
-    if (tx.Asset2 == null) {
-        throw new errors_1.ValidationError('AMMBid: missing field Asset2');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset2)) {
-        throw new errors_1.ValidationError('AMMBid: Asset2 must be a Currency');
-    }
-    if (tx.BidMin != null && !(0, common_1.isAmount)(tx.BidMin)) {
-        throw new errors_1.ValidationError('AMMBid: BidMin must be an Amount');
-    }
-    if (tx.BidMax != null && !(0, common_1.isAmount)(tx.BidMax)) {
-        throw new errors_1.ValidationError('AMMBid: BidMax must be an Amount');
-    }
-    if (tx.AuthAccounts != null) {
-        if (!(0, common_1.isArray)(tx.AuthAccounts)) {
-            throw new errors_1.ValidationError(`AMMBid: AuthAccounts must be an AuthAccount array`);
-        }
-        if (tx.AuthAccounts.length > MAX_AUTH_ACCOUNTS) {
-            throw new errors_1.ValidationError(`AMMBid: AuthAccounts length must not be greater than ${MAX_AUTH_ACCOUNTS}`);
-        }
-        validateAuthAccounts(tx.Account, tx.AuthAccounts);
-    }
-}
-exports.validateAMMBid = validateAMMBid;
-function validateAuthAccounts(senderAddress, authAccounts) {
-    for (const authAccount of authAccounts) {
-        if (!(0, common_1.isRecord)(authAccount)) {
-            throw new errors_1.ValidationError(`AMMBid: invalid AuthAccounts`);
-        }
-        if (!(0, common_1.isRecord)(authAccount.AuthAccount)) {
-            throw new errors_1.ValidationError(`AMMBid: invalid AuthAccounts`);
-        }
-        if (authAccount.AuthAccount.Account == null) {
-            throw new errors_1.ValidationError(`AMMBid: invalid AuthAccounts`);
-        }
-        if (typeof authAccount.AuthAccount.Account !== 'string') {
-            throw new errors_1.ValidationError(`AMMBid: invalid AuthAccounts`);
-        }
-        if (authAccount.AuthAccount.Account === senderAddress) {
-            throw new errors_1.ValidationError(`AMMBid: AuthAccounts must not include sender's address`);
-        }
-    }
-    return true;
-}
-//# sourceMappingURL=AMMBid.js.map
-
-/***/ }),
-
-/***/ 9222:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateAMMClawback = exports.AMMClawbackFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-var AMMClawbackFlags;
-(function (AMMClawbackFlags) {
-    AMMClawbackFlags[AMMClawbackFlags["tfClawTwoAssets"] = 1] = "tfClawTwoAssets";
-})(AMMClawbackFlags || (exports.AMMClawbackFlags = AMMClawbackFlags = {}));
-function validateAMMClawback(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Holder', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'Asset', common_1.isIssuedCurrency);
-    const asset = tx.Asset;
-    if (tx.Holder === asset.issuer) {
-        throw new errors_1.ValidationError('AMMClawback: Holder and Asset.issuer must be distinct');
-    }
-    if (tx.Account !== asset.issuer) {
-        throw new errors_1.ValidationError('AMMClawback: Account must be the same as Asset.issuer');
-    }
-    (0, common_1.validateRequiredField)(tx, 'Asset2', common_1.isIssuedCurrency);
-    (0, common_1.validateOptionalField)(tx, 'Amount', common_1.isIssuedCurrencyAmount);
-    if (tx.Amount != null) {
-        if (tx.Amount.currency !== asset.currency) {
-            throw new errors_1.ValidationError('AMMClawback: Amount.currency must match Asset.currency');
-        }
-        if (tx.Amount.issuer !== asset.issuer) {
-            throw new errors_1.ValidationError('AMMClawback: Amount.issuer must match Amount.issuer');
-        }
-    }
-}
-exports.validateAMMClawback = validateAMMClawback;
-//# sourceMappingURL=AMMClawback.js.map
-
-/***/ }),
-
-/***/ 3479:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateAMMCreate = exports.AMM_MAX_TRADING_FEE = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-exports.AMM_MAX_TRADING_FEE = 1000;
-function validateAMMCreate(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (tx.Amount == null) {
-        throw new errors_1.ValidationError('AMMCreate: missing field Amount');
-    }
-    if (!(0, common_1.isAmount)(tx.Amount)) {
-        throw new errors_1.ValidationError('AMMCreate: Amount must be an Amount');
-    }
-    if (tx.Amount2 == null) {
-        throw new errors_1.ValidationError('AMMCreate: missing field Amount2');
-    }
-    if (!(0, common_1.isAmount)(tx.Amount2)) {
-        throw new errors_1.ValidationError('AMMCreate: Amount2 must be an Amount');
-    }
-    if (tx.TradingFee == null) {
-        throw new errors_1.ValidationError('AMMCreate: missing field TradingFee');
-    }
-    if (typeof tx.TradingFee !== 'number') {
-        throw new errors_1.ValidationError('AMMCreate: TradingFee must be a number');
-    }
-    if (tx.TradingFee < 0 || tx.TradingFee > exports.AMM_MAX_TRADING_FEE) {
-        throw new errors_1.ValidationError(`AMMCreate: TradingFee must be between 0 and ${exports.AMM_MAX_TRADING_FEE}`);
-    }
-}
-exports.validateAMMCreate = validateAMMCreate;
-//# sourceMappingURL=AMMCreate.js.map
-
-/***/ }),
-
-/***/ 670:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateAMMDelete = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateAMMDelete(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (tx.Asset == null) {
-        throw new errors_1.ValidationError('AMMDelete: missing field Asset');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset)) {
-        throw new errors_1.ValidationError('AMMDelete: Asset must be a Currency');
-    }
-    if (tx.Asset2 == null) {
-        throw new errors_1.ValidationError('AMMDelete: missing field Asset2');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset2)) {
-        throw new errors_1.ValidationError('AMMDelete: Asset2 must be a Currency');
-    }
-}
-exports.validateAMMDelete = validateAMMDelete;
-//# sourceMappingURL=AMMDelete.js.map
-
-/***/ }),
-
-/***/ 7228:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateAMMDeposit = exports.AMMDepositFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-var AMMDepositFlags;
-(function (AMMDepositFlags) {
-    AMMDepositFlags[AMMDepositFlags["tfLPToken"] = 65536] = "tfLPToken";
-    AMMDepositFlags[AMMDepositFlags["tfSingleAsset"] = 524288] = "tfSingleAsset";
-    AMMDepositFlags[AMMDepositFlags["tfTwoAsset"] = 1048576] = "tfTwoAsset";
-    AMMDepositFlags[AMMDepositFlags["tfOneAssetLPToken"] = 2097152] = "tfOneAssetLPToken";
-    AMMDepositFlags[AMMDepositFlags["tfLimitLPToken"] = 4194304] = "tfLimitLPToken";
-    AMMDepositFlags[AMMDepositFlags["tfTwoAssetIfEmpty"] = 8388608] = "tfTwoAssetIfEmpty";
-})(AMMDepositFlags || (exports.AMMDepositFlags = AMMDepositFlags = {}));
-function validateAMMDeposit(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (tx.Asset == null) {
-        throw new errors_1.ValidationError('AMMDeposit: missing field Asset');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset)) {
-        throw new errors_1.ValidationError('AMMDeposit: Asset must be a Currency');
-    }
-    if (tx.Asset2 == null) {
-        throw new errors_1.ValidationError('AMMDeposit: missing field Asset2');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset2)) {
-        throw new errors_1.ValidationError('AMMDeposit: Asset2 must be a Currency');
-    }
-    if (tx.Amount2 != null && tx.Amount == null) {
-        throw new errors_1.ValidationError('AMMDeposit: must set Amount with Amount2');
-    }
-    else if (tx.EPrice != null && tx.Amount == null) {
-        throw new errors_1.ValidationError('AMMDeposit: must set Amount with EPrice');
-    }
-    else if (tx.LPTokenOut == null && tx.Amount == null) {
-        throw new errors_1.ValidationError('AMMDeposit: must set at least LPTokenOut or Amount');
-    }
-    if (tx.LPTokenOut != null && !(0, common_1.isIssuedCurrencyAmount)(tx.LPTokenOut)) {
-        throw new errors_1.ValidationError('AMMDeposit: LPTokenOut must be an IssuedCurrencyAmount');
-    }
-    if (tx.Amount != null && !(0, common_1.isAmount)(tx.Amount)) {
-        throw new errors_1.ValidationError('AMMDeposit: Amount must be an Amount');
-    }
-    if (tx.Amount2 != null && !(0, common_1.isAmount)(tx.Amount2)) {
-        throw new errors_1.ValidationError('AMMDeposit: Amount2 must be an Amount');
-    }
-    if (tx.EPrice != null && !(0, common_1.isAmount)(tx.EPrice)) {
-        throw new errors_1.ValidationError('AMMDeposit: EPrice must be an Amount');
-    }
-}
-exports.validateAMMDeposit = validateAMMDeposit;
-//# sourceMappingURL=AMMDeposit.js.map
-
-/***/ }),
-
-/***/ 5985:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateAMMVote = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const AMMCreate_1 = __nccwpck_require__(3479);
-const common_1 = __nccwpck_require__(9180);
-function validateAMMVote(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (tx.Asset == null) {
-        throw new errors_1.ValidationError('AMMVote: missing field Asset');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset)) {
-        throw new errors_1.ValidationError('AMMVote: Asset must be a Currency');
-    }
-    if (tx.Asset2 == null) {
-        throw new errors_1.ValidationError('AMMVote: missing field Asset2');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset2)) {
-        throw new errors_1.ValidationError('AMMVote: Asset2 must be a Currency');
-    }
-    if (tx.TradingFee == null) {
-        throw new errors_1.ValidationError('AMMVote: missing field TradingFee');
-    }
-    if (typeof tx.TradingFee !== 'number') {
-        throw new errors_1.ValidationError('AMMVote: TradingFee must be a number');
-    }
-    if (tx.TradingFee < 0 || tx.TradingFee > AMMCreate_1.AMM_MAX_TRADING_FEE) {
-        throw new errors_1.ValidationError(`AMMVote: TradingFee must be between 0 and ${AMMCreate_1.AMM_MAX_TRADING_FEE}`);
-    }
-}
-exports.validateAMMVote = validateAMMVote;
-//# sourceMappingURL=AMMVote.js.map
-
-/***/ }),
-
-/***/ 3522:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateAMMWithdraw = exports.AMMWithdrawFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-var AMMWithdrawFlags;
-(function (AMMWithdrawFlags) {
-    AMMWithdrawFlags[AMMWithdrawFlags["tfLPToken"] = 65536] = "tfLPToken";
-    AMMWithdrawFlags[AMMWithdrawFlags["tfWithdrawAll"] = 131072] = "tfWithdrawAll";
-    AMMWithdrawFlags[AMMWithdrawFlags["tfOneAssetWithdrawAll"] = 262144] = "tfOneAssetWithdrawAll";
-    AMMWithdrawFlags[AMMWithdrawFlags["tfSingleAsset"] = 524288] = "tfSingleAsset";
-    AMMWithdrawFlags[AMMWithdrawFlags["tfTwoAsset"] = 1048576] = "tfTwoAsset";
-    AMMWithdrawFlags[AMMWithdrawFlags["tfOneAssetLPToken"] = 2097152] = "tfOneAssetLPToken";
-    AMMWithdrawFlags[AMMWithdrawFlags["tfLimitLPToken"] = 4194304] = "tfLimitLPToken";
-})(AMMWithdrawFlags || (exports.AMMWithdrawFlags = AMMWithdrawFlags = {}));
-function validateAMMWithdraw(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (tx.Asset == null) {
-        throw new errors_1.ValidationError('AMMWithdraw: missing field Asset');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset)) {
-        throw new errors_1.ValidationError('AMMWithdraw: Asset must be a Currency');
-    }
-    if (tx.Asset2 == null) {
-        throw new errors_1.ValidationError('AMMWithdraw: missing field Asset2');
-    }
-    if (!(0, common_1.isIssuedCurrency)(tx.Asset2)) {
-        throw new errors_1.ValidationError('AMMWithdraw: Asset2 must be a Currency');
-    }
-    if (tx.Amount2 != null && tx.Amount == null) {
-        throw new errors_1.ValidationError('AMMWithdraw: must set Amount with Amount2');
-    }
-    else if (tx.EPrice != null && tx.Amount == null) {
-        throw new errors_1.ValidationError('AMMWithdraw: must set Amount with EPrice');
-    }
-    if (tx.LPTokenIn != null && !(0, common_1.isIssuedCurrencyAmount)(tx.LPTokenIn)) {
-        throw new errors_1.ValidationError('AMMWithdraw: LPTokenIn must be an IssuedCurrencyAmount');
-    }
-    if (tx.Amount != null && !(0, common_1.isAmount)(tx.Amount)) {
-        throw new errors_1.ValidationError('AMMWithdraw: Amount must be an Amount');
-    }
-    if (tx.Amount2 != null && !(0, common_1.isAmount)(tx.Amount2)) {
-        throw new errors_1.ValidationError('AMMWithdraw: Amount2 must be an Amount');
-    }
-    if (tx.EPrice != null && !(0, common_1.isAmount)(tx.EPrice)) {
-        throw new errors_1.ValidationError('AMMWithdraw: EPrice must be an Amount');
-    }
-}
-exports.validateAMMWithdraw = validateAMMWithdraw;
-//# sourceMappingURL=AMMWithdraw.js.map
-
-/***/ }),
-
-/***/ 8667:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateCredentialAccept = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateCredentialAccept(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Account', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Issuer', common_1.isString);
-    (0, common_1.validateCredentialType)(tx);
-}
-exports.validateCredentialAccept = validateCredentialAccept;
-//# sourceMappingURL=CredentialAccept.js.map
-
-/***/ }),
-
-/***/ 571:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateCredentialCreate = void 0;
-const utils_1 = __nccwpck_require__(3617);
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-const MAX_URI_LENGTH = 256;
-function validateCredentialCreate(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Account', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Subject', common_1.isString);
-    (0, common_1.validateCredentialType)(tx);
-    (0, common_1.validateOptionalField)(tx, 'Expiration', common_1.isNumber);
-    validateURI(tx.URI);
-}
-exports.validateCredentialCreate = validateCredentialCreate;
-function validateURI(URI) {
-    if (URI === undefined) {
-        return;
-    }
-    if (typeof URI !== 'string') {
-        throw new errors_1.ValidationError('CredentialCreate: invalid field URI');
-    }
-    if (URI.length === 0) {
-        throw new errors_1.ValidationError('CredentialCreate: URI cannot be an empty string');
-    }
-    else if (URI.length > MAX_URI_LENGTH) {
-        throw new errors_1.ValidationError(`CredentialCreate: URI length must be <= ${MAX_URI_LENGTH}`);
-    }
-    if (!utils_1.HEX_REGEX.test(URI)) {
-        throw new errors_1.ValidationError('CredentialCreate: URI must be encoded in hex');
-    }
-}
-//# sourceMappingURL=CredentialCreate.js.map
-
-/***/ }),
-
-/***/ 5519:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateCredentialDelete = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateCredentialDelete(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (!tx.Subject && !tx.Issuer) {
-        throw new errors_1.ValidationError('CredentialDelete: either `Issuer` or `Subject` must be provided');
-    }
-    (0, common_1.validateRequiredField)(tx, 'Account', common_1.isString);
-    (0, common_1.validateCredentialType)(tx);
-    (0, common_1.validateOptionalField)(tx, 'Subject', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Issuer', common_1.isString);
-}
-exports.validateCredentialDelete = validateCredentialDelete;
-//# sourceMappingURL=CredentialDelete.js.map
-
-/***/ }),
-
-/***/ 601:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateDIDDelete = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateDIDDelete(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-}
-exports.validateDIDDelete = validateDIDDelete;
-//# sourceMappingURL=DIDDelete.js.map
-
-/***/ }),
-
-/***/ 7878:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateDIDSet = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateDIDSet(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateOptionalField)(tx, 'Data', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'DIDDocument', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'URI', common_1.isString);
-    if (tx.Data === undefined &&
-        tx.DIDDocument === undefined &&
-        tx.URI === undefined) {
-        throw new errors_1.ValidationError('DIDSet: Must have at least one of `Data`, `DIDDocument`, and `URI`');
-    }
-}
-exports.validateDIDSet = validateDIDSet;
-//# sourceMappingURL=DIDSet.js.map
-
-/***/ }),
-
-/***/ 6907:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateMPTokenAuthorize = exports.MPTokenAuthorizeFlags = void 0;
-const common_1 = __nccwpck_require__(9180);
-var MPTokenAuthorizeFlags;
-(function (MPTokenAuthorizeFlags) {
-    MPTokenAuthorizeFlags[MPTokenAuthorizeFlags["tfMPTUnauthorize"] = 1] = "tfMPTUnauthorize";
-})(MPTokenAuthorizeFlags || (exports.MPTokenAuthorizeFlags = MPTokenAuthorizeFlags = {}));
-function validateMPTokenAuthorize(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'MPTokenIssuanceID', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Holder', common_1.isAccount);
-}
-exports.validateMPTokenAuthorize = validateMPTokenAuthorize;
-//# sourceMappingURL=MPTokenAuthorize.js.map
-
-/***/ }),
-
-/***/ 2282:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateMPTokenIssuanceCreate = exports.MPTokenIssuanceCreateFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const mptokenMetadata_1 = __nccwpck_require__(3166);
-const common_1 = __nccwpck_require__(9180);
-const MAX_AMT = '9223372036854775807';
-const MAX_TRANSFER_FEE = 50000;
-var MPTokenIssuanceCreateFlags;
-(function (MPTokenIssuanceCreateFlags) {
-    MPTokenIssuanceCreateFlags[MPTokenIssuanceCreateFlags["tfMPTCanLock"] = 2] = "tfMPTCanLock";
-    MPTokenIssuanceCreateFlags[MPTokenIssuanceCreateFlags["tfMPTRequireAuth"] = 4] = "tfMPTRequireAuth";
-    MPTokenIssuanceCreateFlags[MPTokenIssuanceCreateFlags["tfMPTCanEscrow"] = 8] = "tfMPTCanEscrow";
-    MPTokenIssuanceCreateFlags[MPTokenIssuanceCreateFlags["tfMPTCanTrade"] = 16] = "tfMPTCanTrade";
-    MPTokenIssuanceCreateFlags[MPTokenIssuanceCreateFlags["tfMPTCanTransfer"] = 32] = "tfMPTCanTransfer";
-    MPTokenIssuanceCreateFlags[MPTokenIssuanceCreateFlags["tfMPTCanClawback"] = 64] = "tfMPTCanClawback";
-})(MPTokenIssuanceCreateFlags || (exports.MPTokenIssuanceCreateFlags = MPTokenIssuanceCreateFlags = {}));
-function validateMPTokenIssuanceCreate(tx) {
-    var _a, _b;
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateOptionalField)(tx, 'MaximumAmount', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'MPTokenMetadata', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'TransferFee', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'AssetScale', common_1.isNumber);
-    if (typeof tx.MPTokenMetadata === 'string' &&
-        (!(0, utils_1.isHex)(tx.MPTokenMetadata) ||
-            tx.MPTokenMetadata.length / 2 > mptokenMetadata_1.MAX_MPT_META_BYTE_LENGTH)) {
-        throw new errors_1.ValidationError(`MPTokenIssuanceCreate: MPTokenMetadata (hex format) must be non-empty and no more than ${mptokenMetadata_1.MAX_MPT_META_BYTE_LENGTH} bytes.`);
-    }
-    if (typeof tx.MaximumAmount === 'string') {
-        if (!utils_1.INTEGER_SANITY_CHECK.exec(tx.MaximumAmount)) {
-            throw new errors_1.ValidationError('MPTokenIssuanceCreate: Invalid MaximumAmount');
-        }
-        else if (BigInt(tx.MaximumAmount) > BigInt(MAX_AMT) ||
-            BigInt(tx.MaximumAmount) < BigInt(`0`)) {
-            throw new errors_1.ValidationError('MPTokenIssuanceCreate: MaximumAmount out of range');
-        }
-    }
-    if (typeof tx.TransferFee === 'number') {
-        const flags = ((_a = tx.Flags) !== null && _a !== void 0 ? _a : 0);
-        const isTfMPTCanTransfer = typeof flags === 'number'
-            ? (0, utils_1.isFlagEnabled)(flags, MPTokenIssuanceCreateFlags.tfMPTCanTransfer)
-            : ((_b = flags.tfMPTCanTransfer) !== null && _b !== void 0 ? _b : false);
-        if (tx.TransferFee < 0 || tx.TransferFee > MAX_TRANSFER_FEE) {
-            throw new errors_1.ValidationError(`MPTokenIssuanceCreate: TransferFee must be between 0 and ${MAX_TRANSFER_FEE}`);
-        }
-        if (tx.TransferFee && !isTfMPTCanTransfer) {
-            throw new errors_1.ValidationError('MPTokenIssuanceCreate: TransferFee cannot be provided without enabling tfMPTCanTransfer flag');
-        }
-    }
-    if (tx.MPTokenMetadata != null) {
-        const validationMessages = (0, mptokenMetadata_1.validateMPTokenMetadata)(tx.MPTokenMetadata);
-        if (validationMessages.length > 0) {
-            const message = [
-                mptokenMetadata_1.MPT_META_WARNING_HEADER,
-                ...validationMessages.map((msg) => `- ${msg}`),
-            ].join('\n');
-            console.warn(message);
-        }
-    }
-}
-exports.validateMPTokenIssuanceCreate = validateMPTokenIssuanceCreate;
-//# sourceMappingURL=MPTokenIssuanceCreate.js.map
-
-/***/ }),
-
-/***/ 2044:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateMPTokenIssuanceDestroy = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateMPTokenIssuanceDestroy(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'MPTokenIssuanceID', common_1.isString);
-}
-exports.validateMPTokenIssuanceDestroy = validateMPTokenIssuanceDestroy;
-//# sourceMappingURL=MPTokenIssuanceDestroy.js.map
-
-/***/ }),
-
-/***/ 8830:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateMPTokenIssuanceSet = exports.MPTokenIssuanceSetFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
-var MPTokenIssuanceSetFlags;
-(function (MPTokenIssuanceSetFlags) {
-    MPTokenIssuanceSetFlags[MPTokenIssuanceSetFlags["tfMPTLock"] = 1] = "tfMPTLock";
-    MPTokenIssuanceSetFlags[MPTokenIssuanceSetFlags["tfMPTUnlock"] = 2] = "tfMPTUnlock";
-})(MPTokenIssuanceSetFlags || (exports.MPTokenIssuanceSetFlags = MPTokenIssuanceSetFlags = {}));
-function validateMPTokenIssuanceSet(tx) {
-    var _a, _b, _c;
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'MPTokenIssuanceID', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Holder', common_1.isAccount);
-    const flags = ((_a = tx.Flags) !== null && _a !== void 0 ? _a : 0);
-    const isTfMPTLock = typeof flags === 'number'
-        ? (0, utils_1.isFlagEnabled)(flags, MPTokenIssuanceSetFlags.tfMPTLock)
-        : ((_b = flags.tfMPTLock) !== null && _b !== void 0 ? _b : false);
-    const isTfMPTUnlock = typeof flags === 'number'
-        ? (0, utils_1.isFlagEnabled)(flags, MPTokenIssuanceSetFlags.tfMPTUnlock)
-        : ((_c = flags.tfMPTUnlock) !== null && _c !== void 0 ? _c : false);
-    if (isTfMPTLock && isTfMPTUnlock) {
-        throw new errors_1.ValidationError('MPTokenIssuanceSet: flag conflict');
-    }
-}
-exports.validateMPTokenIssuanceSet = validateMPTokenIssuanceSet;
-//# sourceMappingURL=MPTokenIssuanceSet.js.map
-
-/***/ }),
-
-/***/ 7644:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateNFTokenAcceptOffer = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateNFTokenBrokerFee(tx) {
-    const value = (0, common_1.parseAmountValue)(tx.NFTokenBrokerFee);
-    if (Number.isNaN(value)) {
-        throw new errors_1.ValidationError('NFTokenAcceptOffer: invalid NFTokenBrokerFee');
-    }
-    if (value <= 0) {
-        throw new errors_1.ValidationError('NFTokenAcceptOffer: NFTokenBrokerFee must be greater than 0; omit if there is no fee');
-    }
-    if (tx.NFTokenSellOffer == null || tx.NFTokenBuyOffer == null) {
-        throw new errors_1.ValidationError('NFTokenAcceptOffer: both NFTokenSellOffer and NFTokenBuyOffer must be set if using brokered mode');
-    }
-}
-function validateNFTokenAcceptOffer(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (tx.NFTokenBrokerFee != null) {
-        validateNFTokenBrokerFee(tx);
-    }
-    if (tx.NFTokenSellOffer == null && tx.NFTokenBuyOffer == null) {
-        throw new errors_1.ValidationError('NFTokenAcceptOffer: must set either NFTokenSellOffer or NFTokenBuyOffer');
-    }
-}
-exports.validateNFTokenAcceptOffer = validateNFTokenAcceptOffer;
-//# sourceMappingURL=NFTokenAcceptOffer.js.map
-
-/***/ }),
-
-/***/ 611:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateNFTokenBurn = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateNFTokenBurn(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'NFTokenID', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Owner', common_1.isAccount);
-}
-exports.validateNFTokenBurn = validateNFTokenBurn;
-//# sourceMappingURL=NFTokenBurn.js.map
-
-/***/ }),
-
-/***/ 9375:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateNFTokenCancelOffer = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateNFTokenCancelOffer(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (!(0, common_1.isArray)(tx.NFTokenOffers)) {
-        throw new errors_1.ValidationError('NFTokenCancelOffer: missing field NFTokenOffers');
-    }
-    if (tx.NFTokenOffers.length < 1) {
-        throw new errors_1.ValidationError('NFTokenCancelOffer: empty field NFTokenOffers');
-    }
-}
-exports.validateNFTokenCancelOffer = validateNFTokenCancelOffer;
-//# sourceMappingURL=NFTokenCancelOffer.js.map
-
-/***/ }),
-
-/***/ 2726:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateNFTokenCreateOffer = exports.NFTokenCreateOfferFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
-var NFTokenCreateOfferFlags;
-(function (NFTokenCreateOfferFlags) {
-    NFTokenCreateOfferFlags[NFTokenCreateOfferFlags["tfSellNFToken"] = 1] = "tfSellNFToken";
-})(NFTokenCreateOfferFlags || (exports.NFTokenCreateOfferFlags = NFTokenCreateOfferFlags = {}));
-function validateNFTokenSellOfferCases(tx) {
-    if (tx.Owner != null) {
-        throw new errors_1.ValidationError('NFTokenCreateOffer: Owner must not be present for sell offers');
-    }
-}
-function validateNFTokenBuyOfferCases(tx) {
-    if (tx.Owner == null) {
-        throw new errors_1.ValidationError('NFTokenCreateOffer: Owner must be present for buy offers');
-    }
-    if ((0, common_1.parseAmountValue)(tx.Amount) <= 0) {
-        throw new errors_1.ValidationError('NFTokenCreateOffer: Amount must be greater than 0 for buy offers');
-    }
-}
-function validateNFTokenCreateOffer(tx) {
-    var _a, _b;
-    (0, common_1.validateBaseTransaction)(tx);
-    if (tx.Account === tx.Owner) {
-        throw new errors_1.ValidationError('NFTokenCreateOffer: Owner and Account must not be equal');
-    }
-    if (tx.Account === tx.Destination) {
-        throw new errors_1.ValidationError('NFTokenCreateOffer: Destination and Account must not be equal');
-    }
-    (0, common_1.validateOptionalField)(tx, 'Destination', common_1.isAccount);
-    (0, common_1.validateOptionalField)(tx, 'Owner', common_1.isAccount);
-    if (tx.NFTokenID == null) {
-        throw new errors_1.ValidationError('NFTokenCreateOffer: missing field NFTokenID');
-    }
-    if (!(0, common_1.isAmount)(tx.Amount)) {
-        throw new errors_1.ValidationError('NFTokenCreateOffer: invalid Amount');
-    }
-    const flags = ((_a = tx.Flags) !== null && _a !== void 0 ? _a : 0);
-    const isTfSellNFToken = typeof flags === 'number'
-        ? (0, utils_1.isFlagEnabled)(flags, NFTokenCreateOfferFlags.tfSellNFToken)
-        : ((_b = flags.tfSellNFToken) !== null && _b !== void 0 ? _b : false);
-    if (isTfSellNFToken) {
-        validateNFTokenSellOfferCases(tx);
-    }
-    else {
-        validateNFTokenBuyOfferCases(tx);
-    }
-}
-exports.validateNFTokenCreateOffer = validateNFTokenCreateOffer;
-//# sourceMappingURL=NFTokenCreateOffer.js.map
-
-/***/ }),
-
-/***/ 7004:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateNFTokenMint = exports.NFTokenMintFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
-var NFTokenMintFlags;
-(function (NFTokenMintFlags) {
-    NFTokenMintFlags[NFTokenMintFlags["tfBurnable"] = 1] = "tfBurnable";
-    NFTokenMintFlags[NFTokenMintFlags["tfOnlyXRP"] = 2] = "tfOnlyXRP";
-    NFTokenMintFlags[NFTokenMintFlags["tfTrustLine"] = 4] = "tfTrustLine";
-    NFTokenMintFlags[NFTokenMintFlags["tfTransferable"] = 8] = "tfTransferable";
-    NFTokenMintFlags[NFTokenMintFlags["tfMutable"] = 16] = "tfMutable";
-})(NFTokenMintFlags || (exports.NFTokenMintFlags = NFTokenMintFlags = {}));
-function validateNFTokenMint(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    if (tx.Account === tx.Issuer) {
-        throw new errors_1.ValidationError('NFTokenMint: Issuer must not be equal to Account');
-    }
-    (0, common_1.validateOptionalField)(tx, 'Issuer', common_1.isAccount);
-    if (typeof tx.URI === 'string' && tx.URI === '') {
-        throw new errors_1.ValidationError('NFTokenMint: URI must not be empty string');
-    }
-    if (typeof tx.URI === 'string' && !(0, utils_1.isHex)(tx.URI)) {
-        throw new errors_1.ValidationError('NFTokenMint: URI must be in hex format');
-    }
-    if (tx.NFTokenTaxon == null) {
-        throw new errors_1.ValidationError('NFTokenMint: missing field NFTokenTaxon');
-    }
-    if (tx.Amount == null) {
-        if (tx.Expiration != null || tx.Destination != null) {
-            throw new errors_1.ValidationError('NFTokenMint: Amount is required when Expiration or Destination is present');
-        }
-    }
-    (0, common_1.validateOptionalField)(tx, 'Amount', common_1.isAmount);
-    (0, common_1.validateOptionalField)(tx, 'Expiration', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'Destination', common_1.isAccount);
-}
-exports.validateNFTokenMint = validateNFTokenMint;
-//# sourceMappingURL=NFTokenMint.js.map
-
-/***/ }),
-
-/***/ 121:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateNFTokenModify = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
-function validateNFTokenModify(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'NFTokenID', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Owner', common_1.isAccount);
-    (0, common_1.validateOptionalField)(tx, 'URI', common_1.isString);
-    if (tx.URI !== undefined && typeof tx.URI === 'string') {
-        if (tx.URI === '') {
-            throw new errors_1.ValidationError('NFTokenModify: URI must not be empty string');
-        }
-        if (!(0, utils_1.isHex)(tx.URI)) {
-            throw new errors_1.ValidationError('NFTokenModify: URI must be in hex format');
-        }
-    }
-}
-exports.validateNFTokenModify = validateNFTokenModify;
-//# sourceMappingURL=NFTokenModify.js.map
-
-/***/ }),
-
-/***/ 8079:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateXChainAccountCreateCommit = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateXChainAccountCreateCommit(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'XChainBridge', common_1.isXChainBridge);
-    (0, common_1.validateRequiredField)(tx, 'SignatureReward', common_1.isAmount);
-    (0, common_1.validateRequiredField)(tx, 'Destination', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-}
-exports.validateXChainAccountCreateCommit = validateXChainAccountCreateCommit;
-//# sourceMappingURL=XChainAccountCreateCommit.js.map
-
-/***/ }),
-
-/***/ 8874:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateXChainAddAccountCreateAttestation = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateXChainAddAccountCreateAttestation(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-    (0, common_1.validateRequiredField)(tx, 'AttestationRewardAccount', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'AttestationSignerAccount', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'Destination', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'OtherChainSource', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'PublicKey', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Signature', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'SignatureReward', common_1.isAmount);
-    (0, common_1.validateRequiredField)(tx, 'WasLockingChainSend', (inp) => inp === 0 || inp === 1);
-    (0, common_1.validateRequiredField)(tx, 'XChainAccountCreateCount', (inp) => (0, common_1.isNumber)(inp) || (0, common_1.isString)(inp));
-    (0, common_1.validateRequiredField)(tx, 'XChainBridge', common_1.isXChainBridge);
-}
-exports.validateXChainAddAccountCreateAttestation = validateXChainAddAccountCreateAttestation;
-//# sourceMappingURL=XChainAddAccountCreateAttestation.js.map
-
-/***/ }),
-
-/***/ 6508:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateXChainAddClaimAttestation = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateXChainAddClaimAttestation(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-    (0, common_1.validateRequiredField)(tx, 'AttestationRewardAccount', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'AttestationSignerAccount', common_1.isAccount);
-    (0, common_1.validateOptionalField)(tx, 'Destination', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'OtherChainSource', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'PublicKey', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Signature', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'WasLockingChainSend', (inp) => inp === 0 || inp === 1);
-    (0, common_1.validateRequiredField)(tx, 'XChainBridge', common_1.isXChainBridge);
-    (0, common_1.validateRequiredField)(tx, 'XChainClaimID', (inp) => (0, common_1.isNumber)(inp) || (0, common_1.isString)(inp));
-}
-exports.validateXChainAddClaimAttestation = validateXChainAddClaimAttestation;
-//# sourceMappingURL=XChainAddClaimAttestation.js.map
-
-/***/ }),
-
-/***/ 6551:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateXChainClaim = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateXChainClaim(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'XChainBridge', common_1.isXChainBridge);
-    (0, common_1.validateRequiredField)(tx, 'XChainClaimID', (inp) => (0, common_1.isNumber)(inp) || (0, common_1.isString)(inp));
-    (0, common_1.validateRequiredField)(tx, 'Destination', common_1.isAccount);
-    (0, common_1.validateOptionalField)(tx, 'DestinationTag', common_1.isNumber);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-}
-exports.validateXChainClaim = validateXChainClaim;
-//# sourceMappingURL=XChainClaim.js.map
-
-/***/ }),
-
-/***/ 6873:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateXChainCommit = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateXChainCommit(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'XChainBridge', common_1.isXChainBridge);
-    (0, common_1.validateRequiredField)(tx, 'XChainClaimID', (inp) => (0, common_1.isNumber)(inp) || (0, common_1.isString)(inp));
-    (0, common_1.validateOptionalField)(tx, 'OtherChainDestination', common_1.isAccount);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-}
-exports.validateXChainCommit = validateXChainCommit;
-//# sourceMappingURL=XChainCommit.js.map
-
-/***/ }),
-
-/***/ 6730:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateXChainCreateBridge = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateXChainCreateBridge(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'XChainBridge', common_1.isXChainBridge);
-    (0, common_1.validateRequiredField)(tx, 'SignatureReward', common_1.isAmount);
-    (0, common_1.validateOptionalField)(tx, 'MinAccountCreateAmount', common_1.isAmount);
-}
-exports.validateXChainCreateBridge = validateXChainCreateBridge;
-//# sourceMappingURL=XChainCreateBridge.js.map
-
-/***/ }),
-
-/***/ 6399:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateXChainCreateClaimID = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateXChainCreateClaimID(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'XChainBridge', common_1.isXChainBridge);
-    (0, common_1.validateRequiredField)(tx, 'SignatureReward', common_1.isAmount);
-    (0, common_1.validateRequiredField)(tx, 'OtherChainSource', common_1.isAccount);
-}
-exports.validateXChainCreateClaimID = validateXChainCreateClaimID;
-//# sourceMappingURL=XChainCreateClaimID.js.map
-
-/***/ }),
-
-/***/ 7503:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateXChainModifyBridge = exports.XChainModifyBridgeFlags = void 0;
-const common_1 = __nccwpck_require__(9180);
-var XChainModifyBridgeFlags;
-(function (XChainModifyBridgeFlags) {
-    XChainModifyBridgeFlags[XChainModifyBridgeFlags["tfClearAccountCreateAmount"] = 65536] = "tfClearAccountCreateAmount";
-})(XChainModifyBridgeFlags || (exports.XChainModifyBridgeFlags = XChainModifyBridgeFlags = {}));
-function validateXChainModifyBridge(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'XChainBridge', common_1.isXChainBridge);
-    (0, common_1.validateOptionalField)(tx, 'SignatureReward', common_1.isAmount);
-    (0, common_1.validateOptionalField)(tx, 'MinAccountCreateAmount', common_1.isAmount);
-}
-exports.validateXChainModifyBridge = validateXChainModifyBridge;
-//# sourceMappingURL=XChainModifyBridge.js.map
-
-/***/ }),
-
-/***/ 5451:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateAccountDelete = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateAccountDelete(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Destination', common_1.isAccount);
-    (0, common_1.validateOptionalField)(tx, 'DestinationTag', common_1.isNumber);
-    (0, common_1.validateCredentialsList)(tx.CredentialIDs, tx.TransactionType, true, common_1.MAX_AUTHORIZED_CREDENTIALS);
-}
-exports.validateAccountDelete = validateAccountDelete;
-//# sourceMappingURL=accountDelete.js.map
-
-/***/ }),
-
-/***/ 4593:
+/***/ 5400:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateAccountSet = exports.AccountSetTfFlags = exports.AccountSetAsfFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 var AccountSetAsfFlags;
 (function (AccountSetAsfFlags) {
     AccountSetAsfFlags[AccountSetAsfFlags["asfRequireDest"] = 1] = "asfRequireDest";
     AccountSetAsfFlags[AccountSetAsfFlags["asfRequireAuth"] = 2] = "asfRequireAuth";
-    AccountSetAsfFlags[AccountSetAsfFlags["asfDisallowXRP"] = 3] = "asfDisallowXRP";
+    AccountSetAsfFlags[AccountSetAsfFlags["asfDisallowXAH"] = 3] = "asfDisallowXAH";
     AccountSetAsfFlags[AccountSetAsfFlags["asfDisableMaster"] = 4] = "asfDisableMaster";
     AccountSetAsfFlags[AccountSetAsfFlags["asfAccountTxnID"] = 5] = "asfAccountTxnID";
     AccountSetAsfFlags[AccountSetAsfFlags["asfNoFreeze"] = 6] = "asfNoFreeze";
@@ -26484,12 +25375,13 @@ var AccountSetAsfFlags;
     AccountSetAsfFlags[AccountSetAsfFlags["asfDefaultRipple"] = 8] = "asfDefaultRipple";
     AccountSetAsfFlags[AccountSetAsfFlags["asfDepositAuth"] = 9] = "asfDepositAuth";
     AccountSetAsfFlags[AccountSetAsfFlags["asfAuthorizedNFTokenMinter"] = 10] = "asfAuthorizedNFTokenMinter";
+    AccountSetAsfFlags[AccountSetAsfFlags["asfTshCollect"] = 11] = "asfTshCollect";
     AccountSetAsfFlags[AccountSetAsfFlags["asfDisallowIncomingNFTokenOffer"] = 12] = "asfDisallowIncomingNFTokenOffer";
     AccountSetAsfFlags[AccountSetAsfFlags["asfDisallowIncomingCheck"] = 13] = "asfDisallowIncomingCheck";
     AccountSetAsfFlags[AccountSetAsfFlags["asfDisallowIncomingPayChan"] = 14] = "asfDisallowIncomingPayChan";
     AccountSetAsfFlags[AccountSetAsfFlags["asfDisallowIncomingTrustline"] = 15] = "asfDisallowIncomingTrustline";
-    AccountSetAsfFlags[AccountSetAsfFlags["asfAllowTrustLineClawback"] = 16] = "asfAllowTrustLineClawback";
-    AccountSetAsfFlags[AccountSetAsfFlags["asfAllowTrustLineLocking"] = 17] = "asfAllowTrustLineLocking";
+    AccountSetAsfFlags[AccountSetAsfFlags["asfDisallowIncomingRemit"] = 16] = "asfDisallowIncomingRemit";
+    AccountSetAsfFlags[AccountSetAsfFlags["asfAllowTrustLineClawback"] = 17] = "asfAllowTrustLineClawback";
 })(AccountSetAsfFlags || (exports.AccountSetAsfFlags = AccountSetAsfFlags = {}));
 var AccountSetTfFlags;
 (function (AccountSetTfFlags) {
@@ -26497,11 +25389,12 @@ var AccountSetTfFlags;
     AccountSetTfFlags[AccountSetTfFlags["tfOptionalDestTag"] = 131072] = "tfOptionalDestTag";
     AccountSetTfFlags[AccountSetTfFlags["tfRequireAuth"] = 262144] = "tfRequireAuth";
     AccountSetTfFlags[AccountSetTfFlags["tfOptionalAuth"] = 524288] = "tfOptionalAuth";
-    AccountSetTfFlags[AccountSetTfFlags["tfDisallowXRP"] = 1048576] = "tfDisallowXRP";
-    AccountSetTfFlags[AccountSetTfFlags["tfAllowXRP"] = 2097152] = "tfAllowXRP";
+    AccountSetTfFlags[AccountSetTfFlags["tfDisallowXAH"] = 1048576] = "tfDisallowXAH";
+    AccountSetTfFlags[AccountSetTfFlags["tfAllowXAH"] = 2097152] = "tfAllowXAH";
 })(AccountSetTfFlags || (exports.AccountSetTfFlags = AccountSetTfFlags = {}));
 const MIN_TICK_SIZE = 3;
 const MAX_TICK_SIZE = 15;
+const MAX_HOOK_STATE_SCALE = 16;
 function validateAccountSet(tx) {
     (0, common_1.validateBaseTransaction)(tx);
     (0, common_1.validateOptionalField)(tx, 'NFTokenMinter', common_1.isAccount);
@@ -26542,113 +25435,25 @@ function validateAccountSet(tx) {
             throw new errors_1.ValidationError('AccountSet: invalid TickSize');
         }
     }
+    (0, common_1.validateOptionalField)(tx, 'HookStateScale', common_1.isNumber);
+    if (typeof tx.HookStateScale === 'number' &&
+        tx.HookStateScale > MAX_HOOK_STATE_SCALE) {
+        throw new errors_1.ValidationError(`AccountSet: HookStateScale must be less than ${MAX_HOOK_STATE_SCALE}`);
+    }
 }
 exports.validateAccountSet = validateAccountSet;
 //# sourceMappingURL=accountSet.js.map
 
 /***/ }),
 
-/***/ 2269:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateBatch = exports.BatchFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
-var BatchFlags;
-(function (BatchFlags) {
-    BatchFlags[BatchFlags["tfAllOrNothing"] = 65536] = "tfAllOrNothing";
-    BatchFlags[BatchFlags["tfOnlyOne"] = 131072] = "tfOnlyOne";
-    BatchFlags[BatchFlags["tfUntilFailure"] = 262144] = "tfUntilFailure";
-    BatchFlags[BatchFlags["tfIndependent"] = 524288] = "tfIndependent";
-})(BatchFlags || (exports.BatchFlags = BatchFlags = {}));
-function validateBatchInnerTransaction(tx, index) {
-    if (tx.TransactionType === 'Batch') {
-        throw new errors_1.ValidationError(`Batch: RawTransactions[${index}] is a Batch transaction. Cannot nest Batch transactions.`);
-    }
-    if (!(0, utils_1.hasFlag)(tx, common_1.GlobalFlags.tfInnerBatchTxn, 'tfInnerBatchTxn')) {
-        throw new errors_1.ValidationError(`Batch: RawTransactions[${index}] must contain the \`tfInnerBatchTxn\` flag.`);
-    }
-    (0, common_1.validateOptionalField)(tx, 'Fee', (0, common_1.isValue)('0'), {
-        paramName: `RawTransactions[${index}].RawTransaction.Fee`,
-        txType: 'Batch',
-    });
-    (0, common_1.validateOptionalField)(tx, 'SigningPubKey', (0, common_1.isValue)(''), {
-        paramName: `RawTransactions[${index}].RawTransaction.SigningPubKey`,
-        txType: 'Batch',
-    });
-    (0, common_1.validateOptionalField)(tx, 'TxnSignature', common_1.isNull, {
-        paramName: `RawTransactions[${index}].RawTransaction.TxnSignature`,
-        txType: 'Batch',
-    });
-    (0, common_1.validateOptionalField)(tx, 'Signers', common_1.isNull, {
-        paramName: `RawTransactions[${index}].RawTransaction.Signers`,
-        txType: 'Batch',
-    });
-    (0, common_1.validateOptionalField)(tx, 'LastLedgerSequence', common_1.isNull, {
-        paramName: `RawTransactions[${index}].RawTransaction.LastLedgerSequence`,
-        txType: 'Batch',
-    });
-}
-function validateBatch(tx) {
-    var _a;
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'RawTransactions', common_1.isArray);
-    tx.RawTransactions.forEach((rawTxObj, index) => {
-        if (!(0, common_1.isRecord)(rawTxObj)) {
-            throw new errors_1.ValidationError(`Batch: RawTransactions[${index}] is not object.`);
-        }
-        (0, common_1.validateRequiredField)(rawTxObj, 'RawTransaction', common_1.isRecord, {
-            paramName: `RawTransactions[${index}].RawTransaction`,
-            txType: 'Batch',
-        });
-        const rawTx = rawTxObj.RawTransaction;
-        validateBatchInnerTransaction(rawTx, index);
-    });
-    (0, common_1.validateOptionalField)(tx, 'BatchSigners', common_1.isArray);
-    (_a = tx.BatchSigners) === null || _a === void 0 ? void 0 : _a.forEach((signerObj, index) => {
-        if (!(0, common_1.isRecord)(signerObj)) {
-            throw new errors_1.ValidationError(`Batch: BatchSigners[${index}] is not object.`);
-        }
-        const signerRecord = signerObj;
-        (0, common_1.validateRequiredField)(signerRecord, 'BatchSigner', common_1.isRecord, {
-            paramName: `BatchSigners[${index}].BatchSigner`,
-            txType: 'Batch',
-        });
-        const signer = signerRecord.BatchSigner;
-        (0, common_1.validateRequiredField)(signer, 'Account', common_1.isString, {
-            paramName: `BatchSigners[${index}].BatchSigner.Account`,
-            txType: 'Batch',
-        });
-        (0, common_1.validateOptionalField)(signer, 'SigningPubKey', common_1.isString, {
-            paramName: `BatchSigners[${index}].BatchSigner.SigningPubKey`,
-            txType: 'Batch',
-        });
-        (0, common_1.validateOptionalField)(signer, 'TxnSignature', common_1.isString, {
-            paramName: `BatchSigners[${index}].BatchSigner.TxnSignature`,
-            txType: 'Batch',
-        });
-        (0, common_1.validateOptionalField)(signer, 'Signers', common_1.isArray, {
-            paramName: `BatchSigners[${index}].BatchSigner.Signers`,
-            txType: 'Batch',
-        });
-    });
-}
-exports.validateBatch = validateBatch;
-//# sourceMappingURL=batch.js.map
-
-/***/ }),
-
-/***/ 8677:
+/***/ 58:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateCheckCancel = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateCheckCancel(tx) {
     (0, common_1.validateBaseTransaction)(tx);
     if (tx.CheckID !== undefined && typeof tx.CheckID !== 'string') {
@@ -26660,14 +25465,14 @@ exports.validateCheckCancel = validateCheckCancel;
 
 /***/ }),
 
-/***/ 6770:
+/***/ 372:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateCheckCash = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateCheckCash(tx) {
     (0, common_1.validateBaseTransaction)(tx);
     if (tx.Amount == null && tx.DeliverMin == null) {
@@ -26693,14 +25498,14 @@ exports.validateCheckCash = validateCheckCash;
 
 /***/ }),
 
-/***/ 7924:
+/***/ 9105:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateCheckCreate = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateCheckCreate(tx) {
     (0, common_1.validateBaseTransaction)(tx);
     if (tx.SendMax === undefined) {
@@ -26708,7 +25513,8 @@ function validateCheckCreate(tx) {
     }
     (0, common_1.validateRequiredField)(tx, 'Destination', common_1.isAccount);
     (0, common_1.validateOptionalField)(tx, 'DestinationTag', common_1.isNumber);
-    if (typeof tx.SendMax !== 'string' && !(0, common_1.isIssuedCurrencyAmount)(tx.SendMax)) {
+    if (typeof tx.SendMax !== 'string' &&
+        !(0, common_1.isIssuedCurrency)(tx.SendMax)) {
         throw new errors_1.ValidationError('CheckCreate: invalid SendMax');
     }
     if (tx.Expiration !== undefined && typeof tx.Expiration !== 'number') {
@@ -26723,32 +25529,50 @@ exports.validateCheckCreate = validateCheckCreate;
 
 /***/ }),
 
-/***/ 2623:
+/***/ 1973:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.validateClaimReward = exports.ClaimRewardFlags = void 0;
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
+var ClaimRewardFlags;
+(function (ClaimRewardFlags) {
+    ClaimRewardFlags[ClaimRewardFlags["tfOptOut"] = 1] = "tfOptOut";
+})(ClaimRewardFlags || (exports.ClaimRewardFlags = ClaimRewardFlags = {}));
+function validateClaimReward(tx) {
+    (0, common_1.validateBaseTransaction)(tx);
+    if (tx.Issuer !== undefined && typeof tx.Issuer !== 'string') {
+        throw new errors_1.ValidationError('ClaimReward: Issuer must be a string');
+    }
+    if (tx.Account === tx.Issuer) {
+        throw new errors_1.ValidationError('ClaimReward: Account and Issuer cannot be the same');
+    }
+}
+exports.validateClaimReward = validateClaimReward;
+//# sourceMappingURL=claimReward.js.map
+
+/***/ }),
+
+/***/ 6281:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateClawback = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateClawback(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isClawbackAmount);
-    (0, common_1.validateOptionalField)(tx, 'Holder', common_1.isAccount);
-    if (!(0, common_1.isIssuedCurrencyAmount)(tx.Amount) && !(0, common_1.isMPTAmount)(tx.Amount)) {
+    if (tx.Amount == null) {
+        throw new errors_1.ValidationError('Clawback: missing field Amount');
+    }
+    if (!(0, common_1.isIssuedCurrency)(tx.Amount)) {
         throw new errors_1.ValidationError('Clawback: invalid Amount');
     }
-    if ((0, common_1.isIssuedCurrencyAmount)(tx.Amount) && tx.Account === tx.Amount.issuer) {
+    if ((0, common_1.isIssuedCurrency)(tx.Amount) && tx.Account === tx.Amount.issuer) {
         throw new errors_1.ValidationError('Clawback: invalid holder Account');
-    }
-    if ((0, common_1.isMPTAmount)(tx.Amount) && tx.Account === tx.Holder) {
-        throw new errors_1.ValidationError('Clawback: invalid holder Account');
-    }
-    if ((0, common_1.isIssuedCurrencyAmount)(tx.Amount) && tx.Holder) {
-        throw new errors_1.ValidationError('Clawback: cannot have Holder for currency');
-    }
-    if ((0, common_1.isMPTAmount)(tx.Amount) && !tx.Holder) {
-        throw new errors_1.ValidationError('Clawback: missing Holder');
     }
 }
 exports.validateClawback = validateClawback;
@@ -26756,68 +25580,51 @@ exports.validateClawback = validateClawback;
 
 /***/ }),
 
-/***/ 9180:
+/***/ 170:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isDomainID = exports.containsDuplicates = exports.validateCredentialsList = exports.validateCredentialType = exports.parseAmountValue = exports.validateBaseTransaction = exports.GlobalFlags = exports.validateOptionalField = exports.validateRequiredField = exports.validateHexMetadata = exports.isLedgerEntryId = exports.isArray = exports.isXChainBridge = exports.isTokenAmount = exports.isAmount = exports.isAccount = exports.isClawbackAmount = exports.isMPTAmount = exports.isAuthorizeCredential = exports.isIssuedCurrencyAmount = exports.isIssuedCurrency = exports.isCurrency = exports.isXRPLNumber = exports.isValue = exports.isNull = exports.isNumber = exports.isString = exports.isRecord = exports.VAULT_DATA_MAX_BYTE_LENGTH = exports.MAX_AUTHORIZED_CREDENTIALS = void 0;
-const utils_1 = __nccwpck_require__(3617);
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const errors_1 = __nccwpck_require__(7919);
-const utils_2 = __nccwpck_require__(296);
+exports.parseAmountValue = exports.validateBaseTransaction = exports.validateOptionalField = exports.validateRequiredField = exports.isAmount = exports.isAccount = exports.isIssuedCurrency = exports.isCurrency = exports.isNumber = exports.isString = void 0;
+const xahau_address_codec_1 = __nccwpck_require__(647);
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const errors_1 = __nccwpck_require__(842);
+const utils_1 = __nccwpck_require__(8429);
 const MEMO_SIZE = 3;
-exports.MAX_AUTHORIZED_CREDENTIALS = 8;
-const MAX_CREDENTIAL_BYTE_LENGTH = 64;
-const MAX_CREDENTIAL_TYPE_LENGTH = MAX_CREDENTIAL_BYTE_LENGTH * 2;
-const SHA_512_HALF_LENGTH = 64;
-exports.VAULT_DATA_MAX_BYTE_LENGTH = 256;
 function isMemo(obj) {
-    if (!isRecord(obj)) {
+    if (obj.Memo == null) {
         return false;
     }
     const memo = obj.Memo;
-    if (!isRecord(memo)) {
-        return false;
-    }
     const size = Object.keys(memo).length;
-    const validData = memo.MemoData == null || (isString(memo.MemoData) && (0, utils_2.isHex)(memo.MemoData));
-    const validFormat = memo.MemoFormat == null ||
-        (isString(memo.MemoFormat) && (0, utils_2.isHex)(memo.MemoFormat));
-    const validType = memo.MemoType == null || (isString(memo.MemoType) && (0, utils_2.isHex)(memo.MemoType));
+    const validData = memo.MemoData == null || typeof memo.MemoData === 'string';
+    const validFormat = memo.MemoFormat == null || typeof memo.MemoFormat === 'string';
+    const validType = memo.MemoType == null || typeof memo.MemoType === 'string';
     return (size >= 1 &&
         size <= MEMO_SIZE &&
         validData &&
         validFormat &&
         validType &&
-        (0, utils_2.onlyHasFields)(memo, ['MemoFormat', 'MemoData', 'MemoType']));
+        (0, utils_1.onlyHasFields)(memo, ['MemoFormat', 'MemoData', 'MemoType']));
 }
 const SIGNER_SIZE = 3;
 function isSigner(obj) {
-    if (!isRecord(obj)) {
+    const signerWrapper = obj;
+    if (signerWrapper.Signer == null) {
         return false;
     }
-    const signer = obj.Signer;
-    if (!isRecord(signer)) {
-        return false;
-    }
+    const signer = signerWrapper.Signer;
     return (Object.keys(signer).length === SIGNER_SIZE &&
-        isString(signer.Account) &&
-        isString(signer.TxnSignature) &&
-        isString(signer.SigningPubKey));
+        typeof signer.Account === 'string' &&
+        typeof signer.TxnSignature === 'string' &&
+        typeof signer.SigningPubKey === 'string');
 }
-const XRP_CURRENCY_SIZE = 1;
-const MPT_CURRENCY_SIZE = 1;
-const ISSUE_CURRENCY_SIZE = 2;
-const MPT_CURRENCY_AMOUNT_SIZE = 2;
-const ISSUED_CURRENCY_AMOUNT_SIZE = 3;
-const XCHAIN_BRIDGE_SIZE = 4;
-const AUTHORIZE_CREDENTIAL_SIZE = 1;
+const XAH_CURRENCY_SIZE = 1;
+const ISSUE_SIZE = 2;
+const ISSUED_CURRENCY_SIZE = 3;
 function isRecord(value) {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
+    return value !== null && typeof value === 'object';
 }
-exports.isRecord = isRecord;
 function isString(str) {
     return typeof str === 'string';
 }
@@ -26826,143 +25633,56 @@ function isNumber(num) {
     return typeof num === 'number';
 }
 exports.isNumber = isNumber;
-function isNull(inp) {
-    return inp == null;
-}
-exports.isNull = isNull;
-function isValue(value) {
-    const isValueInternal = (inp) => inp === value;
-    return isValueInternal;
-}
-exports.isValue = isValue;
-function isXRPLNumber(value) {
-    return (typeof value === 'string' &&
-        /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/u.test(value.trim()));
-}
-exports.isXRPLNumber = isXRPLNumber;
 function isCurrency(input) {
     return (isRecord(input) &&
-        ((Object.keys(input).length === ISSUE_CURRENCY_SIZE &&
-            isString(input.issuer) &&
-            isString(input.currency)) ||
-            (Object.keys(input).length === XRP_CURRENCY_SIZE &&
-                input.currency === 'XRP') ||
-            (Object.keys(input).length === MPT_CURRENCY_SIZE &&
-                isString(input.mpt_issuance_id))));
+        ((Object.keys(input).length === ISSUE_SIZE &&
+            typeof input.issuer === 'string' &&
+            typeof input.currency === 'string') ||
+            (Object.keys(input).length === XAH_CURRENCY_SIZE &&
+                input.currency === 'XAH')));
 }
 exports.isCurrency = isCurrency;
 function isIssuedCurrency(input) {
     return (isRecord(input) &&
-        ((Object.keys(input).length === ISSUE_CURRENCY_SIZE &&
-            isString(input.issuer) &&
-            isString(input.currency)) ||
-            (Object.keys(input).length === XRP_CURRENCY_SIZE &&
-                input.currency === 'XRP')));
+        Object.keys(input).length === ISSUED_CURRENCY_SIZE &&
+        typeof input.value === 'string' &&
+        typeof input.issuer === 'string' &&
+        typeof input.currency === 'string');
 }
 exports.isIssuedCurrency = isIssuedCurrency;
-function isIssuedCurrencyAmount(input) {
-    return (isRecord(input) &&
-        Object.keys(input).length === ISSUED_CURRENCY_AMOUNT_SIZE &&
-        isString(input.value) &&
-        isString(input.issuer) &&
-        isString(input.currency));
-}
-exports.isIssuedCurrencyAmount = isIssuedCurrencyAmount;
-function isAuthorizeCredential(input) {
-    return (isRecord(input) &&
-        isRecord(input.Credential) &&
-        Object.keys(input).length === AUTHORIZE_CREDENTIAL_SIZE &&
-        typeof input.Credential.CredentialType === 'string' &&
-        typeof input.Credential.Issuer === 'string');
-}
-exports.isAuthorizeCredential = isAuthorizeCredential;
-function isMPTAmount(input) {
-    return (isRecord(input) &&
-        Object.keys(input).length === MPT_CURRENCY_AMOUNT_SIZE &&
-        typeof input.value === 'string' &&
-        typeof input.mpt_issuance_id === 'string');
-}
-exports.isMPTAmount = isMPTAmount;
-function isClawbackAmount(input) {
-    return isIssuedCurrencyAmount(input) || isMPTAmount(input);
-}
-exports.isClawbackAmount = isClawbackAmount;
 function isAccount(account) {
     return (typeof account === 'string' &&
-        ((0, ripple_address_codec_1.isValidClassicAddress)(account) || (0, ripple_address_codec_1.isValidXAddress)(account)));
+        ((0, xahau_address_codec_1.isValidClassicAddress)(account) || (0, xahau_address_codec_1.isValidXAddress)(account)));
 }
 exports.isAccount = isAccount;
 function isAmount(amount) {
-    return (typeof amount === 'string' ||
-        isIssuedCurrencyAmount(amount) ||
-        isMPTAmount(amount));
+    return typeof amount === 'string' || isIssuedCurrency(amount);
 }
 exports.isAmount = isAmount;
-function isTokenAmount(amount) {
-    return isIssuedCurrencyAmount(amount) || isMPTAmount(amount);
-}
-exports.isTokenAmount = isTokenAmount;
-function isXChainBridge(input) {
-    return (isRecord(input) &&
-        Object.keys(input).length === XCHAIN_BRIDGE_SIZE &&
-        typeof input.LockingChainDoor === 'string' &&
-        isIssuedCurrency(input.LockingChainIssue) &&
-        typeof input.IssuingChainDoor === 'string' &&
-        isIssuedCurrency(input.IssuingChainIssue));
-}
-exports.isXChainBridge = isXChainBridge;
-function isArray(input) {
-    return input != null && Array.isArray(input);
-}
-exports.isArray = isArray;
-function isLedgerEntryId(input) {
-    return isString(input) && (0, utils_2.isHex)(input) && input.length === SHA_512_HALF_LENGTH;
-}
-exports.isLedgerEntryId = isLedgerEntryId;
-function validateHexMetadata(input, lengthUpto) {
-    return (isString(input) &&
-        (0, utils_2.isHex)(input) &&
-        input.length > 0 &&
-        input.length <= lengthUpto);
-}
-exports.validateHexMetadata = validateHexMetadata;
-function validateRequiredField(tx, param, checkValidity, errorOpts = {}) {
-    var _a, _b;
-    const paramNameStr = (_a = errorOpts.paramName) !== null && _a !== void 0 ? _a : param;
-    const txType = (_b = errorOpts.txType) !== null && _b !== void 0 ? _b : tx.TransactionType;
-    if (tx[param] == null) {
-        throw new errors_1.ValidationError(`${txType}: missing field ${String(paramNameStr)}`);
+function validateRequiredField(tx, paramName, checkValidity) {
+    if (tx[paramName] == null) {
+        throw new errors_1.ValidationError(`${tx.TransactionType}: missing field ${paramName}`);
     }
-    if (!checkValidity(tx[param])) {
-        throw new errors_1.ValidationError(`${txType}: invalid field ${String(paramNameStr)}`);
+    if (!checkValidity(tx[paramName])) {
+        throw new errors_1.ValidationError(`${tx.TransactionType}: invalid field ${paramName}`);
     }
 }
 exports.validateRequiredField = validateRequiredField;
-function validateOptionalField(tx, param, checkValidity, errorOpts = {}) {
-    var _a, _b;
-    const paramNameStr = (_a = errorOpts.paramName) !== null && _a !== void 0 ? _a : param;
-    const txType = (_b = errorOpts.txType) !== null && _b !== void 0 ? _b : tx.TransactionType;
-    if (tx[param] !== undefined && !checkValidity(tx[param])) {
-        throw new errors_1.ValidationError(`${txType}: invalid field ${String(paramNameStr)}`);
+function validateOptionalField(tx, paramName, checkValidity) {
+    if (tx[paramName] !== undefined && !checkValidity(tx[paramName])) {
+        throw new errors_1.ValidationError(`${tx.TransactionType}: invalid field ${paramName}`);
     }
 }
 exports.validateOptionalField = validateOptionalField;
-var GlobalFlags;
-(function (GlobalFlags) {
-    GlobalFlags[GlobalFlags["tfInnerBatchTxn"] = 1073741824] = "tfInnerBatchTxn";
-})(GlobalFlags || (exports.GlobalFlags = GlobalFlags = {}));
 function validateBaseTransaction(common) {
-    if (!isRecord(common)) {
-        throw new errors_1.ValidationError('BaseTransaction: invalid, expected a valid object');
-    }
     if (common.TransactionType === undefined) {
         throw new errors_1.ValidationError('BaseTransaction: missing field TransactionType');
     }
     if (typeof common.TransactionType !== 'string') {
         throw new errors_1.ValidationError('BaseTransaction: TransactionType not string');
     }
-    if (!ripple_binary_codec_1.TRANSACTION_TYPES.includes(common.TransactionType)) {
-        throw new errors_1.ValidationError(`BaseTransaction: Unknown TransactionType ${common.TransactionType}`);
+    if (!xahau_binary_codec_1.TRANSACTION_TYPES.includes(common.TransactionType)) {
+        throw new errors_1.ValidationError('BaseTransaction: Unknown TransactionType');
     }
     validateRequiredField(common, 'Account', isString);
     validateOptionalField(common, 'Fee', isString);
@@ -26970,12 +25690,12 @@ function validateBaseTransaction(common) {
     validateOptionalField(common, 'AccountTxnID', isString);
     validateOptionalField(common, 'LastLedgerSequence', isNumber);
     const memos = common.Memos;
-    if (memos != null && (!isArray(memos) || !memos.every(isMemo))) {
+    if (memos !== undefined && !memos.every(isMemo)) {
         throw new errors_1.ValidationError('BaseTransaction: invalid Memos');
     }
     const signers = common.Signers;
-    if (signers != null &&
-        (!isArray(signers) || signers.length === 0 || !signers.every(isSigner))) {
+    if (signers !== undefined &&
+        (signers.length === 0 || !signers.every(isSigner))) {
         throw new errors_1.ValidationError('BaseTransaction: invalid Signers');
     }
     validateOptionalField(common, 'SourceTag', isNumber);
@@ -26983,11 +25703,6 @@ function validateBaseTransaction(common) {
     validateOptionalField(common, 'TicketSequence', isNumber);
     validateOptionalField(common, 'TxnSignature', isString);
     validateOptionalField(common, 'NetworkID', isNumber);
-    validateOptionalField(common, 'Delegate', isAccount);
-    const delegate = common.Delegate;
-    if (delegate != null && delegate === common.Account) {
-        throw new errors_1.ValidationError('BaseTransaction: Account and Delegate addresses cannot be the same');
-    }
 }
 exports.validateBaseTransaction = validateBaseTransaction;
 function parseAmountValue(amount) {
@@ -27000,158 +25715,70 @@ function parseAmountValue(amount) {
     return parseFloat(amount.value);
 }
 exports.parseAmountValue = parseAmountValue;
-function validateCredentialType(tx) {
-    if (typeof tx.TransactionType !== 'string') {
-        throw new errors_1.ValidationError('Invalid TransactionType');
-    }
-    if (tx.CredentialType === undefined) {
-        throw new errors_1.ValidationError(`${tx.TransactionType}: missing field CredentialType`);
-    }
-    if (!isString(tx.CredentialType)) {
-        throw new errors_1.ValidationError(`${tx.TransactionType}: CredentialType must be a string`);
-    }
-    if (tx.CredentialType.length === 0) {
-        throw new errors_1.ValidationError(`${tx.TransactionType}: CredentialType cannot be an empty string`);
-    }
-    else if (tx.CredentialType.length > MAX_CREDENTIAL_TYPE_LENGTH) {
-        throw new errors_1.ValidationError(`${tx.TransactionType}: CredentialType length cannot be > ${MAX_CREDENTIAL_TYPE_LENGTH}`);
-    }
-    if (!utils_1.HEX_REGEX.test(tx.CredentialType)) {
-        throw new errors_1.ValidationError(`${tx.TransactionType}: CredentialType must be encoded in hex`);
-    }
-}
-exports.validateCredentialType = validateCredentialType;
-function validateCredentialsList(credentials, transactionType, isStringID, maxCredentials) {
-    if (credentials == null) {
-        return;
-    }
-    if (!isArray(credentials)) {
-        throw new errors_1.ValidationError(`${transactionType}: Credentials must be an array`);
-    }
-    if (credentials.length > maxCredentials) {
-        throw new errors_1.ValidationError(`${transactionType}: Credentials length cannot exceed ${maxCredentials} elements`);
-    }
-    else if (credentials.length === 0) {
-        throw new errors_1.ValidationError(`${transactionType}: Credentials cannot be an empty array`);
-    }
-    credentials.forEach((credential) => {
-        if (isStringID) {
-            if (!isString(credential)) {
-                throw new errors_1.ValidationError(`${transactionType}: Invalid Credentials ID list format`);
-            }
-        }
-        else if (!isAuthorizeCredential(credential)) {
-            throw new errors_1.ValidationError(`${transactionType}: Invalid Credentials format`);
-        }
-    });
-    if (containsDuplicates(credentials)) {
-        throw new errors_1.ValidationError(`${transactionType}: Credentials cannot contain duplicate elements`);
-    }
-}
-exports.validateCredentialsList = validateCredentialsList;
-function isAuthorizeCredentialArray(list) {
-    return typeof list[0] !== 'string';
-}
-function containsDuplicates(objectList) {
-    if (typeof objectList[0] === 'string') {
-        const objSet = new Set(objectList.map((obj) => JSON.stringify(obj)));
-        return objSet.size !== objectList.length;
-    }
-    const seen = new Set();
-    if (isAuthorizeCredentialArray(objectList)) {
-        for (const item of objectList) {
-            const key = `${item.Credential.Issuer}-${item.Credential.CredentialType}`;
-            if (seen.has(key)) {
-                return true;
-            }
-            seen.add(key);
-        }
-    }
-    return false;
-}
-exports.containsDuplicates = containsDuplicates;
-const _DOMAIN_ID_LENGTH = 64;
-function isDomainID(domainID) {
-    return (isString(domainID) &&
-        domainID.length === _DOMAIN_ID_LENGTH &&
-        (0, utils_2.isHex)(domainID));
-}
-exports.isDomainID = isDomainID;
 //# sourceMappingURL=common.js.map
 
 /***/ }),
 
-/***/ 6981:
+/***/ 4965:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateDelegateSet = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-const PERMISSIONS_MAX_LENGTH = 10;
-const NON_DELEGABLE_TRANSACTIONS = new Set([
-    'AccountSet',
-    'SetRegularKey',
-    'SignerListSet',
-    'DelegateSet',
-    'AccountDelete',
-    'Batch',
-    'EnableAmendment',
-    'SetFee',
-    'UNLModify',
-]);
-function validateDelegateSet(tx) {
+exports.validateCronSet = exports.CronSetFlags = void 0;
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
+var CronSetFlags;
+(function (CronSetFlags) {
+    CronSetFlags[CronSetFlags["tfCronUnset"] = 1] = "tfCronUnset";
+})(CronSetFlags || (exports.CronSetFlags = CronSetFlags = {}));
+const MAX_REPEAT_COUNT = 256;
+const MIN_DELAY_SECONDS = 365 * 24 * 60 * 60;
+function validateCronSet(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Authorize', common_1.isAccount);
-    if (tx.Authorize === tx.Account) {
-        throw new errors_1.ValidationError('DelegateSet: Authorize and Account must be different.');
+    if (typeof tx.Flags === 'number' &&
+        tx.Flags & CronSetFlags.tfCronUnset) {
+        if (tx.RepeatCount !== undefined ||
+            tx.DelaySeconds !== undefined ||
+            tx.StartTime !== undefined) {
+            throw new errors_1.ValidationError('CronSet: RepeatCount, DelaySeconds, and StartTime must not be set when Flags is set to tfCronUnset');
+        }
+        return;
     }
-    (0, common_1.validateRequiredField)(tx, 'Permissions', Array.isArray);
-    const permissions = tx.Permissions;
-    if (permissions.length > PERMISSIONS_MAX_LENGTH) {
-        throw new errors_1.ValidationError(`DelegateSet: Permissions array length cannot be greater than ${PERMISSIONS_MAX_LENGTH}.`);
+    (0, common_1.validateRequiredField)(tx, 'StartTime', common_1.isNumber);
+    (0, common_1.validateOptionalField)(tx, 'RepeatCount', common_1.isNumber);
+    (0, common_1.validateOptionalField)(tx, 'DelaySeconds', common_1.isNumber);
+    if ((tx.RepeatCount === undefined) !== (tx.DelaySeconds === undefined)) {
+        throw new errors_1.ValidationError('CronSet: Both RepeatCount and DelaySeconds must be set, or neither should be set');
     }
-    const permissionValueSet = new Set();
-    permissions.forEach((permission) => {
-        if (permission == null ||
-            Object.keys(permission).length !== 1 ||
-            permission.Permission == null ||
-            Object.keys(permission.Permission).length !== 1) {
-            throw new errors_1.ValidationError('DelegateSet: Permissions array element is malformed');
-        }
-        const permissionValue = permission.Permission.PermissionValue;
-        if (permissionValue == null) {
-            throw new errors_1.ValidationError('DelegateSet: PermissionValue must be defined');
-        }
-        if (typeof permissionValue !== 'string') {
-            throw new errors_1.ValidationError('DelegateSet: PermissionValue must be a string');
-        }
-        if (NON_DELEGABLE_TRANSACTIONS.has(permissionValue)) {
-            throw new errors_1.ValidationError(`DelegateSet: PermissionValue contains a non-delegatable transaction ${permissionValue}`);
-        }
-        permissionValueSet.add(permissionValue);
-    });
-    if (permissions.length !== permissionValueSet.size) {
-        throw new errors_1.ValidationError('DelegateSet: Permissions array cannot contain duplicate values');
+    if (typeof tx.RepeatCount === 'number' && tx.RepeatCount > MAX_REPEAT_COUNT) {
+        throw new errors_1.ValidationError(`CronSet: RepeatCount must be less than ${MAX_REPEAT_COUNT}`);
+    }
+    if (typeof tx.DelaySeconds === 'number' &&
+        tx.DelaySeconds > MIN_DELAY_SECONDS) {
+        throw new errors_1.ValidationError(`CronSet: DelaySeconds must be less than ${MIN_DELAY_SECONDS}`);
     }
 }
-exports.validateDelegateSet = validateDelegateSet;
-//# sourceMappingURL=delegateSet.js.map
+exports.validateCronSet = validateCronSet;
+//# sourceMappingURL=cronSet.js.map
 
 /***/ }),
 
-/***/ 2415:
+/***/ 5664:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateDepositPreauth = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateDepositPreauth(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    validateSingleAuthorizationFieldProvided(tx);
+    if (tx.Authorize !== undefined && tx.Unauthorize !== undefined) {
+        throw new errors_1.ValidationError("DepositPreauth: can't provide both Authorize and Unauthorize fields");
+    }
+    if (tx.Authorize === undefined && tx.Unauthorize === undefined) {
+        throw new errors_1.ValidationError('DepositPreauth: must provide either Authorize or Unauthorize field');
+    }
     if (tx.Authorize !== undefined) {
         if (typeof tx.Authorize !== 'string') {
             throw new errors_1.ValidationError('DepositPreauth: Authorize must be a string');
@@ -27160,7 +25787,7 @@ function validateDepositPreauth(tx) {
             throw new errors_1.ValidationError("DepositPreauth: Account can't preauthorize its own address");
         }
     }
-    else if (tx.Unauthorize !== undefined) {
+    if (tx.Unauthorize !== undefined) {
         if (typeof tx.Unauthorize !== 'string') {
             throw new errors_1.ValidationError('DepositPreauth: Unauthorize must be a string');
         }
@@ -27168,31 +25795,13 @@ function validateDepositPreauth(tx) {
             throw new errors_1.ValidationError("DepositPreauth: Account can't unauthorize its own address");
         }
     }
-    else if (tx.AuthorizeCredentials !== undefined) {
-        (0, common_1.validateCredentialsList)(tx.AuthorizeCredentials, tx.TransactionType, false, common_1.MAX_AUTHORIZED_CREDENTIALS);
-    }
-    else if (tx.UnauthorizeCredentials !== undefined) {
-        (0, common_1.validateCredentialsList)(tx.UnauthorizeCredentials, tx.TransactionType, false, common_1.MAX_AUTHORIZED_CREDENTIALS);
-    }
 }
 exports.validateDepositPreauth = validateDepositPreauth;
-function validateSingleAuthorizationFieldProvided(tx) {
-    const fields = [
-        'Authorize',
-        'Unauthorize',
-        'AuthorizeCredentials',
-        'UnauthorizeCredentials',
-    ];
-    const countProvided = fields.filter((key) => tx[key] !== undefined).length;
-    if (countProvided !== 1) {
-        throw new errors_1.ValidationError('DepositPreauth: Requires exactly one field of the following: Authorize, Unauthorize, AuthorizeCredentials, UnauthorizeCredentials.');
-    }
-}
 //# sourceMappingURL=depositPreauth.js.map
 
 /***/ }),
 
-/***/ 9521:
+/***/ 2742:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -27207,24 +25816,25 @@ var EnableAmendmentFlags;
 
 /***/ }),
 
-/***/ 5421:
+/***/ 4916:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateEscrowCancel = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateEscrowCancel(tx) {
     (0, common_1.validateBaseTransaction)(tx);
     (0, common_1.validateRequiredField)(tx, 'Owner', common_1.isAccount);
-    if (tx.OfferSequence == null) {
-        throw new errors_1.ValidationError('EscrowCancel: missing OfferSequence');
+    if (tx.OfferSequence === undefined && tx.EscrowID === undefined) {
+        throw new errors_1.ValidationError('EscrowCancel: must include OfferSequence or EscrowID');
     }
-    if ((typeof tx.OfferSequence !== 'number' &&
-        typeof tx.OfferSequence !== 'string') ||
-        Number.isNaN(Number(tx.OfferSequence))) {
+    if (tx.OfferSequence !== undefined && typeof tx.OfferSequence !== 'number') {
         throw new errors_1.ValidationError('EscrowCancel: OfferSequence must be a number');
+    }
+    if (tx.EscrowID !== undefined && typeof tx.EscrowID !== 'string') {
+        throw new errors_1.ValidationError('EscrowCancel: EscrowID must be a string');
     }
 }
 exports.validateEscrowCancel = validateEscrowCancel;
@@ -27232,17 +25842,22 @@ exports.validateEscrowCancel = validateEscrowCancel;
 
 /***/ }),
 
-/***/ 5455:
+/***/ 8699:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateEscrowCreate = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateEscrowCreate(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
+    if (tx.Amount === undefined) {
+        throw new errors_1.ValidationError('EscrowCreate: missing field Amount');
+    }
+    if (typeof tx.Amount !== 'string' && !(0, common_1.isAmount)(tx.Amount)) {
+        throw new errors_1.ValidationError('EscrowCreate: Amount must be an Amount');
+    }
     (0, common_1.validateRequiredField)(tx, 'Destination', common_1.isAccount);
     (0, common_1.validateOptionalField)(tx, 'DestinationTag', common_1.isNumber);
     if (tx.CancelAfter === undefined && tx.FinishAfter === undefined) {
@@ -27266,25 +25881,25 @@ exports.validateEscrowCreate = validateEscrowCreate;
 
 /***/ }),
 
-/***/ 9005:
+/***/ 1161:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateEscrowFinish = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateEscrowFinish(tx) {
     (0, common_1.validateBaseTransaction)(tx);
     (0, common_1.validateRequiredField)(tx, 'Owner', common_1.isAccount);
-    (0, common_1.validateCredentialsList)(tx.CredentialIDs, tx.TransactionType, true, common_1.MAX_AUTHORIZED_CREDENTIALS);
-    if (tx.OfferSequence == null) {
-        throw new errors_1.ValidationError('EscrowFinish: missing field OfferSequence');
+    if (tx.OfferSequence === undefined && tx.EscrowID === undefined) {
+        throw new errors_1.ValidationError('EscrowFinish: must include OfferSequence or EscrowID');
     }
-    if ((typeof tx.OfferSequence !== 'number' &&
-        typeof tx.OfferSequence !== 'string') ||
-        Number.isNaN(Number(tx.OfferSequence))) {
+    if (tx.OfferSequence !== undefined && typeof tx.OfferSequence !== 'number') {
         throw new errors_1.ValidationError('EscrowFinish: OfferSequence must be a number');
+    }
+    if (tx.EscrowID !== undefined && typeof tx.EscrowID !== 'string') {
+        throw new errors_1.ValidationError('EscrowFinish: EscrowID must be a string');
     }
     if (tx.Condition !== undefined && typeof tx.Condition !== 'string') {
         throw new errors_1.ValidationError('EscrowFinish: Condition must be a string');
@@ -27298,7 +25913,40 @@ exports.validateEscrowFinish = validateEscrowFinish;
 
 /***/ }),
 
-/***/ 2931:
+/***/ 7543:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.validateImport = void 0;
+const errors_1 = __nccwpck_require__(842);
+const utils_1 = __nccwpck_require__(8429);
+const common_1 = __nccwpck_require__(170);
+const MAX_BLOB_LENGTH = 512;
+function validateImport(tx) {
+    (0, common_1.validateBaseTransaction)(tx);
+    if (tx.Issuer !== undefined && typeof tx.Issuer !== 'string') {
+        throw new errors_1.ValidationError('Import: Issuer must be a string');
+    }
+    if (tx.Account === tx.Issuer) {
+        throw new errors_1.ValidationError('Import: Issuer and Account must not be equal');
+    }
+    if (typeof tx.Blob !== 'string') {
+        throw new errors_1.ValidationError('Import: Blob must be a string');
+    }
+    if (typeof tx.Blob === 'string' && !(0, utils_1.isHex)(tx.Blob)) {
+        throw new errors_1.ValidationError('Import: Blob must be in hex format');
+    }
+    if (tx.Blob.length > MAX_BLOB_LENGTH) {
+        throw new errors_1.ValidationError(`Import: Blob must be less than ${MAX_BLOB_LENGTH} characters`);
+    }
+}
+exports.validateImport = validateImport;
+//# sourceMappingURL=import.js.map
+
+/***/ }),
+
+/***/ 1736:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -27317,414 +25965,57 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.XChainModifyBridgeFlags = exports.VaultWithdrawalPolicy = exports.VaultCreateFlags = exports.TrustSetFlags = exports.PaymentChannelClaimFlags = exports.PaymentFlags = exports.OfferCreateFlags = exports.validateNFTokenModify = exports.NFTokenMintFlags = exports.NFTokenCreateOfferFlags = exports.MPTokenIssuanceSetFlags = exports.MPTokenIssuanceCreateFlags = exports.MPTokenAuthorizeFlags = exports.LoanPayFlags = exports.LoanManageFlags = exports.LoanSetFlags = exports.EnableAmendmentFlags = exports.BatchFlags = exports.AMMWithdrawFlags = exports.AMMDepositFlags = exports.AMMClawbackFlags = exports.AccountSetTfFlags = exports.AccountSetAsfFlags = exports.validate = exports.isMPTAmount = exports.GlobalFlags = void 0;
-var common_1 = __nccwpck_require__(9180);
-Object.defineProperty(exports, "GlobalFlags", ({ enumerable: true, get: function () { return common_1.GlobalFlags; } }));
-Object.defineProperty(exports, "isMPTAmount", ({ enumerable: true, get: function () { return common_1.isMPTAmount; } }));
-var transaction_1 = __nccwpck_require__(665);
+exports.URITokenMintFlags = exports.TrustSetFlags = exports.RemarkFlags = exports.SetHookFlags = exports.PaymentChannelClaimFlags = exports.PaymentFlags = exports.OfferCreateFlags = exports.EnableAmendmentFlags = exports.CronSetFlags = exports.ClaimRewardFlags = exports.AccountSetTfFlags = exports.AccountSetAsfFlags = exports.validate = void 0;
+var transaction_1 = __nccwpck_require__(4508);
 Object.defineProperty(exports, "validate", ({ enumerable: true, get: function () { return transaction_1.validate; } }));
-__exportStar(__nccwpck_require__(2225), exports);
-var accountSet_1 = __nccwpck_require__(4593);
+__exportStar(__nccwpck_require__(3144), exports);
+var accountSet_1 = __nccwpck_require__(5400);
 Object.defineProperty(exports, "AccountSetAsfFlags", ({ enumerable: true, get: function () { return accountSet_1.AccountSetAsfFlags; } }));
 Object.defineProperty(exports, "AccountSetTfFlags", ({ enumerable: true, get: function () { return accountSet_1.AccountSetTfFlags; } }));
-var AMMClawback_1 = __nccwpck_require__(9222);
-Object.defineProperty(exports, "AMMClawbackFlags", ({ enumerable: true, get: function () { return AMMClawback_1.AMMClawbackFlags; } }));
-var AMMDeposit_1 = __nccwpck_require__(7228);
-Object.defineProperty(exports, "AMMDepositFlags", ({ enumerable: true, get: function () { return AMMDeposit_1.AMMDepositFlags; } }));
-var AMMWithdraw_1 = __nccwpck_require__(3522);
-Object.defineProperty(exports, "AMMWithdrawFlags", ({ enumerable: true, get: function () { return AMMWithdraw_1.AMMWithdrawFlags; } }));
-var batch_1 = __nccwpck_require__(2269);
-Object.defineProperty(exports, "BatchFlags", ({ enumerable: true, get: function () { return batch_1.BatchFlags; } }));
-var enableAmendment_1 = __nccwpck_require__(9521);
+var claimReward_1 = __nccwpck_require__(1973);
+Object.defineProperty(exports, "ClaimRewardFlags", ({ enumerable: true, get: function () { return claimReward_1.ClaimRewardFlags; } }));
+var cronSet_1 = __nccwpck_require__(4965);
+Object.defineProperty(exports, "CronSetFlags", ({ enumerable: true, get: function () { return cronSet_1.CronSetFlags; } }));
+var enableAmendment_1 = __nccwpck_require__(2742);
 Object.defineProperty(exports, "EnableAmendmentFlags", ({ enumerable: true, get: function () { return enableAmendment_1.EnableAmendmentFlags; } }));
-var loanSet_1 = __nccwpck_require__(5344);
-Object.defineProperty(exports, "LoanSetFlags", ({ enumerable: true, get: function () { return loanSet_1.LoanSetFlags; } }));
-var loanManage_1 = __nccwpck_require__(7636);
-Object.defineProperty(exports, "LoanManageFlags", ({ enumerable: true, get: function () { return loanManage_1.LoanManageFlags; } }));
-var loanPay_1 = __nccwpck_require__(3819);
-Object.defineProperty(exports, "LoanPayFlags", ({ enumerable: true, get: function () { return loanPay_1.LoanPayFlags; } }));
-var MPTokenAuthorize_1 = __nccwpck_require__(6907);
-Object.defineProperty(exports, "MPTokenAuthorizeFlags", ({ enumerable: true, get: function () { return MPTokenAuthorize_1.MPTokenAuthorizeFlags; } }));
-var MPTokenIssuanceCreate_1 = __nccwpck_require__(2282);
-Object.defineProperty(exports, "MPTokenIssuanceCreateFlags", ({ enumerable: true, get: function () { return MPTokenIssuanceCreate_1.MPTokenIssuanceCreateFlags; } }));
-var MPTokenIssuanceSet_1 = __nccwpck_require__(8830);
-Object.defineProperty(exports, "MPTokenIssuanceSetFlags", ({ enumerable: true, get: function () { return MPTokenIssuanceSet_1.MPTokenIssuanceSetFlags; } }));
-var NFTokenCreateOffer_1 = __nccwpck_require__(2726);
-Object.defineProperty(exports, "NFTokenCreateOfferFlags", ({ enumerable: true, get: function () { return NFTokenCreateOffer_1.NFTokenCreateOfferFlags; } }));
-var NFTokenMint_1 = __nccwpck_require__(7004);
-Object.defineProperty(exports, "NFTokenMintFlags", ({ enumerable: true, get: function () { return NFTokenMint_1.NFTokenMintFlags; } }));
-var NFTokenModify_1 = __nccwpck_require__(121);
-Object.defineProperty(exports, "validateNFTokenModify", ({ enumerable: true, get: function () { return NFTokenModify_1.validateNFTokenModify; } }));
-var offerCreate_1 = __nccwpck_require__(610);
+var offerCreate_1 = __nccwpck_require__(8067);
 Object.defineProperty(exports, "OfferCreateFlags", ({ enumerable: true, get: function () { return offerCreate_1.OfferCreateFlags; } }));
-var payment_1 = __nccwpck_require__(8505);
+var payment_1 = __nccwpck_require__(1645);
 Object.defineProperty(exports, "PaymentFlags", ({ enumerable: true, get: function () { return payment_1.PaymentFlags; } }));
-var paymentChannelClaim_1 = __nccwpck_require__(5074);
+var paymentChannelClaim_1 = __nccwpck_require__(5188);
 Object.defineProperty(exports, "PaymentChannelClaimFlags", ({ enumerable: true, get: function () { return paymentChannelClaim_1.PaymentChannelClaimFlags; } }));
-var trustSet_1 = __nccwpck_require__(367);
+var setHook_1 = __nccwpck_require__(1763);
+Object.defineProperty(exports, "SetHookFlags", ({ enumerable: true, get: function () { return setHook_1.SetHookFlags; } }));
+var setRemarks_1 = __nccwpck_require__(9145);
+Object.defineProperty(exports, "RemarkFlags", ({ enumerable: true, get: function () { return setRemarks_1.RemarkFlags; } }));
+var trustSet_1 = __nccwpck_require__(7745);
 Object.defineProperty(exports, "TrustSetFlags", ({ enumerable: true, get: function () { return trustSet_1.TrustSetFlags; } }));
-var vaultCreate_1 = __nccwpck_require__(2694);
-Object.defineProperty(exports, "VaultCreateFlags", ({ enumerable: true, get: function () { return vaultCreate_1.VaultCreateFlags; } }));
-Object.defineProperty(exports, "VaultWithdrawalPolicy", ({ enumerable: true, get: function () { return vaultCreate_1.VaultWithdrawalPolicy; } }));
-var XChainModifyBridge_1 = __nccwpck_require__(7503);
-Object.defineProperty(exports, "XChainModifyBridgeFlags", ({ enumerable: true, get: function () { return XChainModifyBridge_1.XChainModifyBridgeFlags; } }));
+var uriTokenMint_1 = __nccwpck_require__(1022);
+Object.defineProperty(exports, "URITokenMintFlags", ({ enumerable: true, get: function () { return uriTokenMint_1.URITokenMintFlags; } }));
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 8286:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateLoanBrokerCoverClawback = void 0;
-const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateLoanBrokerCoverClawback(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateOptionalField)(tx, 'LoanBrokerID', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Amount', common_1.isTokenAmount);
-    if (tx.LoanBrokerID != null && !(0, common_1.isLedgerEntryId)(tx.LoanBrokerID)) {
-        throw new errors_1.ValidationError(`LoanBrokerCoverClawback: LoanBrokerID must be 64 characters hexadecimal string`);
-    }
-    if (tx.Amount != null && new bignumber_js_1.default(tx.Amount.value).isLessThan(0)) {
-        throw new errors_1.ValidationError(`LoanBrokerCoverClawback: Amount must be >= 0`);
-    }
-    if (tx.LoanBrokerID == null && tx.Amount == null) {
-        throw new errors_1.ValidationError(`LoanBrokerCoverClawback: Either LoanBrokerID or Amount is required`);
-    }
-}
-exports.validateLoanBrokerCoverClawback = validateLoanBrokerCoverClawback;
-//# sourceMappingURL=loanBrokerCoverClawback.js.map
-
-/***/ }),
-
-/***/ 3757:
+/***/ 9748:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateLoanBrokerCoverDeposit = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateLoanBrokerCoverDeposit(tx) {
+exports.validateInvoke = void 0;
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
+function validateInvoke(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'LoanBrokerID', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-    if (!(0, common_1.isLedgerEntryId)(tx.LoanBrokerID)) {
-        throw new errors_1.ValidationError(`LoanBrokerCoverDeposit: LoanBrokerID must be 64 characters hexadecimal string`);
+    if (tx.Account === tx.Destination) {
+        throw new errors_1.ValidationError('Invoke: Destination and Account must not be equal');
     }
 }
-exports.validateLoanBrokerCoverDeposit = validateLoanBrokerCoverDeposit;
-//# sourceMappingURL=loanBrokerCoverDeposit.js.map
+exports.validateInvoke = validateInvoke;
+//# sourceMappingURL=invoke.js.map
 
 /***/ }),
 
-/***/ 1104:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateLoanBrokerCoverWithdraw = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateLoanBrokerCoverWithdraw(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'LoanBrokerID', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-    (0, common_1.validateOptionalField)(tx, 'Destination', common_1.isAccount);
-    (0, common_1.validateOptionalField)(tx, 'DestinationTag', common_1.isNumber);
-    if (!(0, common_1.isLedgerEntryId)(tx.LoanBrokerID)) {
-        throw new errors_1.ValidationError(`LoanBrokerCoverWithdraw: LoanBrokerID must be 64 characters hexadecimal string`);
-    }
-}
-exports.validateLoanBrokerCoverWithdraw = validateLoanBrokerCoverWithdraw;
-//# sourceMappingURL=loanBrokerCoverWithdraw.js.map
-
-/***/ }),
-
-/***/ 781:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateLoanBrokerDelete = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateLoanBrokerDelete(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'LoanBrokerID', common_1.isString);
-    if (!(0, common_1.isLedgerEntryId)(tx.LoanBrokerID)) {
-        throw new errors_1.ValidationError(`LoanBrokerDelete: LoanBrokerID must be 64 characters hexadecimal string`);
-    }
-}
-exports.validateLoanBrokerDelete = validateLoanBrokerDelete;
-//# sourceMappingURL=loanBrokerDelete.js.map
-
-/***/ }),
-
-/***/ 5413:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateLoanBrokerSet = void 0;
-const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-const MAX_DATA_LENGTH = 512;
-const MAX_MANAGEMENT_FEE_RATE = 10000;
-const MAX_COVER_RATE_MINIMUM = 100000;
-const MAX_COVER_RATE_LIQUIDATION = 100000;
-function validateLoanBrokerSet(tx) {
-    var _a, _b;
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'VaultID', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'LoanBrokerID', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Data', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'ManagementFeeRate', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'DebtMaximum', common_1.isXRPLNumber);
-    (0, common_1.validateOptionalField)(tx, 'CoverRateMinimum', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'CoverRateLiquidation', common_1.isNumber);
-    if (!(0, common_1.isLedgerEntryId)(tx.VaultID)) {
-        throw new errors_1.ValidationError(`LoanBrokerSet: VaultID must be 64 characters hexadecimal string`);
-    }
-    if (tx.LoanBrokerID != null && !(0, common_1.isLedgerEntryId)(tx.LoanBrokerID)) {
-        throw new errors_1.ValidationError(`LoanBrokerSet: LoanBrokerID must be 64 characters hexadecimal string`);
-    }
-    if (tx.Data != null && !(0, common_1.validateHexMetadata)(tx.Data, MAX_DATA_LENGTH)) {
-        throw new errors_1.ValidationError(`LoanBrokerSet: Data must be a valid non-empty hex string up to ${MAX_DATA_LENGTH} characters`);
-    }
-    if (tx.ManagementFeeRate != null &&
-        (tx.ManagementFeeRate < 0 || tx.ManagementFeeRate > MAX_MANAGEMENT_FEE_RATE)) {
-        throw new errors_1.ValidationError(`LoanBrokerSet: ManagementFeeRate must be between 0 and ${MAX_MANAGEMENT_FEE_RATE} inclusive`);
-    }
-    if (tx.DebtMaximum != null && new bignumber_js_1.default(tx.DebtMaximum).isLessThan(0)) {
-        throw new errors_1.ValidationError('LoanBrokerSet: DebtMaximum must be a non-negative value');
-    }
-    if (tx.CoverRateMinimum != null &&
-        (tx.CoverRateMinimum < 0 || tx.CoverRateMinimum > MAX_COVER_RATE_MINIMUM)) {
-        throw new errors_1.ValidationError(`LoanBrokerSet: CoverRateMinimum must be between 0 and ${MAX_COVER_RATE_MINIMUM} inclusive`);
-    }
-    if (tx.CoverRateLiquidation != null &&
-        (tx.CoverRateLiquidation < 0 ||
-            tx.CoverRateLiquidation > MAX_COVER_RATE_LIQUIDATION)) {
-        throw new errors_1.ValidationError(`LoanBrokerSet: CoverRateLiquidation must be between 0 and ${MAX_COVER_RATE_LIQUIDATION} inclusive`);
-    }
-    const coverRateMinimumValue = (_a = tx.CoverRateMinimum) !== null && _a !== void 0 ? _a : 0;
-    const coverRateLiquidationValue = (_b = tx.CoverRateLiquidation) !== null && _b !== void 0 ? _b : 0;
-    if ((coverRateMinimumValue === 0 && coverRateLiquidationValue !== 0) ||
-        (coverRateMinimumValue !== 0 && coverRateLiquidationValue === 0)) {
-        throw new errors_1.ValidationError('LoanBrokerSet: CoverRateMinimum and CoverRateLiquidation must both be zero or both be non-zero');
-    }
-}
-exports.validateLoanBrokerSet = validateLoanBrokerSet;
-//# sourceMappingURL=loanBrokerSet.js.map
-
-/***/ }),
-
-/***/ 3741:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateLoanDelete = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-function validateLoanDelete(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'LoanID', common_1.isString);
-    if (!(0, common_1.isLedgerEntryId)(tx.LoanID)) {
-        throw new errors_1.ValidationError(`LoanDelete: LoanID must be 64 characters hexadecimal string`);
-    }
-}
-exports.validateLoanDelete = validateLoanDelete;
-//# sourceMappingURL=loanDelete.js.map
-
-/***/ }),
-
-/***/ 7636:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateLoanManage = exports.LoanManageFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-var LoanManageFlags;
-(function (LoanManageFlags) {
-    LoanManageFlags[LoanManageFlags["tfLoanDefault"] = 65536] = "tfLoanDefault";
-    LoanManageFlags[LoanManageFlags["tfLoanImpair"] = 131072] = "tfLoanImpair";
-    LoanManageFlags[LoanManageFlags["tfLoanUnimpair"] = 262144] = "tfLoanUnimpair";
-})(LoanManageFlags || (exports.LoanManageFlags = LoanManageFlags = {}));
-function validateLoanManage(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'LoanID', common_1.isString);
-    if (!(0, common_1.isLedgerEntryId)(tx.LoanID)) {
-        throw new errors_1.ValidationError(`LoanManage: LoanID must be 64 characters hexadecimal string`);
-    }
-    const txFlags = tx.Flags;
-    if (txFlags == null) {
-        return;
-    }
-    let flags = 0;
-    if (typeof txFlags === 'number') {
-        flags = txFlags;
-    }
-    else {
-        if (txFlags.tfLoanImpair) {
-            flags |= LoanManageFlags.tfLoanImpair;
-        }
-        if (txFlags.tfLoanUnimpair) {
-            flags |= LoanManageFlags.tfLoanUnimpair;
-        }
-    }
-    if ((flags & LoanManageFlags.tfLoanImpair) === LoanManageFlags.tfLoanImpair &&
-        (flags & LoanManageFlags.tfLoanUnimpair) === LoanManageFlags.tfLoanUnimpair) {
-        throw new errors_1.ValidationError('LoanManage: tfLoanImpair and tfLoanUnimpair cannot both be present');
-    }
-}
-exports.validateLoanManage = validateLoanManage;
-//# sourceMappingURL=loanManage.js.map
-
-/***/ }),
-
-/***/ 3819:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateLoanPay = exports.LoanPayFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
-var LoanPayFlags;
-(function (LoanPayFlags) {
-    LoanPayFlags[LoanPayFlags["tfLoanOverpayment"] = 65536] = "tfLoanOverpayment";
-    LoanPayFlags[LoanPayFlags["tfLoanFullPayment"] = 131072] = "tfLoanFullPayment";
-    LoanPayFlags[LoanPayFlags["tfLoanLatePayment"] = 262144] = "tfLoanLatePayment";
-})(LoanPayFlags || (exports.LoanPayFlags = LoanPayFlags = {}));
-function validateLoanPay(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'LoanID', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-    if (!(0, common_1.isLedgerEntryId)(tx.LoanID)) {
-        throw new errors_1.ValidationError(`LoanPay: LoanID must be 64 characters hexadecimal string`);
-    }
-    if (typeof tx.Flags === 'number') {
-        const flagsSet = [
-            (0, utils_1.isFlagEnabled)(tx.Flags, LoanPayFlags.tfLoanLatePayment),
-            (0, utils_1.isFlagEnabled)(tx.Flags, LoanPayFlags.tfLoanFullPayment),
-            (0, utils_1.isFlagEnabled)(tx.Flags, LoanPayFlags.tfLoanOverpayment),
-        ].filter(Boolean).length;
-        if (flagsSet > 1) {
-            throw new errors_1.ValidationError('LoanPay: Only one of tfLoanLatePayment, tfLoanFullPayment, or tfLoanOverpayment flags can be set');
-        }
-    }
-    else if (tx.Flags != null && typeof tx.Flags === 'object') {
-        const flags = tx.Flags;
-        const flagsSet = [
-            flags.tfLoanLatePayment,
-            flags.tfLoanFullPayment,
-            flags.tfLoanOverpayment,
-        ].filter(Boolean).length;
-        if (flagsSet > 1) {
-            throw new errors_1.ValidationError('LoanPay: Only one of tfLoanLatePayment, tfLoanFullPayment, or tfLoanOverpayment flags can be set');
-        }
-    }
-}
-exports.validateLoanPay = validateLoanPay;
-//# sourceMappingURL=loanPay.js.map
-
-/***/ }),
-
-/***/ 5344:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateLoanSet = exports.LoanSetFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-const MAX_DATA_LENGTH = 512;
-const MAX_OVER_PAYMENT_FEE_RATE = 100000;
-const MAX_INTEREST_RATE = 100000;
-const MAX_LATE_INTEREST_RATE = 100000;
-const MAX_CLOSE_INTEREST_RATE = 100000;
-const MAX_OVER_PAYMENT_INTEREST_RATE = 100000;
-const MIN_PAYMENT_INTERVAL = 60;
-var LoanSetFlags;
-(function (LoanSetFlags) {
-    LoanSetFlags[LoanSetFlags["tfLoanOverpayment"] = 65536] = "tfLoanOverpayment";
-})(LoanSetFlags || (exports.LoanSetFlags = LoanSetFlags = {}));
-function validateLoanSet(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'LoanBrokerID', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'PrincipalRequested', common_1.isXRPLNumber);
-    (0, common_1.validateOptionalField)(tx, 'CounterpartySignature', common_1.isRecord);
-    (0, common_1.validateOptionalField)(tx, 'Data', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Counterparty', common_1.isAccount);
-    (0, common_1.validateOptionalField)(tx, 'LoanOriginationFee', common_1.isXRPLNumber);
-    (0, common_1.validateOptionalField)(tx, 'LoanServiceFee', common_1.isXRPLNumber);
-    (0, common_1.validateOptionalField)(tx, 'LatePaymentFee', common_1.isXRPLNumber);
-    (0, common_1.validateOptionalField)(tx, 'ClosePaymentFee', common_1.isXRPLNumber);
-    (0, common_1.validateOptionalField)(tx, 'OverpaymentFee', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'InterestRate', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'LateInterestRate', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'CloseInterestRate', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'OverpaymentInterestRate', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'PaymentTotal', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'PaymentInterval', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'GracePeriod', common_1.isNumber);
-    if (!(0, common_1.isLedgerEntryId)(tx.LoanBrokerID)) {
-        throw new errors_1.ValidationError(`LoanSet: LoanBrokerID must be 64 characters hexadecimal string`);
-    }
-    if (tx.Data != null && !(0, common_1.validateHexMetadata)(tx.Data, MAX_DATA_LENGTH)) {
-        throw new errors_1.ValidationError(`LoanSet: Data must be a valid non-empty hex string up to ${MAX_DATA_LENGTH} characters`);
-    }
-    if (tx.OverpaymentFee != null &&
-        (tx.OverpaymentFee < 0 || tx.OverpaymentFee > MAX_OVER_PAYMENT_FEE_RATE)) {
-        throw new errors_1.ValidationError(`LoanSet: OverpaymentFee must be between 0 and ${MAX_OVER_PAYMENT_FEE_RATE} inclusive`);
-    }
-    if (tx.InterestRate != null &&
-        (tx.InterestRate < 0 || tx.InterestRate > MAX_INTEREST_RATE)) {
-        throw new errors_1.ValidationError(`LoanSet: InterestRate must be between 0 and ${MAX_INTEREST_RATE} inclusive`);
-    }
-    if (tx.LateInterestRate != null &&
-        (tx.LateInterestRate < 0 || tx.LateInterestRate > MAX_LATE_INTEREST_RATE)) {
-        throw new errors_1.ValidationError(`LoanSet: LateInterestRate must be between 0 and ${MAX_LATE_INTEREST_RATE} inclusive`);
-    }
-    if (tx.CloseInterestRate != null &&
-        (tx.CloseInterestRate < 0 || tx.CloseInterestRate > MAX_CLOSE_INTEREST_RATE)) {
-        throw new errors_1.ValidationError(`LoanSet: CloseInterestRate must be between 0 and ${MAX_CLOSE_INTEREST_RATE} inclusive`);
-    }
-    if (tx.OverpaymentInterestRate != null &&
-        (tx.OverpaymentInterestRate < 0 ||
-            tx.OverpaymentInterestRate > MAX_OVER_PAYMENT_INTEREST_RATE)) {
-        throw new errors_1.ValidationError(`LoanSet: OverpaymentInterestRate must be between 0 and ${MAX_OVER_PAYMENT_INTEREST_RATE} inclusive`);
-    }
-    if (tx.PaymentInterval != null && tx.PaymentInterval < MIN_PAYMENT_INTERVAL) {
-        throw new errors_1.ValidationError(`LoanSet: PaymentInterval must be greater than or equal to ${MIN_PAYMENT_INTERVAL}`);
-    }
-    if (tx.PaymentInterval != null &&
-        tx.GracePeriod != null &&
-        tx.GracePeriod > tx.PaymentInterval) {
-        throw new errors_1.ValidationError(`LoanSet: GracePeriod must not be greater than PaymentInterval`);
-    }
-}
-exports.validateLoanSet = validateLoanSet;
-//# sourceMappingURL=loanSet.js.map
-
-/***/ }),
-
-/***/ 2225:
+/***/ 3144:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -27746,21 +26037,24 @@ exports.isDeletedNode = isDeletedNode;
 
 /***/ }),
 
-/***/ 5093:
+/***/ 9173:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateOfferCancel = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateOfferCancel(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    if (tx.OfferSequence === undefined) {
-        throw new errors_1.ValidationError('OfferCancel: missing field OfferSequence');
+    if (tx.OfferSequence === undefined && tx.OfferID === undefined) {
+        throw new errors_1.ValidationError('OfferCancel: must include OfferSequence or OfferID');
     }
-    if (typeof tx.OfferSequence !== 'number') {
+    if (tx.OfferSequence !== undefined && typeof tx.OfferSequence !== 'number') {
         throw new errors_1.ValidationError('OfferCancel: OfferSequence must be a number');
+    }
+    if (tx.OfferID !== undefined && typeof tx.OfferID !== 'string') {
+        throw new errors_1.ValidationError('OfferCancel: OfferID must be a string');
     }
 }
 exports.validateOfferCancel = validateOfferCancel;
@@ -27768,22 +26062,20 @@ exports.validateOfferCancel = validateOfferCancel;
 
 /***/ }),
 
-/***/ 610:
+/***/ 8067:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateOfferCreate = exports.OfferCreateFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 var OfferCreateFlags;
 (function (OfferCreateFlags) {
     OfferCreateFlags[OfferCreateFlags["tfPassive"] = 65536] = "tfPassive";
     OfferCreateFlags[OfferCreateFlags["tfImmediateOrCancel"] = 131072] = "tfImmediateOrCancel";
     OfferCreateFlags[OfferCreateFlags["tfFillOrKill"] = 262144] = "tfFillOrKill";
     OfferCreateFlags[OfferCreateFlags["tfSell"] = 524288] = "tfSell";
-    OfferCreateFlags[OfferCreateFlags["tfHybrid"] = 1048576] = "tfHybrid";
 })(OfferCreateFlags || (exports.OfferCreateFlags = OfferCreateFlags = {}));
 function validateOfferCreate(tx) {
     (0, common_1.validateBaseTransaction)(tx);
@@ -27803,15 +26095,10 @@ function validateOfferCreate(tx) {
         throw new errors_1.ValidationError('OfferCreate: invalid Expiration');
     }
     if (tx.OfferSequence !== undefined && typeof tx.OfferSequence !== 'number') {
-        throw new errors_1.ValidationError('OfferCreate: invalid OfferSequence');
+        throw new errors_1.ValidationError('OfferCreate: OfferSequence must be a number');
     }
-    (0, common_1.validateOptionalField)(tx, 'DomainID', common_1.isDomainID, {
-        txType: 'OfferCreate',
-        paramName: 'DomainID',
-    });
-    if (tx.DomainID == null &&
-        (0, utils_1.hasFlag)(tx, OfferCreateFlags.tfHybrid, 'tfHybrid')) {
-        throw new errors_1.ValidationError('OfferCreate: tfHybrid flag cannot be set if DomainID is not present');
+    if (tx.OfferID !== undefined && typeof tx.OfferID !== 'string') {
+        throw new errors_1.ValidationError('OfferCreate: OfferID must be a string');
     }
 }
 exports.validateOfferCreate = validateOfferCreate;
@@ -27819,111 +26106,15 @@ exports.validateOfferCreate = validateOfferCreate;
 
 /***/ }),
 
-/***/ 2999:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateOracleDelete = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateOracleDelete(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'OracleDocumentID', common_1.isNumber);
-}
-exports.validateOracleDelete = validateOracleDelete;
-//# sourceMappingURL=oracleDelete.js.map
-
-/***/ }),
-
-/***/ 2953:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateOracleSet = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
-const PRICE_DATA_SERIES_MAX_LENGTH = 10;
-const SCALE_MAX = 10;
-const MINIMUM_ASSET_PRICE_LENGTH = 1;
-const MAXIMUM_ASSET_PRICE_LENGTH = 16;
-function validateOracleSet(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'OracleDocumentID', common_1.isNumber);
-    (0, common_1.validateRequiredField)(tx, 'LastUpdateTime', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'Provider', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'URI', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'AssetClass', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'PriceDataSeries', (value) => {
-        if (!(0, common_1.isArray)(value)) {
-            throw new errors_1.ValidationError('OracleSet: PriceDataSeries must be an array');
-        }
-        if (value.length > PRICE_DATA_SERIES_MAX_LENGTH) {
-            throw new errors_1.ValidationError(`OracleSet: PriceDataSeries must have at most ${PRICE_DATA_SERIES_MAX_LENGTH} PriceData objects`);
-        }
-        for (const priceData of value) {
-            if (!(0, common_1.isRecord)(priceData)) {
-                throw new errors_1.ValidationError('OracleSet: PriceDataSeries must be an array of objects');
-            }
-            const priceDataInner = priceData.PriceData;
-            if (!(0, common_1.isRecord)(priceDataInner)) {
-                throw new errors_1.ValidationError('OracleSet: PriceDataSeries must have a `PriceData` object');
-            }
-            if (Object.keys(priceData).length !== 1) {
-                throw new errors_1.ValidationError('OracleSet: PriceDataSeries must only have a single PriceData object');
-            }
-            if (priceDataInner.BaseAsset == null ||
-                typeof priceDataInner.BaseAsset !== 'string') {
-                throw new errors_1.ValidationError('OracleSet: PriceDataSeries must have a `BaseAsset` string');
-            }
-            if (typeof priceDataInner.QuoteAsset !== 'string') {
-                throw new errors_1.ValidationError('OracleSet: PriceDataSeries must have a `QuoteAsset` string');
-            }
-            if ((priceDataInner.AssetPrice == null) !==
-                (priceDataInner.Scale == null)) {
-                throw new errors_1.ValidationError('OracleSet: PriceDataSeries must have both `AssetPrice` and `Scale` if any are present');
-            }
-            if ('AssetPrice' in priceDataInner) {
-                if (!(0, common_1.isNumber)(priceDataInner.AssetPrice)) {
-                    if (typeof priceDataInner.AssetPrice !== 'string') {
-                        throw new errors_1.ValidationError('OracleSet: Field AssetPrice must be a string or a number');
-                    }
-                    if (!(0, utils_1.isHex)(priceDataInner.AssetPrice)) {
-                        throw new errors_1.ValidationError('OracleSet: Field AssetPrice must be a valid hex string');
-                    }
-                    if (priceDataInner.AssetPrice.length < MINIMUM_ASSET_PRICE_LENGTH ||
-                        priceDataInner.AssetPrice.length > MAXIMUM_ASSET_PRICE_LENGTH) {
-                        throw new errors_1.ValidationError(`OracleSet: Length of AssetPrice field must be between ${MINIMUM_ASSET_PRICE_LENGTH} and ${MAXIMUM_ASSET_PRICE_LENGTH} characters long`);
-                    }
-                }
-            }
-            if ('Scale' in priceDataInner) {
-                if (!(0, common_1.isNumber)(priceDataInner.Scale)) {
-                    throw new errors_1.ValidationError('OracleSet: invalid field Scale');
-                }
-                if (priceDataInner.Scale < 0 || priceDataInner.Scale > SCALE_MAX) {
-                    throw new errors_1.ValidationError(`OracleSet: Scale must be in range 0-${SCALE_MAX}`);
-                }
-            }
-        }
-        return true;
-    });
-}
-exports.validateOracleSet = validateOracleSet;
-//# sourceMappingURL=oracleSet.js.map
-
-/***/ }),
-
-/***/ 8505:
+/***/ 1645:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validatePayment = exports.PaymentFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const utils_1 = __nccwpck_require__(8429);
+const common_1 = __nccwpck_require__(170);
 var PaymentFlags;
 (function (PaymentFlags) {
     PaymentFlags[PaymentFlags["tfNoRippleDirect"] = 65536] = "tfNoRippleDirect";
@@ -27940,15 +26131,11 @@ function validatePayment(tx) {
     }
     (0, common_1.validateRequiredField)(tx, 'Destination', common_1.isAccount);
     (0, common_1.validateOptionalField)(tx, 'DestinationTag', common_1.isNumber);
-    (0, common_1.validateCredentialsList)(tx.CredentialIDs, tx.TransactionType, true, common_1.MAX_AUTHORIZED_CREDENTIALS);
     if (tx.InvoiceID !== undefined && typeof tx.InvoiceID !== 'string') {
         throw new errors_1.ValidationError('PaymentTransaction: InvoiceID must be a string');
     }
-    (0, common_1.validateOptionalField)(tx, 'DomainID', common_1.isDomainID, {
-        txType: 'PaymentTransaction',
-        paramName: 'DomainID',
-    });
-    if (tx.Paths !== undefined && !isPaths(tx.Paths)) {
+    if (tx.Paths !== undefined &&
+        !isPaths(tx.Paths)) {
         throw new errors_1.ValidationError('PaymentTransaction: invalid Paths');
     }
     if (tx.SendMax !== undefined && !(0, common_1.isAmount)(tx.SendMax)) {
@@ -27966,7 +26153,7 @@ function checkPartialPayment(tx) {
         const flags = tx.Flags;
         const isTfPartialPayment = typeof flags === 'number'
             ? (0, utils_1.isFlagEnabled)(flags, PaymentFlags.tfPartialPayment)
-            : ((_a = flags.tfPartialPayment) !== null && _a !== void 0 ? _a : false);
+            : (_a = flags.tfPartialPayment) !== null && _a !== void 0 ? _a : false;
         if (!isTfPartialPayment) {
             throw new errors_1.ValidationError('PaymentTransaction: tfPartialPayment flag required with DeliverMin');
         }
@@ -27997,9 +26184,6 @@ function isPathStep(pathStep) {
     return false;
 }
 function isPath(path) {
-    if (!Array.isArray(path) || path.length === 0) {
-        return false;
-    }
     for (const pathStep of path) {
         if (!isPathStep(pathStep)) {
             return false;
@@ -28008,11 +26192,11 @@ function isPath(path) {
     return true;
 }
 function isPaths(paths) {
-    if (!(0, common_1.isArray)(paths) || paths.length === 0) {
+    if (!Array.isArray(paths) || paths.length === 0) {
         return false;
     }
     for (const path of paths) {
-        if (!(0, common_1.isArray)(path) || path.length === 0) {
+        if (!Array.isArray(path) || path.length === 0) {
             return false;
         }
         if (!isPath(path)) {
@@ -28025,14 +26209,14 @@ function isPaths(paths) {
 
 /***/ }),
 
-/***/ 5074:
+/***/ 5188:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validatePaymentChannelClaim = exports.PaymentChannelClaimFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 var PaymentChannelClaimFlags;
 (function (PaymentChannelClaimFlags) {
     PaymentChannelClaimFlags[PaymentChannelClaimFlags["tfRenew"] = 65536] = "tfRenew";
@@ -28040,18 +26224,17 @@ var PaymentChannelClaimFlags;
 })(PaymentChannelClaimFlags || (exports.PaymentChannelClaimFlags = PaymentChannelClaimFlags = {}));
 function validatePaymentChannelClaim(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateCredentialsList)(tx.CredentialIDs, tx.TransactionType, true, common_1.MAX_AUTHORIZED_CREDENTIALS);
     if (tx.Channel === undefined) {
         throw new errors_1.ValidationError('PaymentChannelClaim: missing Channel');
     }
     if (typeof tx.Channel !== 'string') {
         throw new errors_1.ValidationError('PaymentChannelClaim: Channel must be a string');
     }
-    if (tx.Balance !== undefined && typeof tx.Balance !== 'string') {
-        throw new errors_1.ValidationError('PaymentChannelClaim: Balance must be a string');
+    if (tx.Balance !== undefined && !(0, common_1.isAmount)(tx.Balance)) {
+        throw new errors_1.ValidationError('PaymentChannelClaim: Balance must be an Amount');
     }
-    if (tx.Amount !== undefined && typeof tx.Amount !== 'string') {
-        throw new errors_1.ValidationError('PaymentChannelClaim: Amount must be a string');
+    if (tx.Amount !== undefined && !(0, common_1.isAmount)(tx.Amount)) {
+        throw new errors_1.ValidationError('PaymentChannelClaim: Amount must be an Amount');
     }
     if (tx.Signature !== undefined && typeof tx.Signature !== 'string') {
         throw new errors_1.ValidationError('PaymentChannelClaim: Signature must be a string');
@@ -28065,21 +26248,21 @@ exports.validatePaymentChannelClaim = validatePaymentChannelClaim;
 
 /***/ }),
 
-/***/ 8857:
+/***/ 8423:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validatePaymentChannelCreate = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validatePaymentChannelCreate(tx) {
     (0, common_1.validateBaseTransaction)(tx);
     if (tx.Amount === undefined) {
         throw new errors_1.ValidationError('PaymentChannelCreate: missing Amount');
     }
-    if (typeof tx.Amount !== 'string') {
-        throw new errors_1.ValidationError('PaymentChannelCreate: Amount must be a string');
+    if (typeof tx.Amount !== 'string' && !(0, common_1.isAmount)(tx.Amount)) {
+        throw new errors_1.ValidationError('PaymentChannelCreate: Amount must be an Amount');
     }
     (0, common_1.validateRequiredField)(tx, 'Destination', common_1.isAccount);
     (0, common_1.validateOptionalField)(tx, 'DestinationTag', common_1.isNumber);
@@ -28104,14 +26287,14 @@ exports.validatePaymentChannelCreate = validatePaymentChannelCreate;
 
 /***/ }),
 
-/***/ 8089:
+/***/ 2541:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validatePaymentChannelFund = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validatePaymentChannelFund(tx) {
     (0, common_1.validateBaseTransaction)(tx);
     if (tx.Channel === undefined) {
@@ -28123,8 +26306,8 @@ function validatePaymentChannelFund(tx) {
     if (tx.Amount === undefined) {
         throw new errors_1.ValidationError('PaymentChannelFund: missing Amount');
     }
-    if (typeof tx.Amount !== 'string') {
-        throw new errors_1.ValidationError('PaymentChannelFund: Amount must be a string');
+    if (typeof tx.Amount !== 'string' && !(0, common_1.isAmount)(tx.Amount)) {
+        throw new errors_1.ValidationError('PaymentChannelFund: Amount must be an Amount');
     }
     if (tx.Expiration !== undefined && typeof tx.Expiration !== 'number') {
         throw new errors_1.ValidationError('PaymentChannelFund: Expiration must be a number');
@@ -28135,49 +26318,192 @@ exports.validatePaymentChannelFund = validatePaymentChannelFund;
 
 /***/ }),
 
-/***/ 6067:
+/***/ 946:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validatePermissionedDomainDelete = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validatePermissionedDomainDelete(tx) {
+exports.validateRemit = void 0;
+const errors_1 = __nccwpck_require__(842);
+const utils_1 = __nccwpck_require__(8429);
+const common_1 = __nccwpck_require__(170);
+const MAX_URI_LENGTH = 512;
+const DIGEST_LENGTH = 64;
+const MAX_ARRAY_LENGTH = 32;
+const MAX_BLOB_LENGTH = 1024;
+function validateRemit(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'DomainID', common_1.isString);
+    if (tx.Amounts !== undefined) {
+        checkAmounts(tx);
+    }
+    if (tx.URITokenIDs !== undefined) {
+        checkURITokenIDs(tx);
+    }
+    if (tx.Destination === tx.Account) {
+        throw new errors_1.ValidationError('Remit: Destination must not be equal to the account');
+    }
+    if (tx.DestinationTag != null && typeof tx.DestinationTag !== 'number') {
+        throw new errors_1.ValidationError('Remit: DestinationTag must be a number');
+    }
+    if (tx.Inform === tx.Account || tx.Inform === tx.Destination) {
+        throw new errors_1.ValidationError('Remit: Inform must not be equal to the account or destination');
+    }
+    if (tx.MintURIToken !== undefined) {
+        checkMintURIToken(tx);
+    }
+    if (tx.Blob !== undefined && typeof tx.Blob !== 'string') {
+        throw new errors_1.ValidationError('Remit: Blob must be a string');
+    }
+    if (tx.Blob !== undefined && typeof tx.Blob === 'string') {
+        if (!(0, utils_1.isHex)(tx.Blob)) {
+            throw new errors_1.ValidationError('Remit: Blob must be a hex string');
+        }
+        if (tx.Blob.length > MAX_BLOB_LENGTH) {
+            throw new errors_1.ValidationError('Remit: max size Blob');
+        }
+    }
 }
-exports.validatePermissionedDomainDelete = validatePermissionedDomainDelete;
-//# sourceMappingURL=permissionedDomainDelete.js.map
+exports.validateRemit = validateRemit;
+function checkAmounts(tx) {
+    if (!Array.isArray(tx.Amounts)) {
+        throw new errors_1.ValidationError('Remit: Amounts must be an array');
+    }
+    if (tx.Amounts.length < 1) {
+        throw new errors_1.ValidationError('Remit: empty field Amounts');
+    }
+    if (tx.Amounts.length > MAX_ARRAY_LENGTH) {
+        throw new errors_1.ValidationError('Remit: max field Amounts');
+    }
+    const seen = new Set();
+    let seenXrp = false;
+    for (const amount of tx.Amounts) {
+        if (amount.AmountEntry === undefined ||
+            typeof amount.AmountEntry !== 'object') {
+            throw new errors_1.ValidationError('Remit: invalid Amounts.AmountEntry');
+        }
+        if (!(0, common_1.isAmount)(amount.AmountEntry.Amount)) {
+            throw new errors_1.ValidationError('Remit: invalid Amounts.AmountEntry.Amount');
+        }
+        if (typeof amount.AmountEntry.Amount === 'string') {
+            if (seenXrp) {
+                throw new errors_1.ValidationError('Remit: Duplicate Native amounts are not allowed');
+            }
+            seenXrp = true;
+        }
+        else {
+            const amountKey = `${amount.AmountEntry.Amount.currency}:${amount.AmountEntry.Amount.issuer}`;
+            if (seen.has(amountKey)) {
+                throw new errors_1.ValidationError('Remit: Duplicate amounts are not allowed');
+            }
+            seen.add(amountKey);
+        }
+    }
+}
+function checkURITokenIDs(tx) {
+    if (!Array.isArray(tx.URITokenIDs)) {
+        throw new errors_1.ValidationError('Remit: invalid field URITokenIDs');
+    }
+    if (tx.URITokenIDs.length < 1) {
+        throw new errors_1.ValidationError('Remit: empty field URITokenIDs');
+    }
+    if (tx.URITokenIDs.length > MAX_ARRAY_LENGTH) {
+        throw new errors_1.ValidationError('Remit: max field URITokenIDs');
+    }
+    const seen = new Set();
+    for (const token of tx.URITokenIDs) {
+        if (typeof token !== 'string' || !(0, utils_1.isHex)(token)) {
+            throw new errors_1.ValidationError('Remit: URITokenID must be a hex string');
+        }
+        if (token.length !== DIGEST_LENGTH) {
+            throw new errors_1.ValidationError(`Remit: URITokenID must be exactly ${DIGEST_LENGTH} characters`);
+        }
+        if (seen.has(token)) {
+            throw new errors_1.ValidationError('Remit: Duplicate URITokens are not allowed');
+        }
+        seen.add(token);
+    }
+}
+function checkMintURIToken(tx) {
+    function isRecord(value) {
+        return value !== null && typeof value === 'object';
+    }
+    if (!isRecord(tx.MintURIToken)) {
+        throw new errors_1.ValidationError('Remit: invalid MintURIToken');
+    }
+    if (tx.MintURIToken.URI === undefined) {
+        throw new errors_1.ValidationError('Remit: missing field MintURIToken.URI');
+    }
+    if (typeof tx.MintURIToken.URI !== 'string' || !(0, utils_1.isHex)(tx.MintURIToken.URI)) {
+        throw new errors_1.ValidationError('Remit: MintURIToken.URI must be a hex string');
+    }
+    if (tx.MintURIToken.URI.length > MAX_URI_LENGTH) {
+        throw new errors_1.ValidationError(`Remit: URI must be less than ${MAX_URI_LENGTH} characters`);
+    }
+    if (tx.MintURIToken.Digest !== undefined &&
+        typeof tx.MintURIToken.Digest !== 'string') {
+        throw new errors_1.ValidationError(`Remit: MintURIToken.Digest must be a string`);
+    }
+    if (tx.MintURIToken.Digest !== undefined &&
+        !(0, utils_1.isHex)(tx.MintURIToken.Digest) &&
+        tx.MintURIToken.Digest.length !== DIGEST_LENGTH) {
+        throw new errors_1.ValidationError(`Remit: Digest must be exactly ${DIGEST_LENGTH} characters`);
+    }
+}
+//# sourceMappingURL=remit.js.map
 
 /***/ }),
 
-/***/ 5134:
+/***/ 1763:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validatePermissionedDomainSet = void 0;
-const common_1 = __nccwpck_require__(9180);
-const MAX_ACCEPTED_CREDENTIALS = 10;
-function validatePermissionedDomainSet(tx) {
+exports.validateSetHook = exports.SetHookFlags = void 0;
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
+var SetHookFlags;
+(function (SetHookFlags) {
+    SetHookFlags[SetHookFlags["hsfOverride"] = 1] = "hsfOverride";
+    SetHookFlags[SetHookFlags["hsfNSDelete"] = 2] = "hsfNSDelete";
+    SetHookFlags[SetHookFlags["hsfCollect"] = 4] = "hsfCollect";
+})(SetHookFlags || (exports.SetHookFlags = SetHookFlags = {}));
+const MAX_HOOKS = 10;
+const HEX_REGEX = /^[0-9A-Fa-f]{64}$/u;
+function validateSetHook(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateOptionalField)(tx, 'DomainID', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'AcceptedCredentials', common_1.isArray);
-    (0, common_1.validateCredentialsList)(tx.AcceptedCredentials, tx.TransactionType, false, MAX_ACCEPTED_CREDENTIALS);
+    if (!Array.isArray(tx.Hooks)) {
+        throw new errors_1.ValidationError('SetHook: invalid Hooks');
+    }
+    if (tx.Hooks.length > MAX_HOOKS) {
+        throw new errors_1.ValidationError(`SetHook: maximum of ${MAX_HOOKS} hooks allowed in Hooks`);
+    }
+    for (const hook of tx.Hooks) {
+        const hookObject = hook;
+        const { HookOn, HookCanEmit, HookNamespace } = hookObject.Hook;
+        if (HookOn !== undefined && !HEX_REGEX.test(HookOn)) {
+            throw new errors_1.ValidationError(`SetHook: HookOn in Hook must be a 256-bit (32-byte) hexadecimal value`);
+        }
+        if (HookCanEmit !== undefined && !HEX_REGEX.test(HookCanEmit)) {
+            throw new errors_1.ValidationError(`SetHook: HookCanEmit in Hook must be a 256-bit (32-byte) hexadecimal value`);
+        }
+        if (HookNamespace !== undefined && !HEX_REGEX.test(HookNamespace)) {
+            throw new errors_1.ValidationError(`SetHook: HookNamespace in Hook must be a 256-bit (32-byte) hexadecimal value`);
+        }
+    }
 }
-exports.validatePermissionedDomainSet = validatePermissionedDomainSet;
-//# sourceMappingURL=permissionedDomainSet.js.map
+exports.validateSetHook = validateSetHook;
+//# sourceMappingURL=setHook.js.map
 
 /***/ }),
 
-/***/ 9236:
+/***/ 6868:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateSetRegularKey = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 function validateSetRegularKey(tx) {
     (0, common_1.validateBaseTransaction)(tx);
     if (tx.RegularKey !== undefined && typeof tx.RegularKey !== 'string') {
@@ -28189,23 +26515,83 @@ exports.validateSetRegularKey = validateSetRegularKey;
 
 /***/ }),
 
-/***/ 9434:
+/***/ 9145:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.validateSetRemarks = exports.RemarkFlags = void 0;
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
+var RemarkFlags;
+(function (RemarkFlags) {
+    RemarkFlags[RemarkFlags["tfImmutable"] = 1] = "tfImmutable";
+})(RemarkFlags || (exports.RemarkFlags = RemarkFlags = {}));
+const HEX_REGEX = /^[0-9A-Fa-f]{64}$/u;
+const MAX_REMARKS = 32;
+const MAX_REMARK_NAME_LENGTH = 256;
+const MAX_REMARK_VALUE_LENGTH = 256;
+function validateSetRemarks(tx) {
+    (0, common_1.validateBaseTransaction)(tx);
+    if (tx.ObjectID == null) {
+        throw new errors_1.ValidationError('SetRemarks: ObjectID is required');
+    }
+    if (typeof tx.ObjectID !== 'string' || !HEX_REGEX.test(tx.ObjectID)) {
+        throw new errors_1.ValidationError('SetRemarks: ObjectID must be a 256-bit (32-byte) hexadecimal value');
+    }
+    if (tx.Remarks == null) {
+        throw new errors_1.ValidationError('SetRemarks: Remarks is required');
+    }
+    if (!Array.isArray(tx.Remarks)) {
+        throw new errors_1.ValidationError('SetRemarks: Remarks must be an array');
+    }
+    if (tx.Remarks.length > MAX_REMARKS) {
+        throw new errors_1.ValidationError(`SetRemarks: maximum of ${MAX_REMARKS} remarks allowed in Remarks`);
+    }
+    for (const remark of tx.Remarks) {
+        const remarkObject = remark;
+        const { RemarkName, RemarkValue } = remarkObject.Remark;
+        if (RemarkName.length > MAX_REMARK_NAME_LENGTH * 2) {
+            throw new errors_1.ValidationError(`SetRemarks: maximum of ${MAX_REMARK_NAME_LENGTH} bytes allowed in RemarkName`);
+        }
+        if (RemarkValue != null &&
+            RemarkValue.length > MAX_REMARK_VALUE_LENGTH * 2) {
+            throw new errors_1.ValidationError(`SetRemarks: maximum of ${MAX_REMARK_VALUE_LENGTH} bytes allowed in RemarkValue`);
+        }
+    }
+}
+exports.validateSetRemarks = validateSetRemarks;
+//# sourceMappingURL=setRemarks.js.map
+
+/***/ }),
+
+/***/ 2342:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateSignerListSet = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 const MAX_SIGNERS = 32;
 const HEX_WALLET_LOCATOR_REGEX = /^[0-9A-Fa-f]{64}$/u;
 function validateSignerListSet(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'SignerQuorum', common_1.isNumber);
+    if (tx.SignerQuorum === undefined) {
+        throw new errors_1.ValidationError('SignerListSet: missing field SignerQuorum');
+    }
+    if (typeof tx.SignerQuorum !== 'number') {
+        throw new errors_1.ValidationError('SignerListSet: invalid SignerQuorum');
+    }
     if (tx.SignerQuorum === 0) {
         return;
     }
-    (0, common_1.validateRequiredField)(tx, 'SignerEntries', common_1.isArray);
+    if (tx.SignerEntries === undefined) {
+        throw new errors_1.ValidationError('SignerListSet: missing field SignerEntries');
+    }
+    if (!Array.isArray(tx.SignerEntries)) {
+        throw new errors_1.ValidationError('SignerListSet: invalid SignerEntries');
+    }
     if (tx.SignerEntries.length === 0) {
         throw new errors_1.ValidationError('SignerListSet: need at least 1 member in SignerEntries');
     }
@@ -28213,14 +26599,10 @@ function validateSignerListSet(tx) {
         throw new errors_1.ValidationError(`SignerListSet: maximum of ${MAX_SIGNERS} members allowed in SignerEntries`);
     }
     for (const entry of tx.SignerEntries) {
-        if (!(0, common_1.isRecord)(entry) || !(0, common_1.isRecord)(entry.SignerEntry)) {
-            throw new errors_1.ValidationError('SignerListSet: SignerEntries must be an array of SignerEntry objects');
-        }
-        const signerEntry = entry.SignerEntry;
-        const { WalletLocator } = signerEntry;
-        if (WalletLocator != null &&
-            (!(0, common_1.isString)(WalletLocator) ||
-                !HEX_WALLET_LOCATOR_REGEX.test(WalletLocator))) {
+        const signerEntry = entry;
+        const { WalletLocator } = signerEntry.SignerEntry;
+        if (WalletLocator !== undefined &&
+            !HEX_WALLET_LOCATOR_REGEX.test(WalletLocator)) {
             throw new errors_1.ValidationError(`SignerListSet: WalletLocator in SignerEntry must be a 256-bit (32-byte) hexadecimal value`);
         }
     }
@@ -28230,14 +26612,14 @@ exports.validateSignerListSet = validateSignerListSet;
 
 /***/ }),
 
-/***/ 4303:
+/***/ 4030:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateTicketCreate = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 const MAX_TICKETS = 250;
 function validateTicketCreate(tx) {
     (0, common_1.validateBaseTransaction)(tx);
@@ -28259,134 +26641,95 @@ exports.validateTicketCreate = validateTicketCreate;
 
 /***/ }),
 
-/***/ 665:
+/***/ 4508:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validate = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const flags_1 = __nccwpck_require__(7836);
-const accountDelete_1 = __nccwpck_require__(5451);
-const accountSet_1 = __nccwpck_require__(4593);
-const AMMBid_1 = __nccwpck_require__(5429);
-const AMMClawback_1 = __nccwpck_require__(9222);
-const AMMCreate_1 = __nccwpck_require__(3479);
-const AMMDelete_1 = __nccwpck_require__(670);
-const AMMDeposit_1 = __nccwpck_require__(7228);
-const AMMVote_1 = __nccwpck_require__(5985);
-const AMMWithdraw_1 = __nccwpck_require__(3522);
-const batch_1 = __nccwpck_require__(2269);
-const checkCancel_1 = __nccwpck_require__(8677);
-const checkCash_1 = __nccwpck_require__(6770);
-const checkCreate_1 = __nccwpck_require__(7924);
-const clawback_1 = __nccwpck_require__(2623);
-const common_1 = __nccwpck_require__(9180);
-const CredentialAccept_1 = __nccwpck_require__(8667);
-const CredentialCreate_1 = __nccwpck_require__(571);
-const CredentialDelete_1 = __nccwpck_require__(5519);
-const delegateSet_1 = __nccwpck_require__(6981);
-const depositPreauth_1 = __nccwpck_require__(2415);
-const DIDDelete_1 = __nccwpck_require__(601);
-const DIDSet_1 = __nccwpck_require__(7878);
-const escrowCancel_1 = __nccwpck_require__(5421);
-const escrowCreate_1 = __nccwpck_require__(5455);
-const escrowFinish_1 = __nccwpck_require__(9005);
-const loanBrokerCoverClawback_1 = __nccwpck_require__(8286);
-const loanBrokerCoverDeposit_1 = __nccwpck_require__(3757);
-const loanBrokerCoverWithdraw_1 = __nccwpck_require__(1104);
-const loanBrokerDelete_1 = __nccwpck_require__(781);
-const loanBrokerSet_1 = __nccwpck_require__(5413);
-const loanDelete_1 = __nccwpck_require__(3741);
-const loanManage_1 = __nccwpck_require__(7636);
-const loanPay_1 = __nccwpck_require__(3819);
-const loanSet_1 = __nccwpck_require__(5344);
-const MPTokenAuthorize_1 = __nccwpck_require__(6907);
-const MPTokenIssuanceCreate_1 = __nccwpck_require__(2282);
-const MPTokenIssuanceDestroy_1 = __nccwpck_require__(2044);
-const MPTokenIssuanceSet_1 = __nccwpck_require__(8830);
-const NFTokenAcceptOffer_1 = __nccwpck_require__(7644);
-const NFTokenBurn_1 = __nccwpck_require__(611);
-const NFTokenCancelOffer_1 = __nccwpck_require__(9375);
-const NFTokenCreateOffer_1 = __nccwpck_require__(2726);
-const NFTokenMint_1 = __nccwpck_require__(7004);
-const NFTokenModify_1 = __nccwpck_require__(121);
-const offerCancel_1 = __nccwpck_require__(5093);
-const offerCreate_1 = __nccwpck_require__(610);
-const oracleDelete_1 = __nccwpck_require__(2999);
-const oracleSet_1 = __nccwpck_require__(2953);
-const payment_1 = __nccwpck_require__(8505);
-const paymentChannelClaim_1 = __nccwpck_require__(5074);
-const paymentChannelCreate_1 = __nccwpck_require__(8857);
-const paymentChannelFund_1 = __nccwpck_require__(8089);
-const permissionedDomainDelete_1 = __nccwpck_require__(6067);
-const permissionedDomainSet_1 = __nccwpck_require__(5134);
-const setRegularKey_1 = __nccwpck_require__(9236);
-const signerListSet_1 = __nccwpck_require__(9434);
-const ticketCreate_1 = __nccwpck_require__(4303);
-const trustSet_1 = __nccwpck_require__(367);
-const vaultClawback_1 = __nccwpck_require__(136);
-const vaultCreate_1 = __nccwpck_require__(2694);
-const vaultDelete_1 = __nccwpck_require__(4635);
-const vaultDeposit_1 = __nccwpck_require__(2916);
-const vaultSet_1 = __nccwpck_require__(549);
-const vaultWithdraw_1 = __nccwpck_require__(3315);
-const XChainAccountCreateCommit_1 = __nccwpck_require__(8079);
-const XChainAddAccountCreateAttestation_1 = __nccwpck_require__(8874);
-const XChainAddClaimAttestation_1 = __nccwpck_require__(6508);
-const XChainClaim_1 = __nccwpck_require__(6551);
-const XChainCommit_1 = __nccwpck_require__(6873);
-const XChainCreateBridge_1 = __nccwpck_require__(6730);
-const XChainCreateClaimID_1 = __nccwpck_require__(6399);
-const XChainModifyBridge_1 = __nccwpck_require__(7503);
+const errors_1 = __nccwpck_require__(842);
+const utils_1 = __nccwpck_require__(8429);
+const flags_1 = __nccwpck_require__(7945);
+const accountSet_1 = __nccwpck_require__(5400);
+const checkCancel_1 = __nccwpck_require__(58);
+const checkCash_1 = __nccwpck_require__(372);
+const checkCreate_1 = __nccwpck_require__(9105);
+const claimReward_1 = __nccwpck_require__(1973);
+const clawback_1 = __nccwpck_require__(6281);
+const common_1 = __nccwpck_require__(170);
+const cronSet_1 = __nccwpck_require__(4965);
+const depositPreauth_1 = __nccwpck_require__(5664);
+const escrowCancel_1 = __nccwpck_require__(4916);
+const escrowCreate_1 = __nccwpck_require__(8699);
+const escrowFinish_1 = __nccwpck_require__(1161);
+const import_1 = __nccwpck_require__(7543);
+const invoke_1 = __nccwpck_require__(9748);
+const offerCancel_1 = __nccwpck_require__(9173);
+const offerCreate_1 = __nccwpck_require__(8067);
+const payment_1 = __nccwpck_require__(1645);
+const paymentChannelClaim_1 = __nccwpck_require__(5188);
+const paymentChannelCreate_1 = __nccwpck_require__(8423);
+const paymentChannelFund_1 = __nccwpck_require__(2541);
+const remit_1 = __nccwpck_require__(946);
+const setHook_1 = __nccwpck_require__(1763);
+const setRegularKey_1 = __nccwpck_require__(6868);
+const setRemarks_1 = __nccwpck_require__(9145);
+const signerListSet_1 = __nccwpck_require__(2342);
+const ticketCreate_1 = __nccwpck_require__(4030);
+const trustSet_1 = __nccwpck_require__(7745);
+const uriTokenBurn_1 = __nccwpck_require__(9600);
+const uriTokenBuy_1 = __nccwpck_require__(762);
+const uriTokenCancelSellOffer_1 = __nccwpck_require__(3823);
+const uriTokenCreateSellOffer_1 = __nccwpck_require__(833);
+const uriTokenMint_1 = __nccwpck_require__(1022);
 function validate(transaction) {
     const tx = Object.assign({}, transaction);
-    (0, common_1.validateBaseTransaction)(tx);
+    if (tx.TransactionType == null) {
+        throw new errors_1.ValidationError('Object does not have a `TransactionType`');
+    }
+    if (typeof tx.TransactionType !== 'string') {
+        throw new errors_1.ValidationError("Object's `TransactionType` is not a string");
+    }
+    if (tx.Memos != null && typeof tx.Memos !== 'object') {
+        throw new errors_1.ValidationError('Memo must be array');
+    }
+    if (tx.Memos != null) {
+        ;
+        tx.Memos.forEach((memo) => {
+            if ((memo === null || memo === void 0 ? void 0 : memo.Memo) == null) {
+                throw new errors_1.ValidationError('Memo data must be in a `Memo` field');
+            }
+            if (memo.Memo.MemoData) {
+                if (!(0, utils_1.isHex)(memo.Memo.MemoData)) {
+                    throw new errors_1.ValidationError('MemoData field must be a hex value');
+                }
+            }
+            if (memo.Memo.MemoType) {
+                if (!(0, utils_1.isHex)(memo.Memo.MemoType)) {
+                    throw new errors_1.ValidationError('MemoType field must be a hex value');
+                }
+            }
+            if (memo.Memo.MemoFormat) {
+                if (!(0, utils_1.isHex)(memo.Memo.MemoFormat)) {
+                    throw new errors_1.ValidationError('MemoFormat field must be a hex value');
+                }
+            }
+        });
+    }
     Object.keys(tx).forEach((key) => {
         const standard_currency_code_len = 3;
-        const value = tx[key];
-        if (value && (0, common_1.isIssuedCurrencyAmount)(value)) {
-            const txCurrency = value.currency;
+        if (tx[key] && (0, common_1.isIssuedCurrency)(tx[key])) {
+            const txCurrency = tx[key].currency;
             if (txCurrency.length === standard_currency_code_len &&
-                txCurrency.toUpperCase() === 'XRP') {
-                throw new errors_1.ValidationError(`Cannot have an issued currency with a similar standard code to XRP (received '${txCurrency}'). XRP is not an issued currency.`);
+                txCurrency.toUpperCase() === 'XAH') {
+                throw new errors_1.ValidationError(`Cannot have an issued currency with a similar standard code to XAH (received '${txCurrency}'). XAH is not an issued currency.`);
             }
         }
     });
-    tx.Flags = (0, flags_1.convertTxFlagsToNumber)(tx);
+    (0, flags_1.setTransactionFlagsToNumber)(tx);
     switch (tx.TransactionType) {
-        case 'AMMBid':
-            (0, AMMBid_1.validateAMMBid)(tx);
-            break;
-        case 'AMMClawback':
-            (0, AMMClawback_1.validateAMMClawback)(tx);
-            break;
-        case 'AMMCreate':
-            (0, AMMCreate_1.validateAMMCreate)(tx);
-            break;
-        case 'AMMDelete':
-            (0, AMMDelete_1.validateAMMDelete)(tx);
-            break;
-        case 'AMMDeposit':
-            (0, AMMDeposit_1.validateAMMDeposit)(tx);
-            break;
-        case 'AMMVote':
-            (0, AMMVote_1.validateAMMVote)(tx);
-            break;
-        case 'AMMWithdraw':
-            (0, AMMWithdraw_1.validateAMMWithdraw)(tx);
-            break;
-        case 'AccountDelete':
-            (0, accountDelete_1.validateAccountDelete)(tx);
-            break;
         case 'AccountSet':
             (0, accountSet_1.validateAccountSet)(tx);
-            break;
-        case 'Batch':
-            (0, batch_1.validateBatch)(tx);
-            tx.RawTransactions.forEach((innerTx) => {
-                validate(innerTx.RawTransaction);
-            });
             break;
         case 'CheckCancel':
             (0, checkCancel_1.validateCheckCancel)(tx);
@@ -28397,26 +26740,14 @@ function validate(transaction) {
         case 'CheckCreate':
             (0, checkCreate_1.validateCheckCreate)(tx);
             break;
+        case 'ClaimReward':
+            (0, claimReward_1.validateClaimReward)(tx);
+            break;
         case 'Clawback':
             (0, clawback_1.validateClawback)(tx);
             break;
-        case 'CredentialAccept':
-            (0, CredentialAccept_1.validateCredentialAccept)(tx);
-            break;
-        case 'CredentialCreate':
-            (0, CredentialCreate_1.validateCredentialCreate)(tx);
-            break;
-        case 'CredentialDelete':
-            (0, CredentialDelete_1.validateCredentialDelete)(tx);
-            break;
-        case 'DIDDelete':
-            (0, DIDDelete_1.validateDIDDelete)(tx);
-            break;
-        case 'DIDSet':
-            (0, DIDSet_1.validateDIDSet)(tx);
-            break;
-        case 'DelegateSet':
-            (0, delegateSet_1.validateDelegateSet)(tx);
+        case 'CronSet':
+            (0, cronSet_1.validateCronSet)(tx);
             break;
         case 'DepositPreauth':
             (0, depositPreauth_1.validateDepositPreauth)(tx);
@@ -28430,74 +26761,17 @@ function validate(transaction) {
         case 'EscrowFinish':
             (0, escrowFinish_1.validateEscrowFinish)(tx);
             break;
-        case 'LoanBrokerCoverClawback':
-            (0, loanBrokerCoverClawback_1.validateLoanBrokerCoverClawback)(tx);
+        case 'Import':
+            (0, import_1.validateImport)(tx);
             break;
-        case 'LoanBrokerCoverDeposit':
-            (0, loanBrokerCoverDeposit_1.validateLoanBrokerCoverDeposit)(tx);
-            break;
-        case 'LoanBrokerCoverWithdraw':
-            (0, loanBrokerCoverWithdraw_1.validateLoanBrokerCoverWithdraw)(tx);
-            break;
-        case 'LoanBrokerDelete':
-            (0, loanBrokerDelete_1.validateLoanBrokerDelete)(tx);
-            break;
-        case 'LoanBrokerSet':
-            (0, loanBrokerSet_1.validateLoanBrokerSet)(tx);
-            break;
-        case 'LoanSet':
-            (0, loanSet_1.validateLoanSet)(tx);
-            break;
-        case 'LoanManage':
-            (0, loanManage_1.validateLoanManage)(tx);
-            break;
-        case 'LoanDelete':
-            (0, loanDelete_1.validateLoanDelete)(tx);
-            break;
-        case 'LoanPay':
-            (0, loanPay_1.validateLoanPay)(tx);
-            break;
-        case 'MPTokenAuthorize':
-            (0, MPTokenAuthorize_1.validateMPTokenAuthorize)(tx);
-            break;
-        case 'MPTokenIssuanceCreate':
-            (0, MPTokenIssuanceCreate_1.validateMPTokenIssuanceCreate)(tx);
-            break;
-        case 'MPTokenIssuanceDestroy':
-            (0, MPTokenIssuanceDestroy_1.validateMPTokenIssuanceDestroy)(tx);
-            break;
-        case 'MPTokenIssuanceSet':
-            (0, MPTokenIssuanceSet_1.validateMPTokenIssuanceSet)(tx);
-            break;
-        case 'NFTokenAcceptOffer':
-            (0, NFTokenAcceptOffer_1.validateNFTokenAcceptOffer)(tx);
-            break;
-        case 'NFTokenBurn':
-            (0, NFTokenBurn_1.validateNFTokenBurn)(tx);
-            break;
-        case 'NFTokenCancelOffer':
-            (0, NFTokenCancelOffer_1.validateNFTokenCancelOffer)(tx);
-            break;
-        case 'NFTokenCreateOffer':
-            (0, NFTokenCreateOffer_1.validateNFTokenCreateOffer)(tx);
-            break;
-        case 'NFTokenMint':
-            (0, NFTokenMint_1.validateNFTokenMint)(tx);
-            break;
-        case 'NFTokenModify':
-            (0, NFTokenModify_1.validateNFTokenModify)(tx);
+        case 'Invoke':
+            (0, invoke_1.validateInvoke)(tx);
             break;
         case 'OfferCancel':
             (0, offerCancel_1.validateOfferCancel)(tx);
             break;
         case 'OfferCreate':
             (0, offerCreate_1.validateOfferCreate)(tx);
-            break;
-        case 'OracleDelete':
-            (0, oracleDelete_1.validateOracleDelete)(tx);
-            break;
-        case 'OracleSet':
-            (0, oracleSet_1.validateOracleSet)(tx);
             break;
         case 'Payment':
             (0, payment_1.validatePayment)(tx);
@@ -28511,14 +26785,17 @@ function validate(transaction) {
         case 'PaymentChannelFund':
             (0, paymentChannelFund_1.validatePaymentChannelFund)(tx);
             break;
-        case 'PermissionedDomainSet':
-            (0, permissionedDomainSet_1.validatePermissionedDomainSet)(tx);
+        case 'Remit':
+            (0, remit_1.validateRemit)(tx);
             break;
-        case 'PermissionedDomainDelete':
-            (0, permissionedDomainDelete_1.validatePermissionedDomainDelete)(tx);
+        case 'SetHook':
+            (0, setHook_1.validateSetHook)(tx);
             break;
         case 'SetRegularKey':
             (0, setRegularKey_1.validateSetRegularKey)(tx);
+            break;
+        case 'SetRemarks':
+            (0, setRemarks_1.validateSetRemarks)(tx);
             break;
         case 'SignerListSet':
             (0, signerListSet_1.validateSignerListSet)(tx);
@@ -28529,47 +26806,20 @@ function validate(transaction) {
         case 'TrustSet':
             (0, trustSet_1.validateTrustSet)(tx);
             break;
-        case 'VaultClawback':
-            (0, vaultClawback_1.validateVaultClawback)(tx);
+        case 'URITokenMint':
+            (0, uriTokenMint_1.validateURITokenMint)(tx);
             break;
-        case 'VaultCreate':
-            (0, vaultCreate_1.validateVaultCreate)(tx);
+        case 'URITokenBurn':
+            (0, uriTokenBurn_1.validateURITokenBurn)(tx);
             break;
-        case 'VaultDelete':
-            (0, vaultDelete_1.validateVaultDelete)(tx);
+        case 'URITokenCreateSellOffer':
+            (0, uriTokenCreateSellOffer_1.validateURITokenCreateSellOffer)(tx);
             break;
-        case 'VaultDeposit':
-            (0, vaultDeposit_1.validateVaultDeposit)(tx);
+        case 'URITokenBuy':
+            (0, uriTokenBuy_1.validateURITokenBuy)(tx);
             break;
-        case 'VaultSet':
-            (0, vaultSet_1.validateVaultSet)(tx);
-            break;
-        case 'VaultWithdraw':
-            (0, vaultWithdraw_1.validateVaultWithdraw)(tx);
-            break;
-        case 'XChainAccountCreateCommit':
-            (0, XChainAccountCreateCommit_1.validateXChainAccountCreateCommit)(tx);
-            break;
-        case 'XChainAddAccountCreateAttestation':
-            (0, XChainAddAccountCreateAttestation_1.validateXChainAddAccountCreateAttestation)(tx);
-            break;
-        case 'XChainAddClaimAttestation':
-            (0, XChainAddClaimAttestation_1.validateXChainAddClaimAttestation)(tx);
-            break;
-        case 'XChainClaim':
-            (0, XChainClaim_1.validateXChainClaim)(tx);
-            break;
-        case 'XChainCommit':
-            (0, XChainCommit_1.validateXChainCommit)(tx);
-            break;
-        case 'XChainCreateBridge':
-            (0, XChainCreateBridge_1.validateXChainCreateBridge)(tx);
-            break;
-        case 'XChainCreateClaimID':
-            (0, XChainCreateClaimID_1.validateXChainCreateClaimID)(tx);
-            break;
-        case 'XChainModifyBridge':
-            (0, XChainModifyBridge_1.validateXChainModifyBridge)(tx);
+        case 'URITokenCancelSellOffer':
+            (0, uriTokenCancelSellOffer_1.validateURITokenCancelSellOffer)(tx);
             break;
         default:
             throw new errors_1.ValidationError(`Invalid field TransactionType: ${tx.TransactionType}`);
@@ -28580,14 +26830,14 @@ exports.validate = validate;
 
 /***/ }),
 
-/***/ 367:
+/***/ 7745:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.validateTrustSet = exports.TrustSetFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
 var TrustSetFlags;
 (function (TrustSetFlags) {
     TrustSetFlags[TrustSetFlags["tfSetfAuth"] = 65536] = "tfSetfAuth";
@@ -28619,218 +26869,135 @@ exports.validateTrustSet = validateTrustSet;
 
 /***/ }),
 
-/***/ 136:
+/***/ 9600:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateVaultClawback = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateVaultClawback(tx) {
+exports.validateURITokenBurn = void 0;
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
+function validateURITokenBurn(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'VaultID', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Holder', common_1.isAccount);
-    (0, common_1.validateOptionalField)(tx, 'Amount', common_1.isClawbackAmount);
+    if (tx.URITokenID == null) {
+        throw new errors_1.ValidationError('NFTokenBurn: missing field URITokenID');
+    }
 }
-exports.validateVaultClawback = validateVaultClawback;
-//# sourceMappingURL=vaultClawback.js.map
+exports.validateURITokenBurn = validateURITokenBurn;
+//# sourceMappingURL=uriTokenBurn.js.map
 
 /***/ }),
 
-/***/ 2694:
+/***/ 762:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateVaultCreate = exports.VaultCreateFlags = exports.VaultWithdrawalPolicy = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const mptokenMetadata_1 = __nccwpck_require__(3166);
-const common_1 = __nccwpck_require__(9180);
-const MAX_SCALE = 18;
-var VaultWithdrawalPolicy;
-(function (VaultWithdrawalPolicy) {
-    VaultWithdrawalPolicy[VaultWithdrawalPolicy["vaultStrategyFirstComeFirstServe"] = 1] = "vaultStrategyFirstComeFirstServe";
-})(VaultWithdrawalPolicy || (exports.VaultWithdrawalPolicy = VaultWithdrawalPolicy = {}));
-var VaultCreateFlags;
-(function (VaultCreateFlags) {
-    VaultCreateFlags[VaultCreateFlags["tfVaultPrivate"] = 65536] = "tfVaultPrivate";
-    VaultCreateFlags[VaultCreateFlags["tfVaultShareNonTransferable"] = 131072] = "tfVaultShareNonTransferable";
-})(VaultCreateFlags || (exports.VaultCreateFlags = VaultCreateFlags = {}));
-function validateVaultCreate(tx) {
+exports.validateURITokenBuy = void 0;
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
+function validateURITokenBuy(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'Asset', common_1.isCurrency);
-    (0, common_1.validateOptionalField)(tx, 'Data', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'AssetsMaximum', common_1.isXRPLNumber);
-    (0, common_1.validateOptionalField)(tx, 'MPTokenMetadata', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'WithdrawalPolicy', common_1.isNumber);
-    (0, common_1.validateOptionalField)(tx, 'DomainID', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Scale', common_1.isNumber);
-    if (tx.Data !== undefined) {
-        const dataHex = tx.Data;
-        if (!(0, utils_1.isHex)(dataHex)) {
-            throw new errors_1.ValidationError('VaultCreate: Data must be a valid hex string');
-        }
-        const dataByteLength = dataHex.length / 2;
-        if (dataByteLength > common_1.VAULT_DATA_MAX_BYTE_LENGTH) {
-            throw new errors_1.ValidationError(`VaultCreate: Data exceeds ${common_1.VAULT_DATA_MAX_BYTE_LENGTH} bytes (actual: ${dataByteLength})`);
-        }
+    if (tx.Account === tx.Destination) {
+        throw new errors_1.ValidationError('URITokenBuy: Destination and Account must not be equal');
     }
-    if (tx.MPTokenMetadata !== undefined) {
-        const metaHex = tx.MPTokenMetadata;
-        if (!(0, utils_1.isHex)(metaHex)) {
-            throw new errors_1.ValidationError('VaultCreate: MPTokenMetadata must be a valid non-empty hex string');
-        }
-        const metaByteLength = metaHex.length / 2;
-        if (metaByteLength > mptokenMetadata_1.MAX_MPT_META_BYTE_LENGTH) {
-            throw new errors_1.ValidationError(`VaultCreate: MPTokenMetadata exceeds ${mptokenMetadata_1.MAX_MPT_META_BYTE_LENGTH} bytes (actual: ${metaByteLength})`);
-        }
+    if (tx.URITokenID == null) {
+        throw new errors_1.ValidationError('URITokenBuy: missing field URITokenID');
     }
-    if (tx.DomainID !== undefined &&
-        !(0, utils_1.hasFlag)(tx, VaultCreateFlags.tfVaultPrivate, 'tfVaultPrivate')) {
-        throw new errors_1.ValidationError('VaultCreate: Cannot set DomainID unless tfVaultPrivate flag is set.');
-    }
-    const asset = tx.Asset;
-    const isXRP = asset.currency === 'XRP';
-    const isMPT = 'mpt_issuance_id' in asset;
-    const isIOU = !isXRP && !isMPT;
-    if (tx.Scale !== undefined) {
-        if (isXRP || isMPT) {
-            throw new errors_1.ValidationError('VaultCreate: Scale parameter must not be provided for XRP or MPT assets');
-        }
-        if (isIOU) {
-            if (!Number.isInteger(tx.Scale) || tx.Scale < 0 || tx.Scale > MAX_SCALE) {
-                throw new errors_1.ValidationError(`VaultCreate: Scale must be a number between 0 and ${MAX_SCALE} inclusive for IOU assets`);
-            }
-        }
-    }
-    if (tx.MPTokenMetadata != null) {
-        const validationMessages = (0, mptokenMetadata_1.validateMPTokenMetadata)(tx.MPTokenMetadata);
-        if (validationMessages.length > 0) {
-            const message = [
-                mptokenMetadata_1.MPT_META_WARNING_HEADER,
-                ...validationMessages.map((msg) => `- ${msg}`),
-            ].join('\n');
-            console.warn(message);
-        }
+    if (!(0, common_1.isAmount)(tx.Amount)) {
+        throw new errors_1.ValidationError('URITokenBuy: invalid Amount');
     }
 }
-exports.validateVaultCreate = validateVaultCreate;
-//# sourceMappingURL=vaultCreate.js.map
+exports.validateURITokenBuy = validateURITokenBuy;
+//# sourceMappingURL=uriTokenBuy.js.map
 
 /***/ }),
 
-/***/ 4635:
+/***/ 3823:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateVaultDelete = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateVaultDelete(tx) {
+exports.validateURITokenCancelSellOffer = void 0;
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
+function validateURITokenCancelSellOffer(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'VaultID', common_1.isString);
-}
-exports.validateVaultDelete = validateVaultDelete;
-//# sourceMappingURL=vaultDelete.js.map
-
-/***/ }),
-
-/***/ 2916:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateVaultDeposit = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateVaultDeposit(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'VaultID', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-}
-exports.validateVaultDeposit = validateVaultDeposit;
-//# sourceMappingURL=vaultDeposit.js.map
-
-/***/ }),
-
-/***/ 549:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateVaultSet = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(296);
-const common_1 = __nccwpck_require__(9180);
-function validateVaultSet(tx) {
-    (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'VaultID', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'Data', common_1.isString);
-    (0, common_1.validateOptionalField)(tx, 'AssetsMaximum', common_1.isXRPLNumber);
-    (0, common_1.validateOptionalField)(tx, 'DomainID', common_1.isString);
-    if (tx.Data !== undefined) {
-        const dataHex = tx.Data;
-        if (!(0, utils_1.isHex)(dataHex)) {
-            throw new errors_1.ValidationError('VaultSet: Data must be a valid hex string');
-        }
-        const dataByteLength = dataHex.length / 2;
-        if (dataByteLength > common_1.VAULT_DATA_MAX_BYTE_LENGTH) {
-            throw new errors_1.ValidationError(`VaultSet: Data exceeds ${common_1.VAULT_DATA_MAX_BYTE_LENGTH} bytes (actual: ${dataByteLength})`);
-        }
+    if (tx.URITokenID == null) {
+        throw new errors_1.ValidationError('URITokenCancelSellOffer: missing field URITokenID');
     }
 }
-exports.validateVaultSet = validateVaultSet;
-//# sourceMappingURL=vaultSet.js.map
+exports.validateURITokenCancelSellOffer = validateURITokenCancelSellOffer;
+//# sourceMappingURL=uriTokenCancelSellOffer.js.map
 
 /***/ }),
 
-/***/ 3315:
+/***/ 833:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateVaultWithdraw = void 0;
-const common_1 = __nccwpck_require__(9180);
-function validateVaultWithdraw(tx) {
+exports.validateURITokenCreateSellOffer = void 0;
+const errors_1 = __nccwpck_require__(842);
+const common_1 = __nccwpck_require__(170);
+function validateURITokenCreateSellOffer(tx) {
     (0, common_1.validateBaseTransaction)(tx);
-    (0, common_1.validateRequiredField)(tx, 'VaultID', common_1.isString);
-    (0, common_1.validateRequiredField)(tx, 'Amount', common_1.isAmount);
-    (0, common_1.validateOptionalField)(tx, 'Destination', common_1.isAccount);
-    (0, common_1.validateOptionalField)(tx, 'DestinationTag', common_1.isNumber);
+    if (tx.Account === tx.Destination) {
+        throw new errors_1.ValidationError('URITokenCreateSellOffer: Destination and Account must not be equal');
+    }
+    if (tx.URITokenID == null) {
+        throw new errors_1.ValidationError('URITokenCreateSellOffer: missing field URITokenID');
+    }
+    if (!(0, common_1.isAmount)(tx.Amount)) {
+        throw new errors_1.ValidationError('URITokenCreateSellOffer: invalid Amount');
+    }
 }
-exports.validateVaultWithdraw = validateVaultWithdraw;
-//# sourceMappingURL=vaultWithdraw.js.map
+exports.validateURITokenCreateSellOffer = validateURITokenCreateSellOffer;
+//# sourceMappingURL=uriTokenCreateSellOffer.js.map
 
 /***/ }),
 
-/***/ 7836:
+/***/ 1022:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.parseTransactionFlags = exports.convertTxFlagsToNumber = exports.setTransactionFlagsToNumber = exports.parseAccountRootFlags = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const AccountRoot_1 = __nccwpck_require__(3689);
-const accountSet_1 = __nccwpck_require__(4593);
-const AMMClawback_1 = __nccwpck_require__(9222);
-const AMMDeposit_1 = __nccwpck_require__(7228);
-const AMMWithdraw_1 = __nccwpck_require__(3522);
-const batch_1 = __nccwpck_require__(2269);
-const common_1 = __nccwpck_require__(9180);
-const loanManage_1 = __nccwpck_require__(7636);
-const loanPay_1 = __nccwpck_require__(3819);
-const MPTokenAuthorize_1 = __nccwpck_require__(6907);
-const MPTokenIssuanceCreate_1 = __nccwpck_require__(2282);
-const MPTokenIssuanceSet_1 = __nccwpck_require__(8830);
-const NFTokenCreateOffer_1 = __nccwpck_require__(2726);
-const NFTokenMint_1 = __nccwpck_require__(7004);
-const offerCreate_1 = __nccwpck_require__(610);
-const payment_1 = __nccwpck_require__(8505);
-const paymentChannelClaim_1 = __nccwpck_require__(5074);
-const trustSet_1 = __nccwpck_require__(367);
-const vaultCreate_1 = __nccwpck_require__(2694);
-const XChainModifyBridge_1 = __nccwpck_require__(7503);
-const _1 = __nccwpck_require__(296);
+exports.validateURITokenMint = exports.URITokenMintFlags = void 0;
+const errors_1 = __nccwpck_require__(842);
+const utils_1 = __nccwpck_require__(8429);
+const common_1 = __nccwpck_require__(170);
+var URITokenMintFlags;
+(function (URITokenMintFlags) {
+    URITokenMintFlags[URITokenMintFlags["tfBurnable"] = 1] = "tfBurnable";
+})(URITokenMintFlags || (exports.URITokenMintFlags = URITokenMintFlags = {}));
+function validateURITokenMint(tx) {
+    (0, common_1.validateBaseTransaction)(tx);
+    if (typeof tx.URI === 'string' && !(0, utils_1.isHex)(tx.URI)) {
+        throw new errors_1.ValidationError('URITokenMint: URI must be in hex format');
+    }
+}
+exports.validateURITokenMint = validateURITokenMint;
+//# sourceMappingURL=uriTokenMint.js.map
+
+/***/ }),
+
+/***/ 7945:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.parseTransactionFlags = exports.setTransactionFlagsToNumber = exports.parseAccountRootFlags = void 0;
+const errors_1 = __nccwpck_require__(842);
+const AccountRoot_1 = __nccwpck_require__(9341);
+const accountSet_1 = __nccwpck_require__(5400);
+const cronSet_1 = __nccwpck_require__(4965);
+const offerCreate_1 = __nccwpck_require__(8067);
+const payment_1 = __nccwpck_require__(1645);
+const paymentChannelClaim_1 = __nccwpck_require__(5188);
+const setHook_1 = __nccwpck_require__(1763);
+const setRemarks_1 = __nccwpck_require__(9145);
+const trustSet_1 = __nccwpck_require__(7745);
+const _1 = __nccwpck_require__(8429);
 function parseAccountRootFlags(flags) {
     const flagsInterface = {};
     Object.values(AccountRoot_1.AccountRootFlags).forEach((flag) => {
@@ -28844,97 +27011,71 @@ function parseAccountRootFlags(flags) {
 exports.parseAccountRootFlags = parseAccountRootFlags;
 const txToFlag = {
     AccountSet: accountSet_1.AccountSetTfFlags,
-    AMMClawback: AMMClawback_1.AMMClawbackFlags,
-    AMMDeposit: AMMDeposit_1.AMMDepositFlags,
-    AMMWithdraw: AMMWithdraw_1.AMMWithdrawFlags,
-    Batch: batch_1.BatchFlags,
-    LoanManage: loanManage_1.LoanManageFlags,
-    LoanPay: loanPay_1.LoanPayFlags,
-    MPTokenAuthorize: MPTokenAuthorize_1.MPTokenAuthorizeFlags,
-    MPTokenIssuanceCreate: MPTokenIssuanceCreate_1.MPTokenIssuanceCreateFlags,
-    MPTokenIssuanceSet: MPTokenIssuanceSet_1.MPTokenIssuanceSetFlags,
-    NFTokenCreateOffer: NFTokenCreateOffer_1.NFTokenCreateOfferFlags,
-    NFTokenMint: NFTokenMint_1.NFTokenMintFlags,
     OfferCreate: offerCreate_1.OfferCreateFlags,
     PaymentChannelClaim: paymentChannelClaim_1.PaymentChannelClaimFlags,
     Payment: payment_1.PaymentFlags,
     TrustSet: trustSet_1.TrustSetFlags,
-    VaultCreate: vaultCreate_1.VaultCreateFlags,
-    XChainModifyBridge: XChainModifyBridge_1.XChainModifyBridgeFlags,
+    CronSet: cronSet_1.CronSetFlags,
 };
-function isTxToFlagKey(transactionType) {
-    return transactionType in txToFlag;
-}
 function setTransactionFlagsToNumber(tx) {
-    console.warn('This function is deprecated. Use convertTxFlagsToNumber() instead and use the returned value to modify the Transaction.Flags from the caller.');
-    if (tx.Flags) {
-        tx.Flags = convertTxFlagsToNumber(tx);
+    if (tx.Flags == null) {
+        tx.Flags = 0;
+        return;
     }
-}
-exports.setTransactionFlagsToNumber = setTransactionFlagsToNumber;
-function convertTxFlagsToNumber(tx) {
-    const txFlags = tx.Flags;
-    if (txFlags == null) {
-        return 0;
+    if (typeof tx.Flags === 'number') {
+        return;
     }
-    if (typeof txFlags === 'number') {
-        return txFlags;
-    }
-    if (isTxToFlagKey(tx.TransactionType)) {
-        const flagEnum = txToFlag[tx.TransactionType];
-        return Object.keys(txFlags).reduce((resultFlags, flag) => {
-            var _a;
-            if (flagEnum[flag] == null && common_1.GlobalFlags[flag] == null) {
-                throw new errors_1.ValidationError(`Invalid flag ${flag}.`);
-            }
-            return txFlags[flag]
-                ? resultFlags | ((_a = flagEnum[flag]) !== null && _a !== void 0 ? _a : common_1.GlobalFlags[flag])
-                : resultFlags;
-        }, 0);
-    }
-    return Object.keys(txFlags).reduce((resultFlags, flag) => {
-        if (common_1.GlobalFlags[flag] == null) {
-            throw new errors_1.ValidationError(`Invalid flag ${flag}. Valid flags are ${JSON.stringify(common_1.GlobalFlags)}`);
-        }
-        return txFlags[flag] ? resultFlags | common_1.GlobalFlags[flag] : resultFlags;
-    }, 0);
-}
-exports.convertTxFlagsToNumber = convertTxFlagsToNumber;
-function parseTransactionFlags(tx) {
-    const flags = convertTxFlagsToNumber(tx);
-    if (flags === 0) {
-        return {};
-    }
-    const booleanFlagMap = {};
-    if (isTxToFlagKey(tx.TransactionType)) {
-        const transactionTypeFlags = txToFlag[tx.TransactionType];
-        Object.values(transactionTypeFlags).forEach((flag) => {
-            if (typeof flag === 'string' &&
-                (0, _1.isFlagEnabled)(flags, transactionTypeFlags[flag])) {
-                booleanFlagMap[flag] = true;
-            }
+    if (tx.TransactionType === 'SetHook') {
+        tx.Flags = convertFlagsToNumber(tx.Flags, setHook_1.SetHookFlags);
+        tx.Hooks.forEach((hook) => {
+            hook.Hook.Flags = convertFlagsToNumber(hook.Hook.Flags, setHook_1.SetHookFlags);
         });
     }
-    Object.values(common_1.GlobalFlags).forEach((flag) => {
-        if (typeof flag === 'string' && (0, _1.isFlagEnabled)(flags, common_1.GlobalFlags[flag])) {
-            booleanFlagMap[flag] = true;
+    else if (tx.TransactionType === 'SetRemarks') {
+        tx.Remarks.forEach((remark) => {
+            remark.Remark.Flags = convertFlagsToNumber(remark.Remark.Flags, setRemarks_1.RemarkFlags);
+        });
+    }
+    tx.Flags = txToFlag[tx.TransactionType]
+        ? convertFlagsToNumber(tx.Flags, txToFlag[tx.TransactionType])
+        : 0;
+}
+exports.setTransactionFlagsToNumber = setTransactionFlagsToNumber;
+function convertFlagsToNumber(flags, flagEnum) {
+    return Object.keys(flags).reduce((resultFlags, flag) => {
+        if (flagEnum[flag] == null) {
+            throw new errors_1.ValidationError(`flag ${flag} doesn't exist in flagEnum: ${JSON.stringify(flagEnum)}`);
+        }
+        return flags[flag] ? resultFlags | flagEnum[flag] : resultFlags;
+    }, 0);
+}
+function parseTransactionFlags(tx) {
+    setTransactionFlagsToNumber(tx);
+    if (typeof tx.Flags !== 'number' || !tx.Flags || tx.Flags === 0) {
+        return {};
+    }
+    const flags = tx.Flags;
+    const flagsMap = {};
+    const flagEnum = txToFlag[tx.TransactionType];
+    Object.values(flagEnum).forEach((flag) => {
+        if (typeof flag === 'string' && (0, _1.isFlagEnabled)(flags, flagEnum[flag])) {
+            flagsMap[flag] = true;
         }
     });
-    return booleanFlagMap;
+    return flagsMap;
 }
 exports.parseTransactionFlags = parseTransactionFlags;
 //# sourceMappingURL=flags.js.map
 
 /***/ }),
 
-/***/ 296:
+/***/ 8429:
 /***/ ((__unused_webpack_module, exports) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isHex = exports.hasFlag = exports.isFlagEnabled = exports.onlyHasFields = exports.INTEGER_SANITY_CHECK = void 0;
+exports.isHex = exports.isFlagEnabled = exports.onlyHasFields = void 0;
 const HEX_REGEX = /^[0-9A-Fa-f]+$/u;
-exports.INTEGER_SANITY_CHECK = /^[0-9]+$/u;
 function onlyHasFields(obj, fields) {
     return Object.keys(obj).every((key) => fields.includes(key));
 }
@@ -28943,16 +27084,6 @@ function isFlagEnabled(Flags, checkFlag) {
     return (BigInt(checkFlag) & BigInt(Flags)) === BigInt(checkFlag);
 }
 exports.isFlagEnabled = isFlagEnabled;
-function hasFlag(tx, flag, flagName) {
-    if (tx.Flags == null) {
-        return false;
-    }
-    if (typeof tx.Flags === 'number') {
-        return isFlagEnabled(tx.Flags, flag);
-    }
-    return tx.Flags[flagName] === true;
-}
-exports.hasFlag = hasFlag;
 function isHex(str) {
     return HEX_REGEX.test(str);
 }
@@ -28961,390 +27092,7 @@ exports.isHex = isHex;
 
 /***/ }),
 
-/***/ 3166:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateMPTokenMetadata = exports.decodeMPTokenMetadata = exports.encodeMPTokenMetadata = exports.MPT_META_WARNING_HEADER = exports.MAX_MPT_META_BYTE_LENGTH = void 0;
-const utils_1 = __nccwpck_require__(3617);
-const fast_json_stable_stringify_1 = __importDefault(__nccwpck_require__(969));
-const common_1 = __nccwpck_require__(9180);
-const _1 = __nccwpck_require__(296);
-exports.MAX_MPT_META_BYTE_LENGTH = 1024;
-exports.MPT_META_WARNING_HEADER = 'MPTokenMetadata is not properly formatted as JSON as per the XLS-89 standard. ' +
-    "While adherence to this standard is not mandatory, such non-compliant MPToken's might not be discoverable " +
-    'by Explorers and Indexers in the XRPL ecosystem.';
-const MPT_META_URI_FIELDS = [
-    {
-        long: 'uri',
-        compact: 'u',
-    },
-    {
-        long: 'category',
-        compact: 'c',
-    },
-    {
-        long: 'title',
-        compact: 't',
-    },
-];
-const MPT_META_ALL_FIELDS = [
-    {
-        long: 'ticker',
-        compact: 't',
-        validate(obj) {
-            var _a;
-            if (obj[this.long] != null && obj[this.compact] != null) {
-                return [
-                    `${this.long}/${this.compact}: both long and compact forms present. expected only one.`,
-                ];
-            }
-            const value = (_a = obj[this.long]) !== null && _a !== void 0 ? _a : obj[this.compact];
-            if (!(0, common_1.isString)(value) || !/^[A-Z0-9]{1,6}$/u.test(value)) {
-                return [
-                    `${this.long}/${this.compact}: should have uppercase letters (A-Z) and digits (0-9) only. Max 6 characters recommended.`,
-                ];
-            }
-            return [];
-        },
-    },
-    {
-        long: 'name',
-        compact: 'n',
-        validate(obj) {
-            var _a;
-            if (obj[this.long] != null && obj[this.compact] != null) {
-                return [
-                    `${this.long}/${this.compact}: both long and compact forms present. expected only one.`,
-                ];
-            }
-            const value = (_a = obj[this.long]) !== null && _a !== void 0 ? _a : obj[this.compact];
-            if (!(0, common_1.isString)(value) || value.length === 0) {
-                return [`${this.long}/${this.compact}: should be a non-empty string.`];
-            }
-            return [];
-        },
-    },
-    {
-        long: 'icon',
-        compact: 'i',
-        validate(obj) {
-            var _a;
-            if (obj[this.long] != null && obj[this.compact] != null) {
-                return [
-                    `${this.long}/${this.compact}: both long and compact forms present. expected only one.`,
-                ];
-            }
-            const value = (_a = obj[this.long]) !== null && _a !== void 0 ? _a : obj[this.compact];
-            if (!(0, common_1.isString)(value) || value.length === 0) {
-                return [`${this.long}/${this.compact}: should be a non-empty string.`];
-            }
-            return [];
-        },
-    },
-    {
-        long: 'asset_class',
-        compact: 'ac',
-        validate(obj) {
-            var _a;
-            if (obj[this.long] != null && obj[this.compact] != null) {
-                return [
-                    `${this.long}/${this.compact}: both long and compact forms present. expected only one.`,
-                ];
-            }
-            const value = (_a = obj[this.long]) !== null && _a !== void 0 ? _a : obj[this.compact];
-            const MPT_META_ASSET_CLASSES = [
-                'rwa',
-                'memes',
-                'wrapped',
-                'gaming',
-                'defi',
-                'other',
-            ];
-            if (!(0, common_1.isString)(value) || !MPT_META_ASSET_CLASSES.includes(value)) {
-                return [
-                    `${this.long}/${this.compact}: should be one of ${MPT_META_ASSET_CLASSES.join(', ')}.`,
-                ];
-            }
-            return [];
-        },
-    },
-    {
-        long: 'issuer_name',
-        compact: 'in',
-        validate(obj) {
-            var _a;
-            if (obj[this.long] != null && obj[this.compact] != null) {
-                return [
-                    `${this.long}/${this.compact}: both long and compact forms present. expected only one.`,
-                ];
-            }
-            const value = (_a = obj[this.long]) !== null && _a !== void 0 ? _a : obj[this.compact];
-            if (!(0, common_1.isString)(value) || value.length === 0) {
-                return [`${this.long}/${this.compact}: should be a non-empty string.`];
-            }
-            return [];
-        },
-    },
-    {
-        long: 'desc',
-        compact: 'd',
-        validate(obj) {
-            var _a;
-            if (obj[this.long] != null && obj[this.compact] != null) {
-                return [
-                    `${this.long}/${this.compact}: both long and compact forms present. expected only one.`,
-                ];
-            }
-            if (obj[this.long] === undefined && obj[this.compact] === undefined) {
-                return [];
-            }
-            const value = (_a = obj[this.long]) !== null && _a !== void 0 ? _a : obj[this.compact];
-            if (!(0, common_1.isString)(value) || value.length === 0) {
-                return [`${this.long}/${this.compact}: should be a non-empty string.`];
-            }
-            return [];
-        },
-    },
-    {
-        long: 'asset_subclass',
-        compact: 'as',
-        required: false,
-        validate(obj) {
-            var _a;
-            if (obj[this.long] != null && obj[this.compact] != null) {
-                return [
-                    `${this.long}/${this.compact}: both long and compact forms present. expected only one.`,
-                ];
-            }
-            const value = (_a = obj[this.long]) !== null && _a !== void 0 ? _a : obj[this.compact];
-            if ((obj.asset_class === 'rwa' || obj.ac === 'rwa') &&
-                value === undefined) {
-                return [
-                    `${this.long}/${this.compact}: required when asset_class is rwa.`,
-                ];
-            }
-            if (obj[this.long] === undefined && obj[this.compact] === undefined) {
-                return [];
-            }
-            const MPT_META_ASSET_SUB_CLASSES = [
-                'stablecoin',
-                'commodity',
-                'real_estate',
-                'private_credit',
-                'equity',
-                'treasury',
-                'other',
-            ];
-            if (!(0, common_1.isString)(value) || !MPT_META_ASSET_SUB_CLASSES.includes(value)) {
-                return [
-                    `${this.long}/${this.compact}: should be one of ${MPT_META_ASSET_SUB_CLASSES.join(', ')}.`,
-                ];
-            }
-            return [];
-        },
-    },
-    {
-        long: 'uris',
-        compact: 'us',
-        required: false,
-        validate(obj) {
-            var _a, _b, _c, _d;
-            if (obj[this.long] != null && obj[this.compact] != null) {
-                return [
-                    `${this.long}/${this.compact}: both long and compact forms present. expected only one.`,
-                ];
-            }
-            if (obj[this.long] === undefined && obj[this.compact] === undefined) {
-                return [];
-            }
-            const value = (_a = obj[this.long]) !== null && _a !== void 0 ? _a : obj[this.compact];
-            if (!Array.isArray(value) || value.length === 0) {
-                return [`${this.long}/${this.compact}: should be a non-empty array.`];
-            }
-            const messages = [];
-            for (const uriObj of value) {
-                if (!(0, common_1.isRecord)(uriObj) ||
-                    Object.keys(uriObj).length !== MPT_META_URI_FIELDS.length) {
-                    messages.push(`${this.long}/${this.compact}: should be an array of objects each with uri/u, category/c, and title/t properties.`);
-                    continue;
-                }
-                for (const uriField of MPT_META_URI_FIELDS) {
-                    if (uriObj[uriField.long] != null &&
-                        uriObj[uriField.compact] != null) {
-                        messages.push(`${this.long}/${this.compact}: should not have both ${uriField.long} and ${uriField.compact} fields.`);
-                        break;
-                    }
-                }
-                const uri = (_b = uriObj.uri) !== null && _b !== void 0 ? _b : uriObj.u;
-                const category = (_c = uriObj.category) !== null && _c !== void 0 ? _c : uriObj.c;
-                const title = (_d = uriObj.title) !== null && _d !== void 0 ? _d : uriObj.t;
-                if (!(0, common_1.isString)(uri) || !(0, common_1.isString)(category) || !(0, common_1.isString)(title)) {
-                    messages.push(`${this.long}/${this.compact}: should be an array of objects each with uri/u, category/c, and title/t properties.`);
-                }
-            }
-            return messages;
-        },
-    },
-    {
-        long: 'additional_info',
-        compact: 'ai',
-        required: false,
-        validate(obj) {
-            var _a;
-            if (obj[this.long] != null && obj[this.compact] != null) {
-                return [
-                    `${this.long}/${this.compact}: both long and compact forms present. expected only one.`,
-                ];
-            }
-            if (obj[this.long] === undefined && obj[this.compact] === undefined) {
-                return [];
-            }
-            const value = (_a = obj[this.long]) !== null && _a !== void 0 ? _a : obj[this.compact];
-            if (!(0, common_1.isString)(value) && !(0, common_1.isRecord)(value)) {
-                return [
-                    `${this.long}/${this.compact}: should be a string or JSON object.`,
-                ];
-            }
-            return [];
-        },
-    },
-];
-function shortenKeys(input, mappings) {
-    const output = {};
-    for (const [key, value] of Object.entries(input)) {
-        const mapping = mappings.find(({ long, compact }) => long === key || compact === key);
-        if (mapping === undefined) {
-            output[key] = value;
-            continue;
-        }
-        if (input[mapping.long] !== undefined &&
-            input[mapping.compact] !== undefined) {
-            output[key] = value;
-            continue;
-        }
-        output[mapping.compact] = value;
-    }
-    return output;
-}
-function encodeMPTokenMetadata(mptokenMetadata) {
-    let input = mptokenMetadata;
-    if (!(0, common_1.isRecord)(input)) {
-        throw new Error('MPTokenMetadata must be JSON object.');
-    }
-    input = shortenKeys(input, MPT_META_ALL_FIELDS);
-    if (Array.isArray(input.uris)) {
-        input.uris = input.uris.map((uri) => {
-            if ((0, common_1.isRecord)(uri)) {
-                return shortenKeys(uri, MPT_META_URI_FIELDS);
-            }
-            return uri;
-        });
-    }
-    if (Array.isArray(input.us)) {
-        input.us = input.us.map((uri) => {
-            if ((0, common_1.isRecord)(uri)) {
-                return shortenKeys(uri, MPT_META_URI_FIELDS);
-            }
-            return uri;
-        });
-    }
-    return (0, utils_1.stringToHex)((0, fast_json_stable_stringify_1.default)(input)).toUpperCase();
-}
-exports.encodeMPTokenMetadata = encodeMPTokenMetadata;
-function expandKeys(input, mappings) {
-    const output = {};
-    for (const [key, value] of Object.entries(input)) {
-        const mapping = mappings.find(({ long, compact }) => long === key || compact === key);
-        if (mapping === undefined) {
-            output[key] = value;
-            continue;
-        }
-        if (input[mapping.long] !== undefined &&
-            input[mapping.compact] !== undefined) {
-            output[key] = value;
-            continue;
-        }
-        output[mapping.long] = value;
-    }
-    return output;
-}
-function decodeMPTokenMetadata(input) {
-    if (!(0, _1.isHex)(input)) {
-        throw new Error('MPTokenMetadata must be in hex format.');
-    }
-    let jsonMetaData;
-    try {
-        jsonMetaData = JSON.parse((0, utils_1.hexToString)(input));
-    }
-    catch (err) {
-        throw new Error(`MPTokenMetadata is not properly formatted as JSON - ${String(err)}`);
-    }
-    if (!(0, common_1.isRecord)(jsonMetaData)) {
-        throw new Error('MPTokenMetadata must be a JSON object.');
-    }
-    let output = jsonMetaData;
-    output = expandKeys(output, MPT_META_ALL_FIELDS);
-    if (Array.isArray(output.uris)) {
-        output.uris = output.uris.map((uri) => {
-            if ((0, common_1.isRecord)(uri)) {
-                return expandKeys(uri, MPT_META_URI_FIELDS);
-            }
-            return uri;
-        });
-    }
-    if (Array.isArray(output.us)) {
-        output.us = output.us.map((uri) => {
-            if ((0, common_1.isRecord)(uri)) {
-                return expandKeys(uri, MPT_META_URI_FIELDS);
-            }
-            return uri;
-        });
-    }
-    return output;
-}
-exports.decodeMPTokenMetadata = decodeMPTokenMetadata;
-function validateMPTokenMetadata(input) {
-    const validationMessages = [];
-    if (!(0, _1.isHex)(input)) {
-        validationMessages.push(`MPTokenMetadata must be in hex format.`);
-        return validationMessages;
-    }
-    if (input.length / 2 > exports.MAX_MPT_META_BYTE_LENGTH) {
-        validationMessages.push(`MPTokenMetadata must be max ${exports.MAX_MPT_META_BYTE_LENGTH} bytes.`);
-        return validationMessages;
-    }
-    let jsonMetaData;
-    try {
-        jsonMetaData = JSON.parse((0, utils_1.hexToString)(input));
-    }
-    catch (err) {
-        validationMessages.push(`MPTokenMetadata is not properly formatted as JSON - ${String(err)}`);
-        return validationMessages;
-    }
-    if (!(0, common_1.isRecord)(jsonMetaData)) {
-        validationMessages.push('MPTokenMetadata is not properly formatted JSON object as per XLS-89.');
-        return validationMessages;
-    }
-    if (Object.keys(jsonMetaData).length > MPT_META_ALL_FIELDS.length) {
-        validationMessages.push(`MPTokenMetadata must not contain more than ${MPT_META_ALL_FIELDS.length} top-level fields (found ${Object.keys(jsonMetaData).length}).`);
-    }
-    const obj = jsonMetaData;
-    for (const property of MPT_META_ALL_FIELDS) {
-        validationMessages.push(...property.validate(obj));
-    }
-    return validationMessages;
-}
-exports.validateMPTokenMetadata = validateMPTokenMetadata;
-//# sourceMappingURL=mptokenMetadata.js.map
-
-/***/ }),
-
-/***/ 4991:
+/***/ 7522:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -29357,65 +27105,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.autofillBatchTxn = exports.handleDeliverMax = exports.checkAccountDeleteBlockers = exports.setLatestValidatedLedgerSequence = exports.getTransactionFee = exports.setNextValidSequenceNumber = exports.setValidAddresses = exports.txNeedsNetworkID = void 0;
-const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(1);
-const getFeeXrp_1 = __importDefault(__nccwpck_require__(4511));
+exports.setLatestValidatedLedgerSequence = exports.calculateFeePerTransactionType = exports.setNextValidSequenceNumber = exports.setValidAddresses = exports.txNeedsNetworkID = void 0;
+const xahau_address_codec_1 = __nccwpck_require__(647);
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const errors_1 = __nccwpck_require__(842);
+const getFeeXah_1 = __nccwpck_require__(8002);
 const LEDGER_OFFSET = 20;
 const RESTRICTED_NETWORKS = 1024;
-const REQUIRED_NETWORKID_VERSION = '1.11.0';
-function isNotLaterRippledVersion(source, target) {
-    if (source === target) {
-        return true;
-    }
-    const sourceDecomp = source.split('.');
-    const targetDecomp = target.split('.');
-    const sourceMajor = parseInt(sourceDecomp[0], 10);
-    const sourceMinor = parseInt(sourceDecomp[1], 10);
-    const targetMajor = parseInt(targetDecomp[0], 10);
-    const targetMinor = parseInt(targetDecomp[1], 10);
-    if (sourceMajor !== targetMajor) {
-        return sourceMajor < targetMajor;
-    }
-    if (sourceMinor !== targetMinor) {
-        return sourceMinor < targetMinor;
-    }
-    const sourcePatch = sourceDecomp[2].split('-');
-    const targetPatch = targetDecomp[2].split('-');
-    const sourcePatchVersion = parseInt(sourcePatch[0], 10);
-    const targetPatchVersion = parseInt(targetPatch[0], 10);
-    if (sourcePatchVersion !== targetPatchVersion) {
-        return sourcePatchVersion < targetPatchVersion;
-    }
-    if (sourcePatch.length !== targetPatch.length) {
-        return sourcePatch.length > targetPatch.length;
-    }
-    if (sourcePatch.length === 2) {
-        if (!sourcePatch[1][0].startsWith(targetPatch[1][0])) {
-            return sourcePatch[1] < targetPatch[1];
-        }
-        if (sourcePatch[1].startsWith('b')) {
-            return (parseInt(sourcePatch[1].slice(1), 10) <
-                parseInt(targetPatch[1].slice(1), 10));
-        }
-        return (parseInt(sourcePatch[1].slice(2), 10) <
-            parseInt(targetPatch[1].slice(2), 10));
-    }
-    return false;
-}
 function txNeedsNetworkID(client) {
     if (client.networkID !== undefined &&
         client.networkID > RESTRICTED_NETWORKS) {
-        if (client.buildVersion &&
-            isNotLaterRippledVersion(REQUIRED_NETWORKID_VERSION, client.buildVersion)) {
-            return true;
-        }
+        return true;
     }
     return false;
 }
@@ -29441,9 +27142,9 @@ function validateAccountAddress(tx, accountField, tagField) {
         tx[tagField] = tag;
     }
 }
-function getClassicAccountAndTag(account, expectedTag) {
-    if ((0, ripple_address_codec_1.isValidXAddress)(account)) {
-        const classic = (0, ripple_address_codec_1.xAddressToClassicAddress)(account);
+function getClassicAccountAndTag(Account, expectedTag) {
+    if ((0, xahau_address_codec_1.isValidXAddress)(Account)) {
+        const classic = (0, xahau_address_codec_1.xAddressToClassicAddress)(Account);
         if (expectedTag != null && classic.tag !== expectedTag) {
             throw new errors_1.ValidationError('address includes a tag that does not match the tag specified in the transaction');
         }
@@ -29453,7 +27154,7 @@ function getClassicAccountAndTag(account, expectedTag) {
         };
     }
     return {
-        classicAccount: account,
+        classicAccount: Account,
         tag: expectedTag,
     };
 }
@@ -29464,110 +27165,28 @@ function convertToClassicAddress(tx, fieldName) {
         tx[fieldName] = classicAccount;
     }
 }
-function getNextValidSequenceNumber(client, account) {
+function setNextValidSequenceNumber(client, tx) {
     return __awaiter(this, void 0, void 0, function* () {
         const request = {
             command: 'account_info',
-            account,
+            account: tx.Account,
             ledger_index: 'current',
         };
         const data = yield client.request(request);
-        return data.result.account_data.Sequence;
-    });
-}
-function setNextValidSequenceNumber(client, tx) {
-    return __awaiter(this, void 0, void 0, function* () {
-        tx.Sequence = yield getNextValidSequenceNumber(client, tx.Account);
+        tx.Sequence = data.result.account_data.Sequence;
     });
 }
 exports.setNextValidSequenceNumber = setNextValidSequenceNumber;
-function fetchOwnerReserveFee(client) {
-    var _a;
-    return __awaiter(this, void 0, void 0, function* () {
-        const response = yield client.request({ command: 'server_state' });
-        const fee = (_a = response.result.state.validated_ledger) === null || _a === void 0 ? void 0 : _a.reserve_inc;
-        if (fee == null) {
-            return Promise.reject(new Error('Could not fetch Owner Reserve.'));
-        }
-        return new bignumber_js_1.default(fee);
-    });
-}
-function fetchCounterPartySignersCount(client, tx) {
-    var _a, _b;
-    return __awaiter(this, void 0, void 0, function* () {
-        let counterParty = tx.Counterparty;
-        if (counterParty == null) {
-            if (tx.LoanBrokerID == null) {
-                throw new errors_1.ValidationError('LoanBrokerID is required for LoanSet transaction');
-            }
-            const resp = (yield client.request({
-                command: 'ledger_entry',
-                index: tx.LoanBrokerID,
-                ledger_index: 'validated',
-            })).result.node;
-            counterParty = resp.Owner;
-        }
-        const signerListRequest = {
-            command: 'account_info',
-            account: counterParty,
-            ledger_index: 'validated',
-            signer_lists: true,
-        };
-        const signerListResponse = yield client.request(signerListRequest);
-        const signerList = (_a = signerListResponse.result.signer_lists) === null || _a === void 0 ? void 0 : _a[0];
-        return (_b = signerList === null || signerList === void 0 ? void 0 : signerList.SignerEntries.length) !== null && _b !== void 0 ? _b : 1;
-    });
-}
 function calculateFeePerTransactionType(client, tx, signersCount = 0) {
     return __awaiter(this, void 0, void 0, function* () {
-        const netFeeXRP = yield (0, getFeeXrp_1.default)(client);
-        const netFeeDrops = (0, utils_1.xrpToDrops)(netFeeXRP);
-        let baseFee = new bignumber_js_1.default(netFeeDrops);
-        const isSpecialTxCost = [
-            'AccountDelete',
-            'AMMCreate',
-            'VaultCreate',
-        ].includes(tx.TransactionType);
-        if (tx.TransactionType === 'EscrowFinish' && tx.Fulfillment != null) {
-            const fulfillmentBytesSize = Math.ceil(tx.Fulfillment.length / 2);
-            baseFee = new bignumber_js_1.default(scaleValue(netFeeDrops, 33 + fulfillmentBytesSize / 16));
-        }
-        else if (isSpecialTxCost) {
-            baseFee = yield fetchOwnerReserveFee(client);
-        }
-        else if (tx.TransactionType === 'Batch') {
-            const rawTxFees = yield tx.RawTransactions.reduce((acc, rawTxn) => __awaiter(this, void 0, void 0, function* () {
-                const resolvedAcc = yield acc;
-                const fee = yield calculateFeePerTransactionType(client, rawTxn.RawTransaction);
-                return bignumber_js_1.default.sum(resolvedAcc, fee);
-            }), Promise.resolve(new bignumber_js_1.default(0)));
-            baseFee = bignumber_js_1.default.sum(baseFee.times(2), rawTxFees);
-        }
-        if (signersCount > 0) {
-            baseFee = bignumber_js_1.default.sum(baseFee, scaleValue(netFeeDrops, signersCount));
-        }
-        if (tx.TransactionType === 'LoanSet') {
-            const counterPartySignersCount = yield fetchCounterPartySignersCount(client, tx);
-            baseFee = bignumber_js_1.default.sum(baseFee, scaleValue(netFeeDrops, counterPartySignersCount));
-            console.warn(`For LoanSet transaction the auto calculated Fee accounts for total number of signers the counterparty has to avoid transaction failure.`);
-        }
-        const maxFeeDrops = (0, utils_1.xrpToDrops)(client.maxFeeXRP);
-        const totalFee = isSpecialTxCost
-            ? baseFee
-            : bignumber_js_1.default.min(baseFee, maxFeeDrops);
-        return totalFee.dp(0, bignumber_js_1.default.ROUND_CEIL);
+        const copyTx = Object.assign({}, tx);
+        copyTx.SigningPubKey = ``;
+        copyTx.Fee = `0`;
+        const tx_blob = (0, xahau_binary_codec_1.encode)(copyTx);
+        tx.Fee = yield (0, getFeeXah_1.getFeeEstimateXrp)(client, tx_blob, signersCount);
     });
 }
-function getTransactionFee(client, tx, signersCount = 0) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const fee = yield calculateFeePerTransactionType(client, tx, signersCount);
-        tx.Fee = fee.toString(10);
-    });
-}
-exports.getTransactionFee = getTransactionFee;
-function scaleValue(value, multiplier) {
-    return new bignumber_js_1.default(value).times(multiplier).toString();
-}
+exports.calculateFeePerTransactionType = calculateFeePerTransactionType;
 function setLatestValidatedLedgerSequence(client, tx) {
     return __awaiter(this, void 0, void 0, function* () {
         const ledgerSequence = yield client.getLedgerIndex();
@@ -29575,82 +27194,11 @@ function setLatestValidatedLedgerSequence(client, tx) {
     });
 }
 exports.setLatestValidatedLedgerSequence = setLatestValidatedLedgerSequence;
-function checkAccountDeleteBlockers(client, tx) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const request = {
-            command: 'account_objects',
-            account: tx.Account,
-            ledger_index: 'validated',
-            deletion_blockers_only: true,
-        };
-        const response = yield client.request(request);
-        return new Promise((resolve, reject) => {
-            if (response.result.account_objects.length > 0) {
-                reject(new errors_1.XrplError(`Account ${tx.Account} cannot be deleted; there are Escrows, PayChannels, RippleStates, or Checks associated with the account.`, response.result.account_objects));
-            }
-            resolve();
-        });
-    });
-}
-exports.checkAccountDeleteBlockers = checkAccountDeleteBlockers;
-function handleDeliverMax(tx) {
-    var _a;
-    if (tx.DeliverMax != null) {
-        (_a = tx.Amount) !== null && _a !== void 0 ? _a : (tx.Amount = tx.DeliverMax);
-        if (tx.Amount != null && tx.Amount !== tx.DeliverMax) {
-            throw new errors_1.ValidationError('PaymentTransaction: Amount and DeliverMax fields must be identical when both are provided');
-        }
-        delete tx.DeliverMax;
-    }
-}
-exports.handleDeliverMax = handleDeliverMax;
-function autofillBatchTxn(client, tx) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const accountSequences = {};
-        for (const rawTxn of tx.RawTransactions) {
-            const txn = rawTxn.RawTransaction;
-            if (txn.Sequence == null && txn.TicketSequence == null) {
-                if (txn.Account in accountSequences) {
-                    txn.Sequence = accountSequences[txn.Account];
-                    accountSequences[txn.Account] += 1;
-                }
-                else {
-                    const nextSequence = yield getNextValidSequenceNumber(client, txn.Account);
-                    const sequence = txn.Account === tx.Account ? nextSequence + 1 : nextSequence;
-                    accountSequences[txn.Account] = sequence + 1;
-                    txn.Sequence = sequence;
-                }
-            }
-            if (txn.Fee == null) {
-                txn.Fee = '0';
-            }
-            else if (txn.Fee !== '0') {
-                throw new errors_1.XrplError('Must have `Fee of "0" in inner Batch transaction.');
-            }
-            if (txn.SigningPubKey == null) {
-                txn.SigningPubKey = '';
-            }
-            else if (txn.SigningPubKey !== '') {
-                throw new errors_1.XrplError('Must have `SigningPubKey` of "" in inner Batch transaction.');
-            }
-            if (txn.TxnSignature != null) {
-                throw new errors_1.XrplError('Must not have `TxnSignature` in inner Batch transaction.');
-            }
-            if (txn.Signers != null) {
-                throw new errors_1.XrplError('Must not have `Signers` in inner Batch transaction.');
-            }
-            if (txn.NetworkID == null && txNeedsNetworkID(client)) {
-                txn.NetworkID = client.networkID;
-            }
-        }
-    });
-}
-exports.autofillBatchTxn = autofillBatchTxn;
 //# sourceMappingURL=autofill.js.map
 
 /***/ }),
 
-/***/ 2485:
+/***/ 6680:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -29668,7 +27216,7 @@ exports.formatBalances = formatBalances;
 
 /***/ }),
 
-/***/ 4511:
+/***/ 8002:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -29685,12 +27233,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getFeeEstimateXrp = void 0;
 const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const errors_1 = __nccwpck_require__(7919);
+const errors_1 = __nccwpck_require__(842);
 const NUM_DECIMAL_PLACES = 6;
 const BASE_10 = 10;
 function getFeeXrp(client, cushion) {
-    var _a, _b;
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         const feeCushion = cushion !== null && cushion !== void 0 ? cushion : client.feeCushion;
         const serverInfo = (yield client.request({
@@ -29698,21 +27247,42 @@ function getFeeXrp(client, cushion) {
         })).result.info;
         const baseFee = (_a = serverInfo.validated_ledger) === null || _a === void 0 ? void 0 : _a.base_fee_xrp;
         if (baseFee == null) {
-            throw new errors_1.XrplError('getFeeXrp: Could not get base_fee_xrp from server_info');
+            throw new errors_1.XahlError('getFeeXrp: Could not get base_fee_xrp from server_info');
         }
         const baseFeeXrp = new bignumber_js_1.default(baseFee);
-        (_b = serverInfo.load_factor) !== null && _b !== void 0 ? _b : (serverInfo.load_factor = 1);
+        if (serverInfo.load_factor == null) {
+            serverInfo.load_factor = 1;
+        }
         let fee = baseFeeXrp.times(serverInfo.load_factor).times(feeCushion);
-        fee = bignumber_js_1.default.min(fee, client.maxFeeXRP);
+        fee = bignumber_js_1.default.min(fee, client.maxFeeXAH);
         return new bignumber_js_1.default(fee.toFixed(NUM_DECIMAL_PLACES)).toString(BASE_10);
     });
 }
 exports["default"] = getFeeXrp;
-//# sourceMappingURL=getFeeXrp.js.map
+function getFeeEstimateXrp(client, txBlob, signersCount = 0) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const response = yield client.request({
+            command: 'fee',
+            tx_blob: txBlob,
+        });
+        const openLedgerFee = response.result.drops.open_ledger_fee;
+        const noHookFee = response.result.drops.base_fee_no_hooks;
+        let baseFee = new bignumber_js_1.default(response.result.drops.base_fee);
+        if (signersCount > 0) {
+            baseFee = bignumber_js_1.default.sum(openLedgerFee, scaleValue(noHookFee, 1 + signersCount));
+        }
+        return new bignumber_js_1.default(baseFee.toFixed(NUM_DECIMAL_PLACES)).toString(BASE_10);
+    });
+}
+exports.getFeeEstimateXrp = getFeeEstimateXrp;
+function scaleValue(value, multiplier) {
+    return new bignumber_js_1.default(value).times(multiplier).toString();
+}
+//# sourceMappingURL=getFeeXah.js.map
 
 /***/ }),
 
-/***/ 5197:
+/***/ 5685:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -29731,15 +27301,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.sortAndLimitOffers = exports.separateBuySellOrders = exports.combineOrders = exports.extractOffers = exports.reverseRequest = exports.requestAllOffers = exports.createBookOffersRequest = exports.validateOrderbookOptions = void 0;
 const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const errors_1 = __nccwpck_require__(7919);
-const Offer_1 = __nccwpck_require__(4105);
+const errors_1 = __nccwpck_require__(842);
+const Offer_1 = __nccwpck_require__(3178);
 const DEFAULT_LIMIT = 20;
 function sortOffers(offers) {
     return offers.sort((offerA, offerB) => {
-        var _a, _b, _c;
+        var _a, _b;
         const qualityA = (_a = offerA.quality) !== null && _a !== void 0 ? _a : 0;
         const qualityB = (_b = offerB.quality) !== null && _b !== void 0 ? _b : 0;
-        return (_c = new bignumber_js_1.default(qualityA).comparedTo(qualityB)) !== null && _c !== void 0 ? _c : 0;
+        return new bignumber_js_1.default(qualityA).comparedTo(qualityB);
     });
 }
 const getOrderbookOptionsSet = new Set([
@@ -29774,7 +27344,7 @@ function validateOrderbookOptions(options) {
 }
 exports.validateOrderbookOptions = validateOrderbookOptions;
 function createBookOffersRequest(currency1, currency2, options) {
-    var _a, _b, _c;
+    var _a, _b;
     const request = {
         command: 'book_offers',
         taker_pays: currency1,
@@ -29782,7 +27352,7 @@ function createBookOffersRequest(currency1, currency2, options) {
         ledger_index: (_a = options.ledger_index) !== null && _a !== void 0 ? _a : 'validated',
         ledger_hash: options.ledger_hash === null ? undefined : options.ledger_hash,
         limit: (_b = options.limit) !== null && _b !== void 0 ? _b : DEFAULT_LIMIT,
-        taker: (_c = options.taker) !== null && _c !== void 0 ? _c : undefined,
+        taker: options.taker ? options.taker : undefined,
     };
     return request;
 }
@@ -29829,7 +27399,7 @@ exports.sortAndLimitOffers = sortAndLimitOffers;
 
 /***/ }),
 
-/***/ 7104:
+/***/ 2028:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -29848,13 +27418,13 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-__exportStar(__nccwpck_require__(1037), exports);
-__exportStar(__nccwpck_require__(614), exports);
+__exportStar(__nccwpck_require__(1354), exports);
+__exportStar(__nccwpck_require__(9659), exports);
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 1037:
+/***/ 1354:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -29869,8 +27439,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getLastLedgerSequence = exports.getSignedTx = exports.waitForFinalTransactionOutcome = exports.submitRequest = void 0;
-const errors_1 = __nccwpck_require__(7919);
-const utils_1 = __nccwpck_require__(1);
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const errors_1 = __nccwpck_require__(842);
 const LEDGER_CLOSE_TIME = 1000;
 function sleep(ms) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -29882,11 +27452,11 @@ function sleep(ms) {
 function submitRequest(client, signedTransaction, failHard = false) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!isSigned(signedTransaction)) {
-            throw new errors_1.ValidationError('Transaction must be signed.');
+            throw new errors_1.ValidationError('Transaction must be signed');
         }
         const signedTxEncoded = typeof signedTransaction === 'string'
             ? signedTransaction
-            : (0, utils_1.encode)(signedTransaction);
+            : (0, xahau_binary_codec_1.encode)(signedTransaction);
         const request = {
             command: 'submit',
             tx_blob: signedTxEncoded,
@@ -29901,7 +27471,7 @@ function waitForFinalTransactionOutcome(client, txHash, lastLedger, submissionRe
         yield sleep(LEDGER_CLOSE_TIME);
         const latestLedger = yield client.getLedgerIndex();
         if (lastLedger < latestLedger) {
-            throw new errors_1.XrplError(`The latest ledger sequence ${latestLedger} is greater than the transaction's LastLedgerSequence (${lastLedger}).\n` +
+            throw new errors_1.XahlError(`The latest ledger sequence ${latestLedger} is greater than the transaction's LastLedgerSequence (${lastLedger}).\n` +
                 `Preliminary result: ${submissionResult}`);
         }
         const txResponse = yield client
@@ -29925,7 +27495,7 @@ function waitForFinalTransactionOutcome(client, txHash, lastLedger, submissionRe
 }
 exports.waitForFinalTransactionOutcome = waitForFinalTransactionOutcome;
 function isSigned(transaction) {
-    const tx = typeof transaction === 'string' ? (0, utils_1.decode)(transaction) : transaction;
+    const tx = typeof transaction === 'string' ? (0, xahau_binary_codec_1.decode)(transaction) : transaction;
     if (typeof tx === 'string') {
         return false;
     }
@@ -29951,7 +27521,7 @@ function getSignedTx(client, transaction, { autofill = true, wallet, } = {}) {
         }
         let tx = typeof transaction === 'string'
             ?
-                (0, utils_1.decode)(transaction)
+                (0, xahau_binary_codec_1.decode)(transaction)
             : transaction;
         if (autofill) {
             tx = yield client.autofill(tx);
@@ -29961,28 +27531,28 @@ function getSignedTx(client, transaction, { autofill = true, wallet, } = {}) {
 }
 exports.getSignedTx = getSignedTx;
 function getLastLedgerSequence(transaction) {
-    const tx = typeof transaction === 'string' ? (0, utils_1.decode)(transaction) : transaction;
+    const tx = typeof transaction === 'string' ? (0, xahau_binary_codec_1.decode)(transaction) : transaction;
     return tx.LastLedgerSequence;
 }
 exports.getLastLedgerSequence = getLastLedgerSequence;
 function isAccountDelete(transaction) {
-    const tx = typeof transaction === 'string' ? (0, utils_1.decode)(transaction) : transaction;
+    const tx = typeof transaction === 'string' ? (0, xahau_binary_codec_1.decode)(transaction) : transaction;
     return tx.TransactionType === 'AccountDelete';
 }
 //# sourceMappingURL=submit.js.map
 
 /***/ }),
 
-/***/ 614:
+/***/ 9659:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ensureClassicAddress = void 0;
-const ripple_address_codec_1 = __nccwpck_require__(3996);
+const xahau_address_codec_1 = __nccwpck_require__(647);
 function ensureClassicAddress(account) {
-    if ((0, ripple_address_codec_1.isValidXAddress)(account)) {
-        const { classicAddress, tag } = (0, ripple_address_codec_1.xAddressToClassicAddress)(account);
+    if ((0, xahau_address_codec_1.isValidXAddress)(account)) {
+        const { classicAddress, tag } = (0, xahau_address_codec_1.xAddressToClassicAddress)(account);
         if (tag !== false) {
             throw new Error('This command does not support the use of a tag. Use an address without a tag.');
         }
@@ -29995,7 +27565,7 @@ exports.ensureClassicAddress = ensureClassicAddress;
 
 /***/ }),
 
-/***/ 3405:
+/***/ 991:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -30025,26 +27595,26 @@ exports.omitBy = omitBy;
 
 /***/ }),
 
-/***/ 7985:
+/***/ 7183:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.deriveXAddress = exports.deriveAddress = exports.deriveKeypair = void 0;
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-Object.defineProperty(exports, "deriveKeypair", ({ enumerable: true, get: function () { return ripple_keypairs_1.deriveKeypair; } }));
-Object.defineProperty(exports, "deriveAddress", ({ enumerable: true, get: function () { return ripple_keypairs_1.deriveAddress; } }));
+const xahau_address_codec_1 = __nccwpck_require__(647);
+const xahau_keypairs_1 = __nccwpck_require__(4095);
+Object.defineProperty(exports, "deriveKeypair", ({ enumerable: true, get: function () { return xahau_keypairs_1.deriveKeypair; } }));
+Object.defineProperty(exports, "deriveAddress", ({ enumerable: true, get: function () { return xahau_keypairs_1.deriveAddress; } }));
 function deriveXAddress(options) {
-    const classicAddress = (0, ripple_keypairs_1.deriveAddress)(options.publicKey);
-    return (0, ripple_address_codec_1.classicAddressToXAddress)(classicAddress, options.tag, options.test);
+    const classicAddress = (0, xahau_keypairs_1.deriveAddress)(options.publicKey);
+    return (0, xahau_address_codec_1.classicAddressToXAddress)(classicAddress, options.tag, options.test);
 }
 exports.deriveXAddress = deriveXAddress;
 //# sourceMappingURL=derive.js.map
 
 /***/ }),
 
-/***/ 8828:
+/***/ 5258:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -30053,8 +27623,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const collections_1 = __nccwpck_require__(3405);
-const xrpConversion_1 = __nccwpck_require__(283);
+const collections_1 = __nccwpck_require__(991);
+const xahConversion_1 = __nccwpck_require__(6216);
 function normalizeNode(affectedNode) {
     const diffType = Object.keys(affectedNode)[0];
     const node = affectedNode[diffType];
@@ -30092,7 +27662,7 @@ function computeBalanceChange(node) {
     }
     return value;
 }
-function getXRPQuantity(node) {
+function getXAHQuantity(node) {
     var _a, _b, _c;
     const value = computeBalanceChange(node);
     if (value === null) {
@@ -30101,8 +27671,8 @@ function getXRPQuantity(node) {
     return {
         account: ((_b = (_a = node.FinalFields) === null || _a === void 0 ? void 0 : _a.Account) !== null && _b !== void 0 ? _b : (_c = node.NewFields) === null || _c === void 0 ? void 0 : _c.Account),
         balance: {
-            currency: 'XRP',
-            value: (0, xrpConversion_1.dropsToXrp)(value).toString(),
+            currency: 'XAH',
+            value: (0, xahConversion_1.dropsToXah)(value).toString(),
         },
     };
 }
@@ -30118,16 +27688,16 @@ function flipTrustlinePerspective(balanceChange) {
     };
 }
 function getTrustlineQuantity(node) {
-    var _a, _b, _c;
+    var _a, _b;
     const value = computeBalanceChange(node);
     if (value === null) {
         return null;
     }
-    const fields = (_a = node.NewFields) !== null && _a !== void 0 ? _a : node.FinalFields;
+    const fields = node.NewFields == null ? node.FinalFields : node.NewFields;
     const result = {
-        account: (_b = fields === null || fields === void 0 ? void 0 : fields.LowLimit) === null || _b === void 0 ? void 0 : _b.issuer,
+        account: (_a = fields === null || fields === void 0 ? void 0 : fields.LowLimit) === null || _a === void 0 ? void 0 : _a.issuer,
         balance: {
-            issuer: (_c = fields === null || fields === void 0 ? void 0 : fields.HighLimit) === null || _c === void 0 ? void 0 : _c.issuer,
+            issuer: (_b = fields === null || fields === void 0 ? void 0 : fields.HighLimit) === null || _b === void 0 ? void 0 : _b.issuer,
             currency: (fields === null || fields === void 0 ? void 0 : fields.Balance).currency,
             value: value.toString(),
         },
@@ -30137,7 +27707,7 @@ function getTrustlineQuantity(node) {
 function getBalanceChanges(metadata) {
     const quantities = normalizeNodes(metadata).map((node) => {
         if (node.LedgerEntryType === 'AccountRoot') {
-            const xrpQuantity = getXRPQuantity(node);
+            const xrpQuantity = getXAHQuantity(node);
             if (xrpQuantity == null) {
                 return [];
             }
@@ -30159,95 +27729,7 @@ exports["default"] = getBalanceChanges;
 
 /***/ }),
 
-/***/ 228:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const metadata_1 = __nccwpck_require__(2225);
-function ensureDecodedMeta(meta) {
-    if (typeof meta === 'string') {
-        return (0, ripple_binary_codec_1.decode)(meta);
-    }
-    return meta;
-}
-function getNFTokenID(meta) {
-    if (typeof meta !== 'string' && (meta === null || meta === void 0 ? void 0 : meta.AffectedNodes) === undefined) {
-        throw new TypeError(`Unable to parse the parameter given to getNFTokenID.
-      'meta' must be the metadata from an NFTokenMint transaction. Received ${JSON.stringify(meta)} instead.`);
-    }
-    const decodedMeta = ensureDecodedMeta(meta);
-    const affectedNodes = decodedMeta.AffectedNodes.filter((node) => {
-        var _a;
-        if ((0, metadata_1.isCreatedNode)(node)) {
-            return node.CreatedNode.LedgerEntryType === 'NFTokenPage';
-        }
-        if ((0, metadata_1.isModifiedNode)(node)) {
-            return (node.ModifiedNode.LedgerEntryType === 'NFTokenPage' &&
-                Boolean((_a = node.ModifiedNode.PreviousFields) === null || _a === void 0 ? void 0 : _a.NFTokens));
-        }
-        return false;
-    });
-    const previousTokenIDSet = new Set(affectedNodes
-        .flatMap((node) => {
-        var _a;
-        const nftokens = (0, metadata_1.isModifiedNode)(node)
-            ? (_a = node.ModifiedNode.PreviousFields) === null || _a === void 0 ? void 0 : _a.NFTokens
-            : [];
-        return nftokens.map((token) => token.NFToken.NFTokenID);
-    })
-        .filter((id) => Boolean(id)));
-    const finalTokenIDs = affectedNodes
-        .flatMap((node) => {
-        var _a, _b, _c, _d, _e, _f;
-        return ((_f = ((_c = (_b = (_a = node.ModifiedNode) === null || _a === void 0 ? void 0 : _a.FinalFields) === null || _b === void 0 ? void 0 : _b.NFTokens) !== null && _c !== void 0 ? _c : (_e = (_d = node.CreatedNode) === null || _d === void 0 ? void 0 : _d.NewFields) === null || _e === void 0 ? void 0 : _e.NFTokens)) !== null && _f !== void 0 ? _f : []).map((token) => token.NFToken.NFTokenID);
-    })
-        .filter((nftokenID) => Boolean(nftokenID));
-    const nftokenID = finalTokenIDs.find((id) => !previousTokenIDSet.has(id));
-    return nftokenID;
-}
-exports["default"] = getNFTokenID;
-//# sourceMappingURL=getNFTokenID.js.map
-
-/***/ }),
-
-/***/ 5649:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const metadata_1 = __nccwpck_require__(2225);
-function ensureDecodedMeta(meta) {
-    if (typeof meta === 'string') {
-        return (0, ripple_binary_codec_1.decode)(meta);
-    }
-    return meta;
-}
-function getXChainClaimID(meta) {
-    if (typeof meta !== 'string' && (meta === null || meta === void 0 ? void 0 : meta.AffectedNodes) === undefined) {
-        throw new TypeError(`Unable to parse the parameter given to getXChainClaimID.
-      'meta' must be the metadata from an XChainCreateClaimID transaction. Received ${JSON.stringify(meta)} instead.`);
-    }
-    const decodedMeta = ensureDecodedMeta(meta);
-    if (!decodedMeta.TransactionResult) {
-        throw new TypeError('Cannot get XChainClaimID from un-validated transaction');
-    }
-    if (decodedMeta.TransactionResult !== 'tesSUCCESS') {
-        return undefined;
-    }
-    const createdNode = decodedMeta.AffectedNodes.find((node) => (0, metadata_1.isCreatedNode)(node) &&
-        node.CreatedNode.LedgerEntryType === 'XChainOwnedClaimID');
-    return createdNode.CreatedNode.NewFields
-        .XChainClaimID;
-}
-exports["default"] = getXChainClaimID;
-//# sourceMappingURL=getXChainClaimID.js.map
-
-/***/ }),
-
-/***/ 2120:
+/***/ 9180:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -30268,7 +27750,7 @@ exports["default"] = HashPrefix;
 
 /***/ }),
 
-/***/ 4905:
+/***/ 1770:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -30276,11 +27758,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const errors_1 = __nccwpck_require__(7919);
-const HashPrefix_1 = __importDefault(__nccwpck_require__(2120));
-const sha512Half_1 = __importDefault(__nccwpck_require__(8123));
-const LeafNode_1 = __importDefault(__nccwpck_require__(949));
-const node_1 = __nccwpck_require__(8720);
+const errors_1 = __nccwpck_require__(842);
+const HashPrefix_1 = __importDefault(__nccwpck_require__(9180));
+const sha512Half_1 = __importDefault(__nccwpck_require__(382));
+const LeafNode_1 = __importDefault(__nccwpck_require__(4917));
+const node_1 = __nccwpck_require__(84);
 const HEX_ZERO = '0000000000000000000000000000000000000000000000000000000000000000';
 const SLOT_MAX = 15;
 const HEX = 16;
@@ -30316,7 +27798,7 @@ class InnerNode extends node_1.Node {
         }
         else if (existingNode instanceof LeafNode_1.default) {
             if (existingNode.tag === tag) {
-                throw new errors_1.XrplError('Tried to add a node to a SHAMap that was already in there.');
+                throw new errors_1.XahlError('Tried to add a node to a SHAMap that was already in there.');
             }
             else {
                 const newInnerNode = new InnerNode(this.depth + 1);
@@ -30328,14 +27810,14 @@ class InnerNode extends node_1.Node {
     }
     setNode(slot, node) {
         if (slot < 0 || slot > SLOT_MAX) {
-            throw new errors_1.XrplError('Invalid slot: slot must be between 0-15.');
+            throw new errors_1.XahlError('Invalid slot: slot must be between 0-15.');
         }
         this.leaves[slot] = node;
         this.empty = false;
     }
     getNode(slot) {
         if (slot < 0 || slot > SLOT_MAX) {
-            throw new errors_1.XrplError('Invalid slot: slot must be between 0-15.');
+            throw new errors_1.XahlError('Invalid slot: slot must be between 0-15.');
         }
         return this.leaves[slot];
     }
@@ -30345,7 +27827,7 @@ exports["default"] = InnerNode;
 
 /***/ }),
 
-/***/ 949:
+/***/ 4917:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -30353,10 +27835,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const errors_1 = __nccwpck_require__(7919);
-const HashPrefix_1 = __importDefault(__nccwpck_require__(2120));
-const sha512Half_1 = __importDefault(__nccwpck_require__(8123));
-const node_1 = __nccwpck_require__(8720);
+const errors_1 = __nccwpck_require__(842);
+const HashPrefix_1 = __importDefault(__nccwpck_require__(9180));
+const sha512Half_1 = __importDefault(__nccwpck_require__(382));
+const node_1 = __nccwpck_require__(84);
 const HEX = 16;
 class LeafNode extends node_1.Node {
     constructor(tag, data, type) {
@@ -30380,11 +27862,11 @@ class LeafNode extends node_1.Node {
                 return (0, sha512Half_1.default)(txNodePrefix + this.data + this.tag);
             }
             default:
-                throw new errors_1.XrplError('Tried to hash a SHAMap node of unknown type.');
+                throw new errors_1.XahlError('Tried to hash a SHAMap node of unknown type.');
         }
     }
     addItem(tag, node) {
-        throw new errors_1.XrplError('Cannot call addItem on a LeafNode');
+        throw new errors_1.XahlError('Cannot call addItem on a LeafNode');
         this.addItem(tag, node);
     }
 }
@@ -30393,7 +27875,7 @@ exports["default"] = LeafNode;
 
 /***/ }),
 
-/***/ 7469:
+/***/ 2037:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -30415,8 +27897,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const InnerNode_1 = __importDefault(__nccwpck_require__(4905));
-const LeafNode_1 = __importDefault(__nccwpck_require__(949));
+const InnerNode_1 = __importDefault(__nccwpck_require__(1770));
+const LeafNode_1 = __importDefault(__nccwpck_require__(4917));
 class SHAMap {
     constructor() {
         this.root = new InnerNode_1.default(0);
@@ -30428,13 +27910,13 @@ class SHAMap {
         this.root.addItem(tag, new LeafNode_1.default(tag, data, type));
     }
 }
-__exportStar(__nccwpck_require__(8720), exports);
+__exportStar(__nccwpck_require__(84), exports);
 exports["default"] = SHAMap;
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 8720:
+/***/ 84:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -30454,7 +27936,7 @@ exports.Node = Node;
 
 /***/ }),
 
-/***/ 5690:
+/***/ 9716:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -30488,13 +27970,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.hashStateTree = exports.hashTxTree = exports.hashLedgerHeader = exports.hashSignedTx = void 0;
 const utils_1 = __nccwpck_require__(3617);
 const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const errors_1 = __nccwpck_require__(7919);
-const common_1 = __nccwpck_require__(9180);
-const utils_2 = __nccwpck_require__(296);
-const HashPrefix_1 = __importDefault(__nccwpck_require__(2120));
-const sha512Half_1 = __importDefault(__nccwpck_require__(8123));
-const SHAMap_1 = __importStar(__nccwpck_require__(7469));
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const errors_1 = __nccwpck_require__(842);
+const HashPrefix_1 = __importDefault(__nccwpck_require__(9180));
+const sha512Half_1 = __importDefault(__nccwpck_require__(382));
+const SHAMap_1 = __importStar(__nccwpck_require__(2037));
 const HEX = 16;
 function intToHex(integer, byteLength) {
     const foo = Number(integer)
@@ -30523,23 +28003,23 @@ function addLengthPrefix(hex) {
             prefix & 0xff,
         ]) + hex);
     }
-    throw new errors_1.XrplError('Variable integer overflow.');
+    throw new errors_1.XahlError('Variable integer overflow.');
 }
 function hashSignedTx(tx) {
     let txBlob;
     let txObject;
     if (typeof tx === 'string') {
         txBlob = tx;
-        txObject = (0, ripple_binary_codec_1.decode)(tx);
+        txObject = (0, xahau_binary_codec_1.decode)(tx);
     }
     else {
-        txBlob = (0, ripple_binary_codec_1.encode)(tx);
+        txBlob = (0, xahau_binary_codec_1.encode)(tx);
         txObject = tx;
     }
-    if (txObject.TxnSignature === undefined &&
+    if (!txObject.EmitDetails &&
+        txObject.TxnSignature === undefined &&
         txObject.Signers === undefined &&
-        txObject.SigningPubKey === undefined &&
-        !(0, utils_2.hasFlag)(txObject, common_1.GlobalFlags.tfInnerBatchTxn, 'tfInnerBatchTxn')) {
+        txObject.SigningPubKey === undefined) {
         throw new errors_1.ValidationError('The transaction must be signed to hash it.');
     }
     const prefix = HashPrefix_1.default.TRANSACTION_ID.toString(16).toUpperCase();
@@ -30565,8 +28045,8 @@ function hashTxTree(transactions) {
     var _a;
     const shamap = new SHAMap_1.default();
     for (const txJSON of transactions) {
-        const txBlobHex = (0, ripple_binary_codec_1.encode)(txJSON);
-        const metaHex = (0, ripple_binary_codec_1.encode)((_a = txJSON.metaData) !== null && _a !== void 0 ? _a : {});
+        const txBlobHex = (0, xahau_binary_codec_1.encode)(txJSON);
+        const metaHex = (0, xahau_binary_codec_1.encode)((_a = txJSON.metaData) !== null && _a !== void 0 ? _a : {});
         const txHash = hashSignedTx(txBlobHex);
         const data = addLengthPrefix(txBlobHex) + addLengthPrefix(metaHex);
         shamap.addItem(txHash, data, SHAMap_1.NodeType.TRANSACTION_METADATA);
@@ -30577,7 +28057,7 @@ exports.hashTxTree = hashTxTree;
 function hashStateTree(entries) {
     const shamap = new SHAMap_1.default();
     entries.forEach((ledgerEntry) => {
-        const data = (0, ripple_binary_codec_1.encode)(ledgerEntry);
+        const data = (0, xahau_binary_codec_1.encode)(ledgerEntry);
         shamap.addItem(ledgerEntry.index, data, SHAMap_1.NodeType.ACCOUNT_STATE);
     });
     return shamap.hash;
@@ -30627,7 +28107,7 @@ exports["default"] = hashLedger;
 
 /***/ }),
 
-/***/ 9445:
+/***/ 6983:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -30658,23 +28138,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.hashTxTree = exports.hashStateTree = exports.hashLedger = exports.hashSignedTx = exports.hashLedgerHeader = exports.hashLoan = exports.hashLoanBroker = exports.hashVault = exports.hashPaymentChannel = exports.hashEscrow = exports.hashTrustline = exports.hashOfferId = exports.hashSignerListId = exports.hashAccountRoot = exports.hashTx = void 0;
+exports.hashTxTree = exports.hashStateTree = exports.hashLedger = exports.hashSignedTx = exports.hashLedgerHeader = exports.hashCron = exports.hashURIToken = exports.hashPaymentChannel = exports.hashEscrow = exports.hashTrustline = exports.hashOfferId = exports.hashSignerListId = exports.hashAccountRoot = exports.hashTx = void 0;
 const utils_1 = __nccwpck_require__(3617);
 const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const hashLedger_1 = __importStar(__nccwpck_require__(5690));
+const xahau_address_codec_1 = __nccwpck_require__(647);
+const hashLedger_1 = __importStar(__nccwpck_require__(9716));
 exports.hashLedger = hashLedger_1.default;
 Object.defineProperty(exports, "hashLedgerHeader", ({ enumerable: true, get: function () { return hashLedger_1.hashLedgerHeader; } }));
 Object.defineProperty(exports, "hashSignedTx", ({ enumerable: true, get: function () { return hashLedger_1.hashSignedTx; } }));
 Object.defineProperty(exports, "hashTxTree", ({ enumerable: true, get: function () { return hashLedger_1.hashTxTree; } }));
 Object.defineProperty(exports, "hashStateTree", ({ enumerable: true, get: function () { return hashLedger_1.hashStateTree; } }));
-const HashPrefix_1 = __importDefault(__nccwpck_require__(2120));
-const ledgerSpaces_1 = __importDefault(__nccwpck_require__(3641));
-const sha512Half_1 = __importDefault(__nccwpck_require__(8123));
+const HashPrefix_1 = __importDefault(__nccwpck_require__(9180));
+const ledgerSpaces_1 = __importDefault(__nccwpck_require__(754));
+const sha512Half_1 = __importDefault(__nccwpck_require__(382));
 const HEX = 16;
 const BYTE_LENGTH = 4;
 function addressToHex(address) {
-    return (0, utils_1.bytesToHex)((0, ripple_address_codec_1.decodeAccountID)(address));
+    return (0, utils_1.bytesToHex)((0, xahau_address_codec_1.decodeAccountID)(address));
 }
 function ledgerSpaceHex(name) {
     return ledgerSpaces_1.default[name].charCodeAt(0).toString(HEX).padStart(4, '0');
@@ -30736,29 +28216,27 @@ function hashPaymentChannel(address, dstAddress, sequence) {
         sequence.toString(HEX).padStart(BYTE_LENGTH * 2, '0'));
 }
 exports.hashPaymentChannel = hashPaymentChannel;
-function hashVault(address, sequence) {
-    return (0, sha512Half_1.default)(ledgerSpaceHex('vault') +
-        addressToHex(address) +
-        sequence.toString(HEX).padStart(BYTE_LENGTH * 2, '0'));
+function hashURIToken(issuer, uri) {
+    return (0, sha512Half_1.default)(ledgerSpaceHex('uriToken') + addressToHex(issuer) + (0, utils_1.stringToHex)(uri));
 }
-exports.hashVault = hashVault;
-function hashLoanBroker(address, sequence) {
-    return (0, sha512Half_1.default)(ledgerSpaceHex('loanBroker') +
-        addressToHex(address) +
-        sequence.toString(HEX).padStart(BYTE_LENGTH * 2, '0'));
+exports.hashURIToken = hashURIToken;
+function hashCron(owner, time) {
+    const timeString = (0, utils_1.bytesToHex)([
+        (time >> 24) & 0xff,
+        (time >> 16) & 0xff,
+        (time >> 8) & 0xff,
+        (time >> 0) & 0xff,
+    ]);
+    const nsHash = (0, sha512Half_1.default)(ledgerSpaceHex('cron')).slice(0, 16);
+    const accHash = (0, sha512Half_1.default)(ledgerSpaceHex('cron') + timeString + addressToHex(owner)).slice(0, 40);
+    return nsHash + timeString + accHash;
 }
-exports.hashLoanBroker = hashLoanBroker;
-function hashLoan(loanBrokerId, loanSequence) {
-    return (0, sha512Half_1.default)(ledgerSpaceHex('loan') +
-        loanBrokerId +
-        loanSequence.toString(HEX).padStart(BYTE_LENGTH * 2, '0'));
-}
-exports.hashLoan = hashLoan;
+exports.hashCron = hashCron;
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 3641:
+/***/ 754:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -30781,16 +28259,15 @@ const ledgerSpaces = {
     paychan: 'x',
     check: 'C',
     depositPreauth: 'p',
-    vault: 'V',
-    loanBroker: 'l',
-    loan: 'L',
+    uriToken: 'U',
+    cron: 'L',
 };
 exports["default"] = ledgerSpaces;
 //# sourceMappingURL=ledgerSpaces.js.map
 
 /***/ }),
 
-/***/ 8123:
+/***/ 382:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
@@ -30806,7 +28283,69 @@ exports["default"] = sha512Half;
 
 /***/ }),
 
-/***/ 1:
+/***/ 5044:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.hexHookParameters = exports.calculateHookCanEmit = exports.calculateHookOn = void 0;
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const errors_1 = __nccwpck_require__(842);
+function calculateHookOn(arr) {
+    let hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffff';
+    arr.forEach((nth) => {
+        if (typeof nth !== 'string') {
+            throw new errors_1.XahlError(`HookOn transaction type must be string`);
+        }
+        if (!xahau_binary_codec_1.TRANSACTION_TYPES.includes(String(nth))) {
+            throw new errors_1.XahlError(`invalid transaction type '${String(nth)}' in HookOn array`);
+        }
+        const tts = xahau_binary_codec_1.TRANSACTION_TYPE_MAP;
+        let value = BigInt(hash);
+        value ^= BigInt(1) << BigInt(tts[nth]);
+        hash = `0x${value.toString(16)}`;
+    });
+    hash = hash.replace('0x', '');
+    hash = hash.padStart(64, '0');
+    return hash.toUpperCase();
+}
+exports.calculateHookOn = calculateHookOn;
+function calculateHookCanEmit(arr) {
+    return calculateHookOn(arr);
+}
+exports.calculateHookCanEmit = calculateHookCanEmit;
+function isHex(value) {
+    return /^[0-9A-F]+$/iu.test(value);
+}
+function hexValue(value) {
+    return Buffer.from(value, 'utf8').toString('hex').toUpperCase();
+}
+function hexHookParameters(data) {
+    const hookParameters = [];
+    for (const parameter of data) {
+        let hookPName = parameter.HookParameter.HookParameterName;
+        let hookPValue = parameter.HookParameter.HookParameterValue;
+        if (!isHex(hookPName)) {
+            hookPName = hexValue(hookPName);
+        }
+        if (hookPValue && !isHex(hookPValue)) {
+            hookPValue = hexValue(hookPValue);
+        }
+        hookParameters.push({
+            HookParameter: {
+                HookParameterName: hookPName,
+                HookParameterValue: hookPValue,
+            },
+        });
+    }
+    return hookParameters;
+}
+exports.hexHookParameters = hexHookParameters;
+//# sourceMappingURL=hooks.js.map
+
+/***/ }),
+
+/***/ 8329:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -30814,60 +28353,58 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getXChainClaimID = exports.parseNFTokenID = exports.getNFTokenID = exports.encodeForSigningClaim = exports.encodeForSigningBatch = exports.encodeForSigning = exports.encodeForMultiSigning = exports.decode = exports.encode = exports.decodeXAddress = exports.encodeXAddress = exports.decodeAccountPublic = exports.encodeAccountPublic = exports.decodeNodePublic = exports.encodeNodePublic = exports.decodeAccountID = exports.encodeAccountID = exports.decodeSeed = exports.encodeSeed = exports.isValidClassicAddress = exports.isValidXAddress = exports.xAddressToClassicAddress = exports.classicAddressToXAddress = exports.convertHexToString = exports.convertStringToHex = exports.verifyPaymentChannelClaim = exports.verifyKeypairSignature = exports.signPaymentChannelClaim = exports.deriveXAddress = exports.deriveAddress = exports.deriveKeypair = exports.hashes = exports.isValidAddress = exports.isValidSecret = exports.qualityToDecimal = exports.transferRateToDecimal = exports.decimalToTransferRate = exports.percentToTransferRate = exports.decimalToQuality = exports.percentToQuality = exports.unixTimeToRippleTime = exports.rippleTimeToUnixTime = exports.isoTimeToRippleTime = exports.rippleTimeToISOTime = exports.hasNextPage = exports.xrpToDrops = exports.dropsToXrp = exports.getBalanceChanges = void 0;
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-Object.defineProperty(exports, "classicAddressToXAddress", ({ enumerable: true, get: function () { return ripple_address_codec_1.classicAddressToXAddress; } }));
-Object.defineProperty(exports, "decodeAccountID", ({ enumerable: true, get: function () { return ripple_address_codec_1.decodeAccountID; } }));
-Object.defineProperty(exports, "decodeAccountPublic", ({ enumerable: true, get: function () { return ripple_address_codec_1.decodeAccountPublic; } }));
-Object.defineProperty(exports, "decodeNodePublic", ({ enumerable: true, get: function () { return ripple_address_codec_1.decodeNodePublic; } }));
-Object.defineProperty(exports, "decodeSeed", ({ enumerable: true, get: function () { return ripple_address_codec_1.decodeSeed; } }));
-Object.defineProperty(exports, "decodeXAddress", ({ enumerable: true, get: function () { return ripple_address_codec_1.decodeXAddress; } }));
-Object.defineProperty(exports, "encodeAccountID", ({ enumerable: true, get: function () { return ripple_address_codec_1.encodeAccountID; } }));
-Object.defineProperty(exports, "encodeAccountPublic", ({ enumerable: true, get: function () { return ripple_address_codec_1.encodeAccountPublic; } }));
-Object.defineProperty(exports, "encodeNodePublic", ({ enumerable: true, get: function () { return ripple_address_codec_1.encodeNodePublic; } }));
-Object.defineProperty(exports, "encodeSeed", ({ enumerable: true, get: function () { return ripple_address_codec_1.encodeSeed; } }));
-Object.defineProperty(exports, "encodeXAddress", ({ enumerable: true, get: function () { return ripple_address_codec_1.encodeXAddress; } }));
-Object.defineProperty(exports, "isValidClassicAddress", ({ enumerable: true, get: function () { return ripple_address_codec_1.isValidClassicAddress; } }));
-Object.defineProperty(exports, "isValidXAddress", ({ enumerable: true, get: function () { return ripple_address_codec_1.isValidXAddress; } }));
-Object.defineProperty(exports, "xAddressToClassicAddress", ({ enumerable: true, get: function () { return ripple_address_codec_1.xAddressToClassicAddress; } }));
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-Object.defineProperty(exports, "verifyKeypairSignature", ({ enumerable: true, get: function () { return ripple_keypairs_1.verify; } }));
-const derive_1 = __nccwpck_require__(7985);
+exports.hexHookParameters = exports.calculateHookCanEmit = exports.calculateHookOn = exports.encodeForSigningClaim = exports.encodeForSigning = exports.encodeForMultiSigning = exports.decode = exports.encode = exports.decodeXAddress = exports.encodeXAddress = exports.decodeAccountPublic = exports.encodeAccountPublic = exports.decodeNodePublic = exports.encodeNodePublic = exports.decodeAccountID = exports.encodeAccountID = exports.decodeSeed = exports.encodeSeed = exports.isValidClassicAddress = exports.isValidXAddress = exports.xAddressToClassicAddress = exports.classicAddressToXAddress = exports.convertHexToString = exports.convertStringToHex = exports.verifyPaymentChannelClaim = exports.verifyKeypairSignature = exports.signPaymentChannelClaim = exports.deriveXAddress = exports.deriveAddress = exports.deriveKeypair = exports.hashes = exports.isValidAddress = exports.isValidSecret = exports.qualityToDecimal = exports.transferRateToDecimal = exports.decimalToTransferRate = exports.percentToTransferRate = exports.decimalToQuality = exports.percentToQuality = exports.unixTimeToRippleTime = exports.rippleTimeToUnixTime = exports.isoTimeToRippleTime = exports.rippleTimeToISOTime = exports.hasNextPage = exports.xahToDrops = exports.dropsToXah = exports.getBalanceChanges = void 0;
+const xahau_address_codec_1 = __nccwpck_require__(647);
+Object.defineProperty(exports, "classicAddressToXAddress", ({ enumerable: true, get: function () { return xahau_address_codec_1.classicAddressToXAddress; } }));
+Object.defineProperty(exports, "decodeAccountID", ({ enumerable: true, get: function () { return xahau_address_codec_1.decodeAccountID; } }));
+Object.defineProperty(exports, "decodeAccountPublic", ({ enumerable: true, get: function () { return xahau_address_codec_1.decodeAccountPublic; } }));
+Object.defineProperty(exports, "decodeNodePublic", ({ enumerable: true, get: function () { return xahau_address_codec_1.decodeNodePublic; } }));
+Object.defineProperty(exports, "decodeSeed", ({ enumerable: true, get: function () { return xahau_address_codec_1.decodeSeed; } }));
+Object.defineProperty(exports, "decodeXAddress", ({ enumerable: true, get: function () { return xahau_address_codec_1.decodeXAddress; } }));
+Object.defineProperty(exports, "encodeAccountID", ({ enumerable: true, get: function () { return xahau_address_codec_1.encodeAccountID; } }));
+Object.defineProperty(exports, "encodeAccountPublic", ({ enumerable: true, get: function () { return xahau_address_codec_1.encodeAccountPublic; } }));
+Object.defineProperty(exports, "encodeNodePublic", ({ enumerable: true, get: function () { return xahau_address_codec_1.encodeNodePublic; } }));
+Object.defineProperty(exports, "encodeSeed", ({ enumerable: true, get: function () { return xahau_address_codec_1.encodeSeed; } }));
+Object.defineProperty(exports, "encodeXAddress", ({ enumerable: true, get: function () { return xahau_address_codec_1.encodeXAddress; } }));
+Object.defineProperty(exports, "isValidClassicAddress", ({ enumerable: true, get: function () { return xahau_address_codec_1.isValidClassicAddress; } }));
+Object.defineProperty(exports, "isValidXAddress", ({ enumerable: true, get: function () { return xahau_address_codec_1.isValidXAddress; } }));
+Object.defineProperty(exports, "xAddressToClassicAddress", ({ enumerable: true, get: function () { return xahau_address_codec_1.xAddressToClassicAddress; } }));
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const xahau_keypairs_1 = __nccwpck_require__(4095);
+Object.defineProperty(exports, "verifyKeypairSignature", ({ enumerable: true, get: function () { return xahau_keypairs_1.verify; } }));
+const derive_1 = __nccwpck_require__(7183);
 Object.defineProperty(exports, "deriveKeypair", ({ enumerable: true, get: function () { return derive_1.deriveKeypair; } }));
 Object.defineProperty(exports, "deriveAddress", ({ enumerable: true, get: function () { return derive_1.deriveAddress; } }));
 Object.defineProperty(exports, "deriveXAddress", ({ enumerable: true, get: function () { return derive_1.deriveXAddress; } }));
-const getBalanceChanges_1 = __importDefault(__nccwpck_require__(8828));
+const getBalanceChanges_1 = __importDefault(__nccwpck_require__(5258));
 exports.getBalanceChanges = getBalanceChanges_1.default;
-const getNFTokenID_1 = __importDefault(__nccwpck_require__(228));
-exports.getNFTokenID = getNFTokenID_1.default;
-const getXChainClaimID_1 = __importDefault(__nccwpck_require__(5649));
-exports.getXChainClaimID = getXChainClaimID_1.default;
-const hashes_1 = __nccwpck_require__(9445);
-const parseNFTokenID_1 = __importDefault(__nccwpck_require__(9881));
-exports.parseNFTokenID = parseNFTokenID_1.default;
-const quality_1 = __nccwpck_require__(2061);
+const hashes_1 = __nccwpck_require__(6983);
+const hooks_1 = __nccwpck_require__(5044);
+Object.defineProperty(exports, "calculateHookOn", ({ enumerable: true, get: function () { return hooks_1.calculateHookOn; } }));
+Object.defineProperty(exports, "calculateHookCanEmit", ({ enumerable: true, get: function () { return hooks_1.calculateHookCanEmit; } }));
+Object.defineProperty(exports, "hexHookParameters", ({ enumerable: true, get: function () { return hooks_1.hexHookParameters; } }));
+const quality_1 = __nccwpck_require__(8782);
 Object.defineProperty(exports, "percentToTransferRate", ({ enumerable: true, get: function () { return quality_1.percentToTransferRate; } }));
 Object.defineProperty(exports, "decimalToTransferRate", ({ enumerable: true, get: function () { return quality_1.decimalToTransferRate; } }));
 Object.defineProperty(exports, "transferRateToDecimal", ({ enumerable: true, get: function () { return quality_1.transferRateToDecimal; } }));
 Object.defineProperty(exports, "percentToQuality", ({ enumerable: true, get: function () { return quality_1.percentToQuality; } }));
 Object.defineProperty(exports, "decimalToQuality", ({ enumerable: true, get: function () { return quality_1.decimalToQuality; } }));
 Object.defineProperty(exports, "qualityToDecimal", ({ enumerable: true, get: function () { return quality_1.qualityToDecimal; } }));
-const signPaymentChannelClaim_1 = __importDefault(__nccwpck_require__(6876));
+const signPaymentChannelClaim_1 = __importDefault(__nccwpck_require__(4175));
 exports.signPaymentChannelClaim = signPaymentChannelClaim_1.default;
-const stringConversion_1 = __nccwpck_require__(7511);
+const stringConversion_1 = __nccwpck_require__(1593);
 Object.defineProperty(exports, "convertHexToString", ({ enumerable: true, get: function () { return stringConversion_1.convertHexToString; } }));
 Object.defineProperty(exports, "convertStringToHex", ({ enumerable: true, get: function () { return stringConversion_1.convertStringToHex; } }));
-const timeConversion_1 = __nccwpck_require__(188);
+const timeConversion_1 = __nccwpck_require__(6447);
 Object.defineProperty(exports, "rippleTimeToISOTime", ({ enumerable: true, get: function () { return timeConversion_1.rippleTimeToISOTime; } }));
 Object.defineProperty(exports, "isoTimeToRippleTime", ({ enumerable: true, get: function () { return timeConversion_1.isoTimeToRippleTime; } }));
 Object.defineProperty(exports, "rippleTimeToUnixTime", ({ enumerable: true, get: function () { return timeConversion_1.rippleTimeToUnixTime; } }));
 Object.defineProperty(exports, "unixTimeToRippleTime", ({ enumerable: true, get: function () { return timeConversion_1.unixTimeToRippleTime; } }));
-const verifyPaymentChannelClaim_1 = __importDefault(__nccwpck_require__(5226));
+const verifyPaymentChannelClaim_1 = __importDefault(__nccwpck_require__(2900));
 exports.verifyPaymentChannelClaim = verifyPaymentChannelClaim_1.default;
-const xrpConversion_1 = __nccwpck_require__(283);
-Object.defineProperty(exports, "xrpToDrops", ({ enumerable: true, get: function () { return xrpConversion_1.xrpToDrops; } }));
-Object.defineProperty(exports, "dropsToXrp", ({ enumerable: true, get: function () { return xrpConversion_1.dropsToXrp; } }));
+const xahConversion_1 = __nccwpck_require__(6216);
+Object.defineProperty(exports, "xahToDrops", ({ enumerable: true, get: function () { return xahConversion_1.xahToDrops; } }));
+Object.defineProperty(exports, "dropsToXah", ({ enumerable: true, get: function () { return xahConversion_1.dropsToXah; } }));
 function isValidSecret(secret) {
     try {
         (0, derive_1.deriveKeypair)(secret);
@@ -30879,31 +28416,27 @@ function isValidSecret(secret) {
 }
 exports.isValidSecret = isValidSecret;
 function encode(object) {
-    return (0, ripple_binary_codec_1.encode)(object);
+    return (0, xahau_binary_codec_1.encode)(object);
 }
 exports.encode = encode;
 function encodeForSigning(object) {
-    return (0, ripple_binary_codec_1.encodeForSigning)(object);
+    return (0, xahau_binary_codec_1.encodeForSigning)(object);
 }
 exports.encodeForSigning = encodeForSigning;
 function encodeForSigningClaim(object) {
-    return (0, ripple_binary_codec_1.encodeForSigningClaim)(object);
+    return (0, xahau_binary_codec_1.encodeForSigningClaim)(object);
 }
 exports.encodeForSigningClaim = encodeForSigningClaim;
 function encodeForMultiSigning(object, signer) {
-    return (0, ripple_binary_codec_1.encodeForMultisigning)(object, signer);
+    return (0, xahau_binary_codec_1.encodeForMultisigning)(object, signer);
 }
 exports.encodeForMultiSigning = encodeForMultiSigning;
-function encodeForSigningBatch(object) {
-    return (0, ripple_binary_codec_1.encodeForSigningBatch)(object);
-}
-exports.encodeForSigningBatch = encodeForSigningBatch;
 function decode(hex) {
-    return (0, ripple_binary_codec_1.decode)(hex);
+    return (0, xahau_binary_codec_1.decode)(hex);
 }
 exports.decode = decode;
 function isValidAddress(address) {
-    return (0, ripple_address_codec_1.isValidXAddress)(address) || (0, ripple_address_codec_1.isValidClassicAddress)(address);
+    return (0, xahau_address_codec_1.isValidXAddress)(address) || (0, xahau_address_codec_1.isValidClassicAddress)(address);
 }
 exports.isValidAddress = isValidAddress;
 function hasNextPage(response) {
@@ -30923,63 +28456,14 @@ const hashes = {
     hashLedgerHeader: hashes_1.hashLedgerHeader,
     hashEscrow: hashes_1.hashEscrow,
     hashPaymentChannel: hashes_1.hashPaymentChannel,
-    hashVault: hashes_1.hashVault,
-    hashLoanBroker: hashes_1.hashLoanBroker,
-    hashLoan: hashes_1.hashLoan,
+    hashURIToken: hashes_1.hashURIToken,
 };
 exports.hashes = hashes;
 //# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 9881:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const utils_1 = __nccwpck_require__(3617);
-const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const ripple_address_codec_1 = __nccwpck_require__(3996);
-const errors_1 = __nccwpck_require__(7919);
-function unscrambleTaxon(taxon, tokenSeq) {
-    const seed = 384160001;
-    const increment = 2459;
-    const max = 4294967296;
-    const scramble = new bignumber_js_1.default(seed)
-        .multipliedBy(tokenSeq)
-        .modulo(max)
-        .plus(increment)
-        .modulo(max)
-        .toNumber();
-    return (taxon ^ scramble) >>> 0;
-}
-function parseNFTokenID(nftokenID) {
-    const expectedLength = 64;
-    if (nftokenID.length !== expectedLength) {
-        throw new errors_1.XrplError(`Attempting to parse a nftokenID with length ${nftokenID.length}
-    , but expected a token with length ${expectedLength}`);
-    }
-    const scrambledTaxon = new bignumber_js_1.default(nftokenID.substring(48, 56), 16).toNumber();
-    const sequence = new bignumber_js_1.default(nftokenID.substring(56, 64), 16).toNumber();
-    const NFTokenIDData = {
-        NFTokenID: nftokenID,
-        Flags: new bignumber_js_1.default(nftokenID.substring(0, 4), 16).toNumber(),
-        TransferFee: new bignumber_js_1.default(nftokenID.substring(4, 8), 16).toNumber(),
-        Issuer: (0, ripple_address_codec_1.encodeAccountID)((0, utils_1.hexToBytes)(nftokenID.substring(8, 48))),
-        Taxon: unscrambleTaxon(scrambledTaxon, sequence),
-        Sequence: sequence,
-    };
-    return NFTokenIDData;
-}
-exports["default"] = parseNFTokenID;
-//# sourceMappingURL=parseNFTokenID.js.map
-
-/***/ }),
-
-/***/ 2061:
+/***/ 8782:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -30989,7 +28473,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.percentToQuality = exports.transferRateToDecimal = exports.qualityToDecimal = exports.decimalToQuality = exports.percentToTransferRate = exports.decimalToTransferRate = void 0;
 const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const errors_1 = __nccwpck_require__(7919);
+const errors_1 = __nccwpck_require__(842);
 const BASE_TEN = 10;
 const ONE_BILLION = '1000000000';
 const TWO_BILLION = '2000000000';
@@ -31079,27 +28563,27 @@ exports.percentToQuality = percentToQuality;
 
 /***/ }),
 
-/***/ 6876:
+/***/ 4175:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-const xrpConversion_1 = __nccwpck_require__(283);
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const xahau_keypairs_1 = __nccwpck_require__(4095);
+const xahConversion_1 = __nccwpck_require__(6216);
 function signPaymentChannelClaim(channel, xrpAmount, privateKey) {
-    const signingData = (0, ripple_binary_codec_1.encodeForSigningClaim)({
+    const signingData = (0, xahau_binary_codec_1.encodeForSigningClaim)({
         channel,
-        amount: (0, xrpConversion_1.xrpToDrops)(xrpAmount),
+        amount: (0, xahConversion_1.xahToDrops)(xrpAmount),
     });
-    return (0, ripple_keypairs_1.sign)(signingData, privateKey);
+    return (0, xahau_keypairs_1.sign)(signingData, privateKey);
 }
 exports["default"] = signPaymentChannelClaim;
 //# sourceMappingURL=signPaymentChannelClaim.js.map
 
 /***/ }),
 
-/***/ 7511:
+/***/ 1593:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
@@ -31118,7 +28602,7 @@ exports.convertHexToString = convertHexToString;
 
 /***/ }),
 
-/***/ 188:
+/***/ 6447:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -31133,8 +28617,8 @@ function unixTimeToRippleTime(timestamp) {
     return Math.round(timestamp / 1000) - RIPPLE_EPOCH_DIFF;
 }
 exports.unixTimeToRippleTime = unixTimeToRippleTime;
-function rippleTimeToISOTime(rippleTime) {
-    return new Date(rippleTimeToUnixTime(rippleTime)).toISOString();
+function rippleTimeToISOTime(xahauTime) {
+    return new Date(rippleTimeToUnixTime(xahauTime)).toISOString();
 }
 exports.rippleTimeToISOTime = rippleTimeToISOTime;
 function isoTimeToRippleTime(iso8601) {
@@ -31146,27 +28630,27 @@ exports.isoTimeToRippleTime = isoTimeToRippleTime;
 
 /***/ }),
 
-/***/ 5226:
+/***/ 2900:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const ripple_binary_codec_1 = __nccwpck_require__(4578);
-const ripple_keypairs_1 = __nccwpck_require__(4508);
-const xrpConversion_1 = __nccwpck_require__(283);
+const xahau_binary_codec_1 = __nccwpck_require__(67);
+const xahau_keypairs_1 = __nccwpck_require__(4095);
+const xahConversion_1 = __nccwpck_require__(6216);
 function verifyPaymentChannelClaim(channel, xrpAmount, signature, publicKey) {
-    const signingData = (0, ripple_binary_codec_1.encodeForSigningClaim)({
+    const signingData = (0, xahau_binary_codec_1.encodeForSigningClaim)({
         channel,
-        amount: (0, xrpConversion_1.xrpToDrops)(xrpAmount),
+        amount: (0, xahConversion_1.xahToDrops)(xrpAmount),
     });
-    return (0, ripple_keypairs_1.verify)(signingData, signature, publicKey);
+    return (0, xahau_keypairs_1.verify)(signingData, signature, publicKey);
 }
 exports["default"] = verifyPaymentChannelClaim;
 //# sourceMappingURL=verifyPaymentChannelClaim.js.map
 
 /***/ }),
 
-/***/ 283:
+/***/ 6216:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -31174,68 +28658,241 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.xrpToDrops = exports.dropsToXrp = void 0;
+exports.xahToDrops = exports.dropsToXah = void 0;
 const bignumber_js_1 = __importDefault(__nccwpck_require__(7558));
-const errors_1 = __nccwpck_require__(7919);
-const DROPS_PER_XRP = 1000000.0;
+const errors_1 = __nccwpck_require__(842);
+const DROPS_PER_XAH = 1000000.0;
 const MAX_FRACTION_LENGTH = 6;
 const BASE_TEN = 10;
 const SANITY_CHECK = /^-?[0-9.]+$/u;
-function dropsToXrp(dropsToConvert) {
+function dropsToXah(dropsToConvert) {
     const drops = new bignumber_js_1.default(dropsToConvert).toString(BASE_TEN);
     if (typeof dropsToConvert === 'string' && drops === 'NaN') {
-        throw new errors_1.ValidationError(`dropsToXrp: invalid value '${dropsToConvert}', should be a BigNumber or string-encoded number.`);
+        throw new errors_1.ValidationError(`dropsToXah: invalid value '${dropsToConvert}', should be a BigNumber or string-encoded number.`);
     }
     if (drops.includes('.')) {
-        throw new errors_1.ValidationError(`dropsToXrp: value '${drops}' has too many decimal places.`);
+        throw new errors_1.ValidationError(`dropsToXah: value '${drops}' has too many decimal places.`);
     }
     if (!SANITY_CHECK.exec(drops)) {
-        throw new errors_1.ValidationError(`dropsToXrp: failed sanity check -` +
+        throw new errors_1.ValidationError(`dropsToXah: failed sanity check -` +
             ` value '${drops}',` +
             ` does not match (^-?[0-9]+$).`);
     }
-    return new bignumber_js_1.default(drops).dividedBy(DROPS_PER_XRP).toNumber();
+    return new bignumber_js_1.default(drops).dividedBy(DROPS_PER_XAH).toNumber();
 }
-exports.dropsToXrp = dropsToXrp;
-function xrpToDrops(xrpToConvert) {
+exports.dropsToXah = dropsToXah;
+function xahToDrops(xrpToConvert) {
     const xrp = new bignumber_js_1.default(xrpToConvert).toString(BASE_TEN);
     if (typeof xrpToConvert === 'string' && xrp === 'NaN') {
-        throw new errors_1.ValidationError(`xrpToDrops: invalid value '${xrpToConvert}', should be a BigNumber or string-encoded number.`);
+        throw new errors_1.ValidationError(`xahToDrops: invalid value '${xrpToConvert}', should be a BigNumber or string-encoded number.`);
     }
     if (!SANITY_CHECK.exec(xrp)) {
-        throw new errors_1.ValidationError(`xrpToDrops: failed sanity check - value '${xrp}', does not match (^-?[0-9.]+$).`);
+        throw new errors_1.ValidationError(`xahToDrops: failed sanity check - value '${xrp}', does not match (^-?[0-9.]+$).`);
     }
     const components = xrp.split('.');
     if (components.length > 2) {
-        throw new errors_1.ValidationError(`xrpToDrops: failed sanity check - value '${xrp}' has too many decimal points.`);
+        throw new errors_1.ValidationError(`xahToDrops: failed sanity check - value '${xrp}' has too many decimal points.`);
     }
     const fraction = components[1] || '0';
     if (fraction.length > MAX_FRACTION_LENGTH) {
-        throw new errors_1.ValidationError(`xrpToDrops: value '${xrp}' has too many decimal places.`);
+        throw new errors_1.ValidationError(`xahToDrops: value '${xrp}' has too many decimal places.`);
     }
     return new bignumber_js_1.default(xrp)
-        .times(DROPS_PER_XRP)
+        .times(DROPS_PER_XAH)
         .integerValue(bignumber_js_1.default.ROUND_FLOOR)
         .toString(BASE_TEN);
 }
-exports.xrpToDrops = xrpToDrops;
-//# sourceMappingURL=xrpConversion.js.map
+exports.xahToDrops = xahToDrops;
+//# sourceMappingURL=xahConversion.js.map
 
 /***/ }),
 
-/***/ 1269:
-/***/ ((module) => {
+/***/ 2594:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
-module.exports = eval("require")("bufferutil");
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+__exportStar(__nccwpck_require__(6798), exports);
+__exportStar(__nccwpck_require__(4790), exports);
+//# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 4592:
-/***/ ((module) => {
+/***/ 6798:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-module.exports = eval("require")("utf-8-validate");
 
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Account = void 0;
+const ripple_keypairs_1 = __nccwpck_require__(1551);
+const utils_1 = __nccwpck_require__(4790);
+class Account {
+    constructor(secretNumbers) {
+        this._account = {
+            familySeed: '',
+            address: '',
+            keypair: {
+                publicKey: '',
+                privateKey: '',
+            },
+        };
+        if (typeof secretNumbers === 'string') {
+            this._secret = (0, utils_1.parseSecretString)(secretNumbers);
+        }
+        else if (Array.isArray(secretNumbers)) {
+            this._secret = secretNumbers;
+        }
+        else if (secretNumbers instanceof Uint8Array) {
+            this._secret = (0, utils_1.entropyToSecret)(secretNumbers);
+        }
+        else {
+            this._secret = (0, utils_1.randomSecret)();
+        }
+        validateLengths(this._secret);
+        this.derive();
+    }
+    getSecret() {
+        return this._secret;
+    }
+    getSecretString() {
+        return this._secret.join(' ');
+    }
+    getAddress() {
+        return this._account.address;
+    }
+    getFamilySeed() {
+        return this._account.familySeed;
+    }
+    getKeypair() {
+        return this._account.keypair;
+    }
+    toString() {
+        return this.getSecretString();
+    }
+    derive() {
+        try {
+            const entropy = (0, utils_1.secretToEntropy)(this._secret);
+            this._account.familySeed = (0, ripple_keypairs_1.generateSeed)({ entropy });
+            this._account.keypair = (0, ripple_keypairs_1.deriveKeypair)(this._account.familySeed);
+            this._account.address = (0, ripple_keypairs_1.deriveAddress)(this._account.keypair.publicKey);
+        }
+        catch (error) {
+            let message = 'Unknown Error';
+            if (error instanceof Error) {
+                message = error.message;
+            }
+            throw new Error(message);
+        }
+    }
+}
+exports.Account = Account;
+function validateLengths(secretNumbers) {
+    if (secretNumbers.length !== 8) {
+        throw new Error('Secret must have 8 numbers');
+    }
+    secretNumbers.forEach((num) => {
+        if (num.length !== 6) {
+            throw new Error('Each secret number must be 6 digits');
+        }
+    });
+}
+//# sourceMappingURL=Account.js.map
+
+/***/ }),
+
+/***/ 4790:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.parseSecretString = exports.checkChecksum = exports.calculateChecksum = exports.secretToEntropy = exports.entropyToSecret = exports.randomSecret = exports.randomEntropy = void 0;
+const utils_1 = __nccwpck_require__(3617);
+function randomEntropy() {
+    return (0, utils_1.randomBytes)(16);
+}
+exports.randomEntropy = randomEntropy;
+function calculateChecksum(position, value) {
+    return (value * (position * 2 + 1)) % 9;
+}
+exports.calculateChecksum = calculateChecksum;
+function checkChecksum(position, value, checksum) {
+    let normalizedChecksum;
+    let normalizedValue;
+    if (typeof value === 'string') {
+        if (value.length !== 6) {
+            throw new Error('value must have a length of 6');
+        }
+        normalizedChecksum = parseInt(value.slice(5), 10);
+        normalizedValue = parseInt(value.slice(0, 5), 10);
+    }
+    else {
+        if (typeof checksum !== 'number') {
+            throw new Error('checksum must be a number when value is a number');
+        }
+        normalizedChecksum = checksum;
+        normalizedValue = value;
+    }
+    return (normalizedValue * (position * 2 + 1)) % 9 === normalizedChecksum;
+}
+exports.checkChecksum = checkChecksum;
+function entropyToSecret(entropy) {
+    const len = new Array(Math.ceil(entropy.length / 2));
+    const chunks = Array.from(len, (_a, chunk) => {
+        const buffChunk = entropy.slice(chunk * 2, (chunk + 1) * 2);
+        const no = parseInt((0, utils_1.bytesToHex)(buffChunk), 16);
+        const fill = '0'.repeat(5 - String(no).length);
+        return fill + String(no) + String(calculateChecksum(chunk, no));
+    });
+    if (chunks.length !== 8) {
+        throw new Error('Chucks must have 8 digits');
+    }
+    return chunks;
+}
+exports.entropyToSecret = entropyToSecret;
+function randomSecret() {
+    return entropyToSecret(randomEntropy());
+}
+exports.randomSecret = randomSecret;
+function secretToEntropy(secret) {
+    return (0, utils_1.concat)(secret.map((chunk, i) => {
+        const no = Number(chunk.slice(0, 5));
+        const checksum = Number(chunk.slice(5));
+        if (chunk.length !== 6) {
+            throw new Error('Invalid secret: number invalid');
+        }
+        if (!checkChecksum(i, no, checksum)) {
+            throw new Error('Invalid secret part: checksum invalid');
+        }
+        const hex = `0000${no.toString(16)}`.slice(-4);
+        return (0, utils_1.hexToBytes)(hex);
+    }));
+}
+exports.secretToEntropy = secretToEntropy;
+function parseSecretString(secret) {
+    const normalizedSecret = secret.replace(/[^0-9]/gu, '');
+    if (normalizedSecret.length !== 48) {
+        throw new Error('Invalid secret string (should contain 8 blocks of 6 digits');
+    }
+    return Array.from(new Array(8), (_a, index) => {
+        return normalizedSecret.slice(index * 6, (index + 1) * 6);
+    });
+}
+exports.parseSecretString = parseSecretString;
+//# sourceMappingURL=index.js.map
 
 /***/ }),
 
@@ -31257,6 +28914,13 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("crypto");
 /***/ ((module) => {
 
 module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("events");
+
+/***/ }),
+
+/***/ 7147:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("fs");
 
 /***/ }),
 
@@ -31288,6 +28952,20 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:crypto"
 
 /***/ }),
 
+/***/ 9563:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("os");
+
+/***/ }),
+
+/***/ 1017:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("path");
+
+/***/ }),
+
 /***/ 2781:
 /***/ ((module) => {
 
@@ -31316,14 +28994,14 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("zlib");
 
 /***/ }),
 
-/***/ 8652:
+/***/ 3892:
 /***/ ((module) => {
 
-module.exports = JSON.parse('{"FIELDS":[["Generic",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":0,"type":"Unknown"}],["Invalid",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":-1,"type":"Unknown"}],["ObjectEndMarker",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"STObject"}],["ArrayEndMarker",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"STArray"}],["taker_gets_funded",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":258,"type":"Amount"}],["taker_pays_funded",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":259,"type":"Amount"}],["LedgerEntryType",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"UInt16"}],["TransactionType",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"UInt16"}],["SignerWeight",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"UInt16"}],["TransferFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"UInt16"}],["TradingFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":5,"type":"UInt16"}],["DiscountedFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":6,"type":"UInt16"}],["Version",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":16,"type":"UInt16"}],["HookStateChangeCount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":17,"type":"UInt16"}],["HookEmitCount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":18,"type":"UInt16"}],["HookExecutionIndex",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":19,"type":"UInt16"}],["HookApiVersion",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":20,"type":"UInt16"}],["LedgerFixType",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":21,"type":"UInt16"}],["ManagementFeeRate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":22,"type":"UInt16"}],["NetworkID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"UInt32"}],["Flags",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"UInt32"}],["SourceTag",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"UInt32"}],["Sequence",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"UInt32"}],["PreviousTxnLgrSeq",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":5,"type":"UInt32"}],["LedgerSequence",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":6,"type":"UInt32"}],["CloseTime",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":7,"type":"UInt32"}],["ParentCloseTime",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":8,"type":"UInt32"}],["SigningTime",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":9,"type":"UInt32"}],["Expiration",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":10,"type":"UInt32"}],["TransferRate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":11,"type":"UInt32"}],["WalletSize",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":12,"type":"UInt32"}],["OwnerCount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":13,"type":"UInt32"}],["DestinationTag",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":14,"type":"UInt32"}],["LastUpdateTime",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":15,"type":"UInt32"}],["HighQualityIn",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":16,"type":"UInt32"}],["HighQualityOut",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":17,"type":"UInt32"}],["LowQualityIn",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":18,"type":"UInt32"}],["LowQualityOut",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":19,"type":"UInt32"}],["QualityIn",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":20,"type":"UInt32"}],["QualityOut",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":21,"type":"UInt32"}],["StampEscrow",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":22,"type":"UInt32"}],["BondAmount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":23,"type":"UInt32"}],["LoadFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":24,"type":"UInt32"}],["OfferSequence",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":25,"type":"UInt32"}],["FirstLedgerSequence",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":26,"type":"UInt32"}],["LastLedgerSequence",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":27,"type":"UInt32"}],["TransactionIndex",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":28,"type":"UInt32"}],["OperationLimit",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":29,"type":"UInt32"}],["ReferenceFeeUnits",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":30,"type":"UInt32"}],["ReserveBase",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":31,"type":"UInt32"}],["ReserveIncrement",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":32,"type":"UInt32"}],["SetFlag",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":33,"type":"UInt32"}],["ClearFlag",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":34,"type":"UInt32"}],["SignerQuorum",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":35,"type":"UInt32"}],["CancelAfter",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":36,"type":"UInt32"}],["FinishAfter",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":37,"type":"UInt32"}],["SignerListID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":38,"type":"UInt32"}],["SettleDelay",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":39,"type":"UInt32"}],["TicketCount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":40,"type":"UInt32"}],["TicketSequence",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":41,"type":"UInt32"}],["NFTokenTaxon",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":42,"type":"UInt32"}],["MintedNFTokens",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":43,"type":"UInt32"}],["BurnedNFTokens",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":44,"type":"UInt32"}],["HookStateCount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":45,"type":"UInt32"}],["EmitGeneration",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":46,"type":"UInt32"}],["VoteWeight",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":48,"type":"UInt32"}],["FirstNFTokenSequence",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":50,"type":"UInt32"}],["OracleDocumentID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":51,"type":"UInt32"}],["PermissionValue",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":52,"type":"UInt32"}],["MutableFlags",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":53,"type":"UInt32"}],["StartDate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":54,"type":"UInt32"}],["PaymentInterval",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":55,"type":"UInt32"}],["GracePeriod",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":56,"type":"UInt32"}],["PreviousPaymentDueDate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":57,"type":"UInt32"}],["NextPaymentDueDate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":58,"type":"UInt32"}],["PaymentRemaining",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":59,"type":"UInt32"}],["PaymentTotal",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":60,"type":"UInt32"}],["LoanSequence",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":61,"type":"UInt32"}],["CoverRateMinimum",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":62,"type":"UInt32"}],["CoverRateLiquidation",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":63,"type":"UInt32"}],["OverpaymentFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":64,"type":"UInt32"}],["InterestRate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":65,"type":"UInt32"}],["LateInterestRate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":66,"type":"UInt32"}],["CloseInterestRate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":67,"type":"UInt32"}],["OverpaymentInterestRate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":68,"type":"UInt32"}],["IndexNext",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"UInt64"}],["IndexPrevious",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"UInt64"}],["BookNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"UInt64"}],["OwnerNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"UInt64"}],["BaseFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":5,"type":"UInt64"}],["ExchangeRate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":6,"type":"UInt64"}],["LowNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":7,"type":"UInt64"}],["HighNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":8,"type":"UInt64"}],["DestinationNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":9,"type":"UInt64"}],["Cookie",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":10,"type":"UInt64"}],["ServerVersion",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":11,"type":"UInt64"}],["NFTokenOfferNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":12,"type":"UInt64"}],["EmitBurden",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":13,"type":"UInt64"}],["HookOn",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":16,"type":"UInt64"}],["HookInstructionCount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":17,"type":"UInt64"}],["HookReturnCode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":18,"type":"UInt64"}],["ReferenceCount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":19,"type":"UInt64"}],["XChainClaimID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":20,"type":"UInt64"}],["XChainAccountCreateCount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":21,"type":"UInt64"}],["XChainAccountClaimCount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":22,"type":"UInt64"}],["AssetPrice",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":23,"type":"UInt64"}],["MaximumAmount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":24,"type":"UInt64"}],["OutstandingAmount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":25,"type":"UInt64"}],["MPTAmount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":26,"type":"UInt64"}],["IssuerNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":27,"type":"UInt64"}],["SubjectNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":28,"type":"UInt64"}],["LockedAmount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":29,"type":"UInt64"}],["VaultNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":30,"type":"UInt64"}],["LoanBrokerNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":31,"type":"UInt64"}],["EmailHash",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"Hash128"}],["LedgerHash",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"Hash256"}],["ParentHash",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"Hash256"}],["TransactionHash",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"Hash256"}],["AccountHash",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"Hash256"}],["PreviousTxnID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":5,"type":"Hash256"}],["LedgerIndex",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":6,"type":"Hash256"}],["WalletLocator",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":7,"type":"Hash256"}],["RootIndex",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":8,"type":"Hash256"}],["AccountTxnID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":9,"type":"Hash256"}],["NFTokenID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":10,"type":"Hash256"}],["EmitParentTxnID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":11,"type":"Hash256"}],["EmitNonce",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":12,"type":"Hash256"}],["EmitHookHash",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":13,"type":"Hash256"}],["AMMID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":14,"type":"Hash256"}],["BookDirectory",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":16,"type":"Hash256"}],["InvoiceID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":17,"type":"Hash256"}],["Nickname",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":18,"type":"Hash256"}],["Amendment",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":19,"type":"Hash256"}],["Digest",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":21,"type":"Hash256"}],["Channel",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":22,"type":"Hash256"}],["ConsensusHash",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":23,"type":"Hash256"}],["CheckID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":24,"type":"Hash256"}],["ValidatedHash",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":25,"type":"Hash256"}],["PreviousPageMin",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":26,"type":"Hash256"}],["NextPageMin",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":27,"type":"Hash256"}],["NFTokenBuyOffer",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":28,"type":"Hash256"}],["NFTokenSellOffer",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":29,"type":"Hash256"}],["HookStateKey",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":30,"type":"Hash256"}],["HookHash",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":31,"type":"Hash256"}],["HookNamespace",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":32,"type":"Hash256"}],["HookSetTxnID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":33,"type":"Hash256"}],["DomainID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":34,"type":"Hash256"}],["VaultID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":35,"type":"Hash256"}],["ParentBatchID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":36,"type":"Hash256"}],["LoanBrokerID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":37,"type":"Hash256"}],["LoanID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":38,"type":"Hash256"}],["hash",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":257,"type":"Hash256"}],["index",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":258,"type":"Hash256"}],["Amount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"Amount"}],["Balance",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"Amount"}],["LimitAmount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"Amount"}],["TakerPays",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"Amount"}],["TakerGets",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":5,"type":"Amount"}],["LowLimit",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":6,"type":"Amount"}],["HighLimit",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":7,"type":"Amount"}],["Fee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":8,"type":"Amount"}],["SendMax",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":9,"type":"Amount"}],["DeliverMin",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":10,"type":"Amount"}],["Amount2",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":11,"type":"Amount"}],["BidMin",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":12,"type":"Amount"}],["BidMax",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":13,"type":"Amount"}],["MinimumOffer",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":16,"type":"Amount"}],["RippleEscrow",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":17,"type":"Amount"}],["DeliveredAmount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":18,"type":"Amount"}],["NFTokenBrokerFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":19,"type":"Amount"}],["BaseFeeDrops",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":22,"type":"Amount"}],["ReserveBaseDrops",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":23,"type":"Amount"}],["ReserveIncrementDrops",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":24,"type":"Amount"}],["LPTokenOut",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":25,"type":"Amount"}],["LPTokenIn",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":26,"type":"Amount"}],["EPrice",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":27,"type":"Amount"}],["Price",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":28,"type":"Amount"}],["SignatureReward",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":29,"type":"Amount"}],["MinAccountCreateAmount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":30,"type":"Amount"}],["LPTokenBalance",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":31,"type":"Amount"}],["PublicKey",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":1,"type":"Blob"}],["MessageKey",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":2,"type":"Blob"}],["SigningPubKey",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":3,"type":"Blob"}],["TxnSignature",{"isSerialized":true,"isSigningField":false,"isVLEncoded":true,"nth":4,"type":"Blob"}],["URI",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":5,"type":"Blob"}],["Signature",{"isSerialized":true,"isSigningField":false,"isVLEncoded":true,"nth":6,"type":"Blob"}],["Domain",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":7,"type":"Blob"}],["FundCode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":8,"type":"Blob"}],["RemoveCode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":9,"type":"Blob"}],["ExpireCode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":10,"type":"Blob"}],["CreateCode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":11,"type":"Blob"}],["MemoType",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":12,"type":"Blob"}],["MemoData",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":13,"type":"Blob"}],["MemoFormat",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":14,"type":"Blob"}],["Fulfillment",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":16,"type":"Blob"}],["Condition",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":17,"type":"Blob"}],["MasterSignature",{"isSerialized":true,"isSigningField":false,"isVLEncoded":true,"nth":18,"type":"Blob"}],["UNLModifyValidator",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":19,"type":"Blob"}],["ValidatorToDisable",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":20,"type":"Blob"}],["ValidatorToReEnable",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":21,"type":"Blob"}],["HookStateData",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":22,"type":"Blob"}],["HookReturnString",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":23,"type":"Blob"}],["HookParameterName",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":24,"type":"Blob"}],["HookParameterValue",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":25,"type":"Blob"}],["DIDDocument",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":26,"type":"Blob"}],["Data",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":27,"type":"Blob"}],["AssetClass",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":28,"type":"Blob"}],["Provider",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":29,"type":"Blob"}],["MPTokenMetadata",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":30,"type":"Blob"}],["CredentialType",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":31,"type":"Blob"}],["Account",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":1,"type":"AccountID"}],["Owner",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":2,"type":"AccountID"}],["Destination",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":3,"type":"AccountID"}],["Issuer",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":4,"type":"AccountID"}],["Authorize",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":5,"type":"AccountID"}],["Unauthorize",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":6,"type":"AccountID"}],["RegularKey",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":8,"type":"AccountID"}],["NFTokenMinter",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":9,"type":"AccountID"}],["EmitCallback",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":10,"type":"AccountID"}],["Holder",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":11,"type":"AccountID"}],["Delegate",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":12,"type":"AccountID"}],["HookAccount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":16,"type":"AccountID"}],["OtherChainSource",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":18,"type":"AccountID"}],["OtherChainDestination",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":19,"type":"AccountID"}],["AttestationSignerAccount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":20,"type":"AccountID"}],["AttestationRewardAccount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":21,"type":"AccountID"}],["LockingChainDoor",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":22,"type":"AccountID"}],["IssuingChainDoor",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":23,"type":"AccountID"}],["Subject",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":24,"type":"AccountID"}],["Borrower",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":25,"type":"AccountID"}],["Counterparty",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":26,"type":"AccountID"}],["Number",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"Number"}],["AssetsAvailable",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"Number"}],["AssetsMaximum",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"Number"}],["AssetsTotal",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"Number"}],["LossUnrealized",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":5,"type":"Number"}],["DebtTotal",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":6,"type":"Number"}],["DebtMaximum",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":7,"type":"Number"}],["CoverAvailable",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":8,"type":"Number"}],["LoanOriginationFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":9,"type":"Number"}],["LoanServiceFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":10,"type":"Number"}],["LatePaymentFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":11,"type":"Number"}],["ClosePaymentFee",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":12,"type":"Number"}],["PrincipalOutstanding",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":13,"type":"Number"}],["PrincipalRequested",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":14,"type":"Number"}],["TotalValueOutstanding",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":15,"type":"Number"}],["PeriodicPayment",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":16,"type":"Number"}],["ManagementFeeOutstanding",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":17,"type":"Number"}],["LoanScale",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"Int32"}],["TransactionMetaData",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"STObject"}],["CreatedNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"STObject"}],["DeletedNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"STObject"}],["ModifiedNode",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":5,"type":"STObject"}],["PreviousFields",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":6,"type":"STObject"}],["FinalFields",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":7,"type":"STObject"}],["NewFields",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":8,"type":"STObject"}],["TemplateEntry",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":9,"type":"STObject"}],["Memo",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":10,"type":"STObject"}],["SignerEntry",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":11,"type":"STObject"}],["NFToken",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":12,"type":"STObject"}],["EmitDetails",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":13,"type":"STObject"}],["Hook",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":14,"type":"STObject"}],["Permission",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":15,"type":"STObject"}],["Signer",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":16,"type":"STObject"}],["Majority",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":18,"type":"STObject"}],["DisabledValidator",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":19,"type":"STObject"}],["EmittedTxn",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":20,"type":"STObject"}],["HookExecution",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":21,"type":"STObject"}],["HookDefinition",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":22,"type":"STObject"}],["HookParameter",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":23,"type":"STObject"}],["HookGrant",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":24,"type":"STObject"}],["VoteEntry",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":25,"type":"STObject"}],["AuctionSlot",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":26,"type":"STObject"}],["AuthAccount",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":27,"type":"STObject"}],["XChainClaimProofSig",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":28,"type":"STObject"}],["XChainCreateAccountProofSig",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":29,"type":"STObject"}],["XChainClaimAttestationCollectionElement",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":30,"type":"STObject"}],["XChainCreateAccountAttestationCollectionElement",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":31,"type":"STObject"}],["PriceData",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":32,"type":"STObject"}],["Credential",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":33,"type":"STObject"}],["RawTransaction",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":34,"type":"STObject"}],["BatchSigner",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":35,"type":"STObject"}],["Book",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":36,"type":"STObject"}],["CounterpartySignature",{"isSerialized":true,"isSigningField":false,"isVLEncoded":false,"nth":37,"type":"STObject"}],["Signers",{"isSerialized":true,"isSigningField":false,"isVLEncoded":false,"nth":3,"type":"STArray"}],["SignerEntries",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"STArray"}],["Template",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":5,"type":"STArray"}],["Necessary",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":6,"type":"STArray"}],["Sufficient",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":7,"type":"STArray"}],["AffectedNodes",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":8,"type":"STArray"}],["Memos",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":9,"type":"STArray"}],["NFTokens",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":10,"type":"STArray"}],["Hooks",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":11,"type":"STArray"}],["VoteSlots",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":12,"type":"STArray"}],["AdditionalBooks",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":13,"type":"STArray"}],["Majorities",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":16,"type":"STArray"}],["DisabledValidators",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":17,"type":"STArray"}],["HookExecutions",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":18,"type":"STArray"}],["HookParameters",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":19,"type":"STArray"}],["HookGrants",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":20,"type":"STArray"}],["XChainClaimAttestations",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":21,"type":"STArray"}],["XChainCreateAccountAttestations",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":22,"type":"STArray"}],["PriceDataSeries",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":24,"type":"STArray"}],["AuthAccounts",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":25,"type":"STArray"}],["AuthorizeCredentials",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":26,"type":"STArray"}],["UnauthorizeCredentials",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":27,"type":"STArray"}],["AcceptedCredentials",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":28,"type":"STArray"}],["Permissions",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":29,"type":"STArray"}],["RawTransactions",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":30,"type":"STArray"}],["BatchSigners",{"isSerialized":true,"isSigningField":false,"isVLEncoded":false,"nth":31,"type":"STArray"}],["CloseResolution",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"UInt8"}],["Method",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"UInt8"}],["TransactionResult",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"UInt8"}],["Scale",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"UInt8"}],["AssetScale",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":5,"type":"UInt8"}],["TickSize",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":16,"type":"UInt8"}],["UNLModifyDisabling",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":17,"type":"UInt8"}],["HookResult",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":18,"type":"UInt8"}],["WasLockingChainSend",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":19,"type":"UInt8"}],["WithdrawalPolicy",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":20,"type":"UInt8"}],["TakerPaysCurrency",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"Hash160"}],["TakerPaysIssuer",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"Hash160"}],["TakerGetsCurrency",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"Hash160"}],["TakerGetsIssuer",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"Hash160"}],["Paths",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"PathSet"}],["Indexes",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":1,"type":"Vector256"}],["Hashes",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":2,"type":"Vector256"}],["Amendments",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":3,"type":"Vector256"}],["NFTokenOffers",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":4,"type":"Vector256"}],["CredentialIDs",{"isSerialized":true,"isSigningField":true,"isVLEncoded":true,"nth":5,"type":"Vector256"}],["MPTokenIssuanceID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"Hash192"}],["ShareMPTID",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"Hash192"}],["LockingChainIssue",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"Issue"}],["IssuingChainIssue",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"Issue"}],["Asset",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":3,"type":"Issue"}],["Asset2",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":4,"type":"Issue"}],["XChainBridge",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"XChainBridge"}],["BaseAsset",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":1,"type":"Currency"}],["QuoteAsset",{"isSerialized":true,"isSigningField":true,"isVLEncoded":false,"nth":2,"type":"Currency"}],["Transaction",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":257,"type":"Transaction"}],["LedgerEntry",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":257,"type":"LedgerEntry"}],["Validation",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":257,"type":"Validation"}],["Metadata",{"isSerialized":false,"isSigningField":false,"isVLEncoded":false,"nth":257,"type":"Metadata"}]],"LEDGER_ENTRY_TYPES":{"AMM":121,"AccountRoot":97,"Amendments":102,"Bridge":105,"Check":67,"Credential":129,"DID":73,"Delegate":131,"DepositPreauth":112,"DirectoryNode":100,"Escrow":117,"FeeSettings":115,"Invalid":-1,"LedgerHashes":104,"Loan":137,"LoanBroker":136,"MPToken":127,"MPTokenIssuance":126,"NFTokenOffer":55,"NFTokenPage":80,"NegativeUNL":78,"Offer":111,"Oracle":128,"PayChannel":120,"PermissionedDomain":130,"RippleState":114,"SignerList":83,"Ticket":84,"Vault":132,"XChainOwnedClaimID":113,"XChainOwnedCreateAccountClaimID":116},"TRANSACTION_RESULTS":{"tecAMM_ACCOUNT":168,"tecAMM_BALANCE":163,"tecAMM_EMPTY":166,"tecAMM_FAILED":164,"tecAMM_INVALID_TOKENS":165,"tecAMM_NOT_EMPTY":167,"tecARRAY_EMPTY":190,"tecARRAY_TOO_LARGE":191,"tecBAD_CREDENTIALS":193,"tecCANT_ACCEPT_OWN_NFTOKEN_OFFER":158,"tecCLAIM":100,"tecCRYPTOCONDITION_ERROR":146,"tecDIR_FULL":121,"tecDST_TAG_NEEDED":143,"tecDUPLICATE":149,"tecEMPTY_DID":187,"tecEXPIRED":148,"tecFAILED_PROCESSING":105,"tecFROZEN":137,"tecHAS_OBLIGATIONS":151,"tecHOOK_REJECTED":153,"tecINCOMPLETE":169,"tecINSUFFICIENT_FUNDS":159,"tecINSUFFICIENT_PAYMENT":161,"tecINSUFFICIENT_RESERVE":141,"tecINSUFF_FEE":136,"tecINSUF_RESERVE_LINE":122,"tecINSUF_RESERVE_OFFER":123,"tecINTERNAL":144,"tecINVALID_UPDATE_TIME":188,"tecINVARIANT_FAILED":147,"tecKILLED":150,"tecLIMIT_EXCEEDED":195,"tecLOCKED":192,"tecMAX_SEQUENCE_REACHED":154,"tecNEED_MASTER_KEY":142,"tecNFTOKEN_BUY_SELL_MISMATCH":156,"tecNFTOKEN_OFFER_TYPE_MISMATCH":157,"tecNO_ALTERNATIVE_KEY":130,"tecNO_AUTH":134,"tecNO_DELEGATE_PERMISSION":198,"tecNO_DST":124,"tecNO_DST_INSUF_XRP":125,"tecNO_ENTRY":140,"tecNO_ISSUER":133,"tecNO_LINE":135,"tecNO_LINE_INSUF_RESERVE":126,"tecNO_LINE_REDUNDANT":127,"tecNO_PERMISSION":139,"tecNO_REGULAR_KEY":131,"tecNO_SUITABLE_NFTOKEN_PAGE":155,"tecNO_TARGET":138,"tecOBJECT_NOT_FOUND":160,"tecOVERSIZE":145,"tecOWNERS":132,"tecPATH_DRY":128,"tecPATH_PARTIAL":101,"tecPRECISION_LOSS":197,"tecPSEUDO_ACCOUNT":196,"tecTOKEN_PAIR_NOT_FOUND":189,"tecTOO_SOON":152,"tecUNFUNDED":129,"tecUNFUNDED_ADD":102,"tecUNFUNDED_AMM":162,"tecUNFUNDED_OFFER":103,"tecUNFUNDED_PAYMENT":104,"tecWRONG_ASSET":194,"tecXCHAIN_ACCOUNT_CREATE_PAST":181,"tecXCHAIN_ACCOUNT_CREATE_TOO_MANY":182,"tecXCHAIN_BAD_CLAIM_ID":172,"tecXCHAIN_BAD_PUBLIC_KEY_ACCOUNT_PAIR":185,"tecXCHAIN_BAD_TRANSFER_ISSUE":170,"tecXCHAIN_CLAIM_NO_QUORUM":173,"tecXCHAIN_CREATE_ACCOUNT_DISABLED":186,"tecXCHAIN_CREATE_ACCOUNT_NONXRP_ISSUE":175,"tecXCHAIN_INSUFF_CREATE_AMOUNT":180,"tecXCHAIN_NO_CLAIM_ID":171,"tecXCHAIN_NO_SIGNERS_LIST":178,"tecXCHAIN_PAYMENT_FAILED":183,"tecXCHAIN_PROOF_UNKNOWN_KEY":174,"tecXCHAIN_REWARD_MISMATCH":177,"tecXCHAIN_SELF_COMMIT":184,"tecXCHAIN_SENDING_ACCOUNT_MISMATCH":179,"tecXCHAIN_WRONG_CHAIN":176,"tefALREADY":-198,"tefBAD_ADD_AUTH":-197,"tefBAD_AUTH":-196,"tefBAD_AUTH_MASTER":-183,"tefBAD_LEDGER":-195,"tefBAD_QUORUM":-185,"tefBAD_SIGNATURE":-186,"tefCREATED":-194,"tefEXCEPTION":-193,"tefFAILURE":-199,"tefINTERNAL":-192,"tefINVALID_LEDGER_FIX_TYPE":-178,"tefINVARIANT_FAILED":-182,"tefMASTER_DISABLED":-188,"tefMAX_LEDGER":-187,"tefNFTOKEN_IS_NOT_TRANSFERABLE":-179,"tefNOT_MULTI_SIGNING":-184,"tefNO_AUTH_REQUIRED":-191,"tefNO_TICKET":-180,"tefPAST_SEQ":-190,"tefTOO_BIG":-181,"tefWRONG_PRIOR":-189,"telBAD_DOMAIN":-398,"telBAD_PATH_COUNT":-397,"telBAD_PUBLIC_KEY":-396,"telCAN_NOT_QUEUE":-392,"telCAN_NOT_QUEUE_BALANCE":-391,"telCAN_NOT_QUEUE_BLOCKED":-389,"telCAN_NOT_QUEUE_BLOCKS":-390,"telCAN_NOT_QUEUE_FEE":-388,"telCAN_NOT_QUEUE_FULL":-387,"telENV_RPC_FAILED":-383,"telFAILED_PROCESSING":-395,"telINSUF_FEE_P":-394,"telLOCAL_ERROR":-399,"telNETWORK_ID_MAKES_TX_NON_CANONICAL":-384,"telNO_DST_PARTIAL":-393,"telREQUIRES_NETWORK_ID":-385,"telWRONG_NETWORK":-386,"temARRAY_EMPTY":-253,"temARRAY_TOO_LARGE":-252,"temBAD_AMM_TOKENS":-261,"temBAD_AMOUNT":-298,"temBAD_CURRENCY":-297,"temBAD_EXPIRATION":-296,"temBAD_FEE":-295,"temBAD_ISSUER":-294,"temBAD_LIMIT":-293,"temBAD_NFTOKEN_TRANSFER_FEE":-262,"temBAD_OFFER":-292,"temBAD_PATH":-291,"temBAD_PATH_LOOP":-290,"temBAD_QUORUM":-271,"temBAD_REGKEY":-289,"temBAD_SEND_XRP_LIMIT":-288,"temBAD_SEND_XRP_MAX":-287,"temBAD_SEND_XRP_NO_DIRECT":-286,"temBAD_SEND_XRP_PARTIAL":-285,"temBAD_SEND_XRP_PATHS":-284,"temBAD_SEQUENCE":-283,"temBAD_SIGNATURE":-282,"temBAD_SIGNER":-272,"temBAD_SRC_ACCOUNT":-281,"temBAD_TICK_SIZE":-269,"temBAD_TRANSFER_FEE":-251,"temBAD_TRANSFER_RATE":-280,"temBAD_WEIGHT":-270,"temCANNOT_PREAUTH_SELF":-267,"temDISABLED":-273,"temDST_IS_SRC":-279,"temDST_NEEDED":-278,"temEMPTY_DID":-254,"temINVALID":-277,"temINVALID_ACCOUNT_ID":-268,"temINVALID_COUNT":-266,"temINVALID_FLAG":-276,"temINVALID_INNER_BATCH":-250,"temMALFORMED":-299,"temREDUNDANT":-275,"temRIPPLE_EMPTY":-274,"temSEQ_AND_TICKET":-263,"temUNCERTAIN":-265,"temUNKNOWN":-264,"temXCHAIN_BAD_PROOF":-259,"temXCHAIN_BRIDGE_BAD_ISSUES":-258,"temXCHAIN_BRIDGE_BAD_MIN_ACCOUNT_CREATE_AMOUNT":-256,"temXCHAIN_BRIDGE_BAD_REWARD_AMOUNT":-255,"temXCHAIN_BRIDGE_NONDOOR_OWNER":-257,"temXCHAIN_EQUAL_DOOR_ACCOUNTS":-260,"terADDRESS_COLLISION":-86,"terFUNDS_SPENT":-98,"terINSUF_FEE_B":-97,"terLAST":-91,"terNO_ACCOUNT":-96,"terNO_AMM":-87,"terNO_AUTH":-95,"terNO_DELEGATE_PERMISSION":-85,"terNO_LINE":-94,"terNO_RIPPLE":-90,"terOWNERS":-93,"terPRE_SEQ":-92,"terPRE_TICKET":-88,"terQUEUED":-89,"terRETRY":-99,"tesSUCCESS":0},"TRANSACTION_TYPES":{"AMMBid":39,"AMMClawback":31,"AMMCreate":35,"AMMDelete":40,"AMMDeposit":36,"AMMVote":38,"AMMWithdraw":37,"AccountDelete":21,"AccountSet":3,"Batch":71,"CheckCancel":18,"CheckCash":17,"CheckCreate":16,"Clawback":30,"CredentialAccept":59,"CredentialCreate":58,"CredentialDelete":60,"DIDDelete":50,"DIDSet":49,"DelegateSet":64,"DepositPreauth":19,"EnableAmendment":100,"EscrowCancel":4,"EscrowCreate":1,"EscrowFinish":2,"Invalid":-1,"LedgerStateFix":53,"LoanBrokerCoverClawback":78,"LoanBrokerCoverDeposit":76,"LoanBrokerCoverWithdraw":77,"LoanBrokerDelete":75,"LoanBrokerSet":74,"LoanDelete":81,"LoanManage":82,"LoanPay":84,"LoanSet":80,"MPTokenAuthorize":57,"MPTokenIssuanceCreate":54,"MPTokenIssuanceDestroy":55,"MPTokenIssuanceSet":56,"NFTokenAcceptOffer":29,"NFTokenBurn":26,"NFTokenCancelOffer":28,"NFTokenCreateOffer":27,"NFTokenMint":25,"NFTokenModify":61,"OfferCancel":8,"OfferCreate":7,"OracleDelete":52,"OracleSet":51,"Payment":0,"PaymentChannelClaim":15,"PaymentChannelCreate":13,"PaymentChannelFund":14,"PermissionedDomainDelete":63,"PermissionedDomainSet":62,"SetFee":101,"SetRegularKey":5,"SignerListSet":12,"TicketCreate":10,"TrustSet":20,"UNLModify":102,"VaultClawback":70,"VaultCreate":65,"VaultDelete":67,"VaultDeposit":68,"VaultSet":66,"VaultWithdraw":69,"XChainAccountCreateCommit":44,"XChainAddAccountCreateAttestation":46,"XChainAddClaimAttestation":45,"XChainClaim":43,"XChainCommit":42,"XChainCreateBridge":48,"XChainCreateClaimID":41,"XChainModifyBridge":47},"TYPES":{"AccountID":8,"Amount":6,"Blob":7,"Currency":26,"Done":-1,"Hash128":4,"Hash160":17,"Hash192":21,"Hash256":5,"Int32":10,"Int64":11,"Issue":24,"LedgerEntry":10002,"Metadata":10004,"NotPresent":0,"Number":9,"PathSet":18,"STArray":15,"STObject":14,"Transaction":10001,"UInt16":1,"UInt32":2,"UInt384":22,"UInt512":23,"UInt64":3,"UInt8":16,"UInt96":20,"Unknown":-2,"Validation":10003,"Vector256":19,"XChainBridge":25}}');
+module.exports = JSON.parse('{"TYPES":{"Done":-1,"Unknown":-2,"NotPresent":0,"UInt16":1,"UInt32":2,"UInt64":3,"Hash128":4,"Hash256":5,"Amount":6,"Blob":7,"AccountID":8,"STObject":14,"STArray":15,"UInt8":16,"Hash160":17,"PathSet":18,"Vector256":19,"UInt96":20,"UInt192":21,"UInt384":22,"UInt512":23,"Transaction":10001,"LedgerEntry":10002,"Validation":10003,"Metadata":10004},"LEDGER_ENTRY_TYPES":{"Invalid":-1,"AccountRoot":97,"Cron":65,"DirectoryNode":100,"RippleState":114,"Ticket":84,"SignerList":83,"Offer":111,"LedgerHashes":104,"Amendments":102,"FeeSettings":115,"ImportVLSequence":73,"Escrow":117,"PayChannel":120,"Check":67,"DepositPreauth":112,"NegativeUNL":78,"NFTokenPage":80,"NFTokenOffer":55,"URIToken":85,"UNLReport":82,"Any":-3,"Child":-2,"Nickname":110,"Contract":99,"GeneratorMap":103,"Hook":72,"HookState":118,"HookDefinition":68,"EmittedTxn":69},"FIELDS":[["Generic",{"nth":0,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"Unknown"}],["Invalid",{"nth":-1,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"Unknown"}],["ObjectEndMarker",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["ArrayEndMarker",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["hash",{"nth":257,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"Hash256"}],["index",{"nth":258,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"Hash256"}],["taker_gets_funded",{"nth":258,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"Amount"}],["taker_pays_funded",{"nth":259,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"Amount"}],["LedgerEntry",{"nth":257,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"LedgerEntry"}],["Transaction",{"nth":257,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"Transaction"}],["Validation",{"nth":257,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"Validation"}],["Metadata",{"nth":257,"isVLEncoded":false,"isSerialized":false,"isSigningField":false,"type":"Metadata"}],["CloseResolution",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt8"}],["Method",{"nth":2,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt8"}],["TransactionResult",{"nth":3,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt8"}],["TickSize",{"nth":16,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt8"}],["UNLModifyDisabling",{"nth":17,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt8"}],["HookResult",{"nth":18,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt8"}],["LedgerEntryType",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["TransactionType",{"nth":2,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["SignerWeight",{"nth":3,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["TransferFee",{"nth":4,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["Version",{"nth":16,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["HookStateChangeCount",{"nth":17,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["HookEmitCount",{"nth":18,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["HookExecutionIndex",{"nth":19,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["HookApiVersion",{"nth":20,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["HookStateScale",{"nth":21,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt16"}],["NetworkID",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["Flags",{"nth":2,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["SourceTag",{"nth":3,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["Sequence",{"nth":4,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["PreviousTxnLgrSeq",{"nth":5,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["LedgerSequence",{"nth":6,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["CloseTime",{"nth":7,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["ParentCloseTime",{"nth":8,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["SigningTime",{"nth":9,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["Expiration",{"nth":10,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["TransferRate",{"nth":11,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["WalletSize",{"nth":12,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["OwnerCount",{"nth":13,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["DestinationTag",{"nth":14,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["HighQualityIn",{"nth":16,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["HighQualityOut",{"nth":17,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["LowQualityIn",{"nth":18,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["LowQualityOut",{"nth":19,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["QualityIn",{"nth":20,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["QualityOut",{"nth":21,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["StampEscrow",{"nth":22,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["BondAmount",{"nth":23,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["LoadFee",{"nth":24,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["OfferSequence",{"nth":25,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["FirstLedgerSequence",{"nth":26,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["LastLedgerSequence",{"nth":27,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["TransactionIndex",{"nth":28,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["OperationLimit",{"nth":29,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["ReferenceFeeUnits",{"nth":30,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["ReserveBase",{"nth":31,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["ReserveIncrement",{"nth":32,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["SetFlag",{"nth":33,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["ClearFlag",{"nth":34,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["SignerQuorum",{"nth":35,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["CancelAfter",{"nth":36,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["FinishAfter",{"nth":37,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["SignerListID",{"nth":38,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["SettleDelay",{"nth":39,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["TicketCount",{"nth":40,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["TicketSequence",{"nth":41,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["NFTokenTaxon",{"nth":42,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["MintedNFTokens",{"nth":43,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["BurnedNFTokens",{"nth":44,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["HookStateCount",{"nth":45,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["EmitGeneration",{"nth":46,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["LockCount",{"nth":49,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["FirstNFTokenSequence",{"nth":50,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["StartTime",{"nth":93,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["RepeatCount",{"nth":94,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["DelaySeconds",{"nth":95,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["XahauActivationLgrSeq",{"nth":96,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["ImportSequence",{"nth":97,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["RewardTime",{"nth":98,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["RewardLgrFirst",{"nth":99,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["RewardLgrLast",{"nth":100,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt32"}],["IndexNext",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["IndexPrevious",{"nth":2,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["BookNode",{"nth":3,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["OwnerNode",{"nth":4,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["BaseFee",{"nth":5,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["ExchangeRate",{"nth":6,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["LowNode",{"nth":7,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["HighNode",{"nth":8,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["DestinationNode",{"nth":9,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["Cookie",{"nth":10,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["ServerVersion",{"nth":11,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["NFTokenOfferNode",{"nth":12,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["EmitBurden",{"nth":13,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["HookInstructionCount",{"nth":17,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["HookReturnCode",{"nth":18,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["ReferenceCount",{"nth":19,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["TouchCount",{"nth":97,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["AccountIndex",{"nth":98,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["AccountCount",{"nth":99,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["RewardAccumulator",{"nth":100,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"UInt64"}],["EmailHash",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash128"}],["TakerPaysCurrency",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash160"}],["TakerPaysIssuer",{"nth":2,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash160"}],["TakerGetsCurrency",{"nth":3,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash160"}],["TakerGetsIssuer",{"nth":4,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash160"}],["LedgerHash",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["ParentHash",{"nth":2,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["TransactionHash",{"nth":3,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["AccountHash",{"nth":4,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["PreviousTxnID",{"nth":5,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["LedgerIndex",{"nth":6,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["WalletLocator",{"nth":7,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["RootIndex",{"nth":8,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["AccountTxnID",{"nth":9,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["NFTokenID",{"nth":10,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["EmitParentTxnID",{"nth":11,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["EmitNonce",{"nth":12,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["EmitHookHash",{"nth":13,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["ObjectID",{"nth":14,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["BookDirectory",{"nth":16,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["InvoiceID",{"nth":17,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["Nickname",{"nth":18,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["Amendment",{"nth":19,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["HookOn",{"nth":20,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["Digest",{"nth":21,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["Channel",{"nth":22,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["ConsensusHash",{"nth":23,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["CheckID",{"nth":24,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["ValidatedHash",{"nth":25,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["PreviousPageMin",{"nth":26,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["NextPageMin",{"nth":27,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["NFTokenBuyOffer",{"nth":28,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["NFTokenSellOffer",{"nth":29,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["HookStateKey",{"nth":30,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["HookHash",{"nth":31,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["HookNamespace",{"nth":32,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["HookSetTxnID",{"nth":33,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["OfferID",{"nth":34,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["EscrowID",{"nth":35,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["URITokenID",{"nth":36,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["GovernanceFlags",{"nth":99,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["GovernanceMarks",{"nth":98,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["EmittedTxnID",{"nth":97,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["HookCanEmit",{"nth":96,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["Cron",{"nth":95,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Hash256"}],["Amount",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["Balance",{"nth":2,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["LimitAmount",{"nth":3,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["TakerPays",{"nth":4,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["TakerGets",{"nth":5,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["LowLimit",{"nth":6,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["HighLimit",{"nth":7,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["Fee",{"nth":8,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["SendMax",{"nth":9,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["DeliverMin",{"nth":10,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["MinimumOffer",{"nth":16,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["RippleEscrow",{"nth":17,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["DeliveredAmount",{"nth":18,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["NFTokenBrokerFee",{"nth":19,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["HookCallbackFee",{"nth":20,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["LockedBalance",{"nth":21,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["BaseFeeDrops",{"nth":22,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["ReserveBaseDrops",{"nth":23,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["ReserveIncrementDrops",{"nth":24,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"Amount"}],["PublicKey",{"nth":1,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["MessageKey",{"nth":2,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["SigningPubKey",{"nth":3,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["TxnSignature",{"nth":4,"isVLEncoded":true,"isSerialized":true,"isSigningField":false,"type":"Blob"}],["URI",{"nth":5,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["Signature",{"nth":6,"isVLEncoded":true,"isSerialized":true,"isSigningField":false,"type":"Blob"}],["Domain",{"nth":7,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["FundCode",{"nth":8,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["RemoveCode",{"nth":9,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["ExpireCode",{"nth":10,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["CreateCode",{"nth":11,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["MemoType",{"nth":12,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["MemoData",{"nth":13,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["MemoFormat",{"nth":14,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["Fulfillment",{"nth":16,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["Condition",{"nth":17,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["MasterSignature",{"nth":18,"isVLEncoded":true,"isSerialized":true,"isSigningField":false,"type":"Blob"}],["UNLModifyValidator",{"nth":19,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["ValidatorToDisable",{"nth":20,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["ValidatorToReEnable",{"nth":21,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["HookStateData",{"nth":22,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["HookReturnString",{"nth":23,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["HookParameterName",{"nth":24,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["HookParameterValue",{"nth":25,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["Blob",{"nth":26,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["RemarkValue",{"nth":98,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["RemarkName",{"nth":99,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Blob"}],["Account",{"nth":1,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["Owner",{"nth":2,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["Destination",{"nth":3,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["Issuer",{"nth":4,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["Authorize",{"nth":5,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["Unauthorize",{"nth":6,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["RegularKey",{"nth":8,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["NFTokenMinter",{"nth":9,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["EmitCallback",{"nth":10,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["HookAccount",{"nth":16,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["Inform",{"nth":99,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"AccountID"}],["Indexes",{"nth":1,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Vector256"}],["Hashes",{"nth":2,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Vector256"}],["Amendments",{"nth":3,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Vector256"}],["NFTokenOffers",{"nth":4,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Vector256"}],["HookNamespaces",{"nth":5,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Vector256"}],["URITokenIDs",{"nth":99,"isVLEncoded":true,"isSerialized":true,"isSigningField":true,"type":"Vector256"}],["Paths",{"nth":1,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"PathSet"}],["TransactionMetaData",{"nth":2,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["CreatedNode",{"nth":3,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["DeletedNode",{"nth":4,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["ModifiedNode",{"nth":5,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["PreviousFields",{"nth":6,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["FinalFields",{"nth":7,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["NewFields",{"nth":8,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["TemplateEntry",{"nth":9,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["Memo",{"nth":10,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["SignerEntry",{"nth":11,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["NFToken",{"nth":12,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["EmitDetails",{"nth":13,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["Hook",{"nth":14,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["Signer",{"nth":16,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["Majority",{"nth":18,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["DisabledValidator",{"nth":19,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["EmittedTxn",{"nth":20,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["HookExecution",{"nth":21,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["HookDefinition",{"nth":22,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["HookParameter",{"nth":23,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["HookGrant",{"nth":24,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["Remark",{"nth":97,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["GenesisMint",{"nth":96,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["ActiveValidator",{"nth":95,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["ImportVLKey",{"nth":94,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["HookEmission",{"nth":93,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["MintURIToken",{"nth":92,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["AmountEntry",{"nth":91,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STObject"}],["Signers",{"nth":3,"isVLEncoded":false,"isSerialized":true,"isSigningField":false,"type":"STArray"}],["SignerEntries",{"nth":4,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["Template",{"nth":5,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["Necessary",{"nth":6,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["Sufficient",{"nth":7,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["AffectedNodes",{"nth":8,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["Memos",{"nth":9,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["NFTokens",{"nth":10,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["Hooks",{"nth":11,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["Majorities",{"nth":16,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["DisabledValidators",{"nth":17,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["HookExecutions",{"nth":18,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["HookParameters",{"nth":19,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["HookGrants",{"nth":20,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["Remarks",{"nth":97,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["GenesisMints",{"nth":96,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["ActiveValidators",{"nth":95,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["ImportVLKeys",{"nth":94,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["HookEmissions",{"nth":93,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}],["Amounts",{"nth":92,"isVLEncoded":false,"isSerialized":true,"isSigningField":true,"type":"STArray"}]],"TRANSACTION_RESULTS":{"telLOCAL_ERROR":-399,"telBAD_DOMAIN":-398,"telBAD_PATH_COUNT":-397,"telBAD_PUBLIC_KEY":-396,"telFAILED_PROCESSING":-395,"telINSUF_FEE_P":-394,"telNO_DST_PARTIAL":-393,"telCAN_NOT_QUEUE":-392,"telCAN_NOT_QUEUE_BALANCE":-391,"telCAN_NOT_QUEUE_BLOCKS":-390,"telCAN_NOT_QUEUE_BLOCKED":-389,"telCAN_NOT_QUEUE_FEE":-388,"telCAN_NOT_QUEUE_FULL":-387,"telWRONG_NETWORK":-386,"telREQUIRES_NETWORK_ID":-385,"telNETWORK_ID_MAKES_TX_NON_CANONICAL":-384,"telNON_LOCAL_EMITTED_TXN":-383,"telIMPORT_VL_KEY_NOT_RECOGNISED":-382,"telCAN_NOT_QUEUE_IMPORT":-381,"temMALFORMED":-299,"temBAD_AMOUNT":-298,"temBAD_CURRENCY":-297,"temBAD_EXPIRATION":-296,"temBAD_FEE":-295,"temBAD_ISSUER":-294,"temBAD_LIMIT":-293,"temBAD_OFFER":-292,"temBAD_PATH":-291,"temBAD_PATH_LOOP":-290,"temBAD_REGKEY":-289,"temBAD_SEND_NATIVE_LIMIT":-288,"temBAD_SEND_NATIVE_MAX":-287,"temBAD_SEND_NATIVE_NO_DIRECT":-286,"temBAD_SEND_NATIVE_PARTIAL":-285,"temBAD_SEND_NATIVE_PATHS":-284,"temBAD_SEQUENCE":-283,"temBAD_SIGNATURE":-282,"temBAD_SRC_ACCOUNT":-281,"temBAD_TRANSFER_RATE":-280,"temDST_IS_SRC":-279,"temDST_NEEDED":-278,"temINVALID":-277,"temINVALID_FLAG":-276,"temREDUNDANT":-275,"temRIPPLE_EMPTY":-274,"temDISABLED":-273,"temBAD_SIGNER":-272,"temBAD_QUORUM":-271,"temBAD_WEIGHT":-270,"temBAD_TICK_SIZE":-269,"temINVALID_ACCOUNT_ID":-268,"temCANNOT_PREAUTH_SELF":-267,"temINVALID_COUNT":-266,"temUNCERTAIN":-265,"temUNKNOWN":-264,"temSEQ_AND_TICKET":-263,"temBAD_NFTOKEN_TRANSFER_FEE":-262,"temAMM_BAD_TOKENS":-261,"temXCHAIN_EQUAL_DOOR_ACCOUNTS":-260,"temXCHAIN_BAD_PROOF":-259,"temXCHAIN_BRIDGE_BAD_ISSUES":-258,"temXCHAIN_BRIDGE_NONDOOR_OWNER":-257,"temXCHAIN_BRIDGE_BAD_MIN_ACCOUNT_CREATE_AMOUNT":-256,"temXCHAIN_BRIDGE_BAD_REWARD_AMOUNT":-255,"temXCHAIN_TOO_MANY_ATTESTATIONS":-254,"temHOOK_DATA_TOO_LARGE":-253,"tefFAILURE":-199,"tefALREADY":-198,"tefBAD_ADD_AUTH":-197,"tefBAD_AUTH":-196,"tefBAD_LEDGER":-195,"tefCREATED":-194,"tefEXCEPTION":-193,"tefINTERNAL":-192,"tefNO_AUTH_REQUIRED":-191,"tefPAST_SEQ":-190,"tefWRONG_PRIOR":-189,"tefMASTER_DISABLED":-188,"tefMAX_LEDGER":-187,"tefBAD_SIGNATURE":-186,"tefBAD_QUORUM":-185,"tefNOT_MULTI_SIGNING":-184,"tefBAD_AUTH_MASTER":-183,"tefINVARIANT_FAILED":-182,"tefTOO_BIG":-181,"tefNO_TICKET":-180,"tefNFTOKEN_IS_NOT_TRANSFERABLE":-179,"tefPAST_IMPORT_SEQ":-178,"tefPAST_IMPORT_VL_SEQ":-177,"tefNONDIR_EMIT":-176,"tefIMPORT_BLACKHOLED":-175,"terRETRY":-99,"terFUNDS_SPENT":-98,"terINSUF_FEE_B":-97,"terNO_ACCOUNT":-96,"terNO_AUTH":-95,"terNO_LINE":-94,"terOWNERS":-93,"terPRE_SEQ":-92,"terLAST":-91,"terNO_RIPPLE":-90,"terQUEUED":-89,"terPRE_TICKET":-88,"terNO_AMM":-87,"terNO_HOOK":-86,"tesSUCCESS":0,"tesPARTIAL":1,"tecCLAIM":100,"tecPATH_PARTIAL":101,"tecUNFUNDED_ADD":102,"tecUNFUNDED_OFFER":103,"tecUNFUNDED_PAYMENT":104,"tecFAILED_PROCESSING":105,"tecDIR_FULL":121,"tecINSUF_RESERVE_LINE":122,"tecINSUF_RESERVE_OFFER":123,"tecNO_DST":124,"tecNO_DST_INSUF_NATIVE":125,"tecNO_LINE_INSUF_RESERVE":126,"tecNO_LINE_REDUNDANT":127,"tecPATH_DRY":128,"tecUNFUNDED":129,"tecNO_ALTERNATIVE_KEY":130,"tecNO_REGULAR_KEY":131,"tecOWNERS":132,"tecNO_ISSUER":133,"tecNO_AUTH":134,"tecNO_LINE":135,"tecINSUFF_FEE":136,"tecFROZEN":137,"tecNO_TARGET":138,"tecNO_PERMISSION":139,"tecNO_ENTRY":140,"tecINSUFFICIENT_RESERVE":141,"tecNEED_MASTER_KEY":142,"tecDST_TAG_NEEDED":143,"tecINTERNAL":144,"tecOVERSIZE":145,"tecCRYPTOCONDITION_ERROR":146,"tecINVARIANT_FAILED":147,"tecEXPIRED":148,"tecDUPLICATE":149,"tecKILLED":150,"tecHAS_OBLIGATIONS":151,"tecTOO_SOON":152,"tecHOOK_REJECTED":153,"tecMAX_SEQUENCE_REACHED":154,"tecNO_SUITABLE_NFTOKEN_PAGE":155,"tecNFTOKEN_BUY_SELL_MISMATCH":156,"tecNFTOKEN_OFFER_TYPE_MISMATCH":157,"tecCANT_ACCEPT_OWN_NFTOKEN_OFFER":158,"tecINSUFFICIENT_FUNDS":159,"tecOBJECT_NOT_FOUND":160,"tecINSUFFICIENT_PAYMENT":161,"tecAMM_UNFUNDED":162,"tecAMM_BALANCE":163,"tecAMM_FAILED_DEPOSIT":164,"tecAMM_FAILED_WITHDRAW":165,"tecAMM_INVALID_TOKENS":166,"tecAMM_FAILED_BID":167,"tecAMM_FAILED_VOTE":168,"tecREQUIRES_FLAG":169,"tecPRECISION_LOSS":170,"tecBAD_XCHAIN_TRANSFER_ISSUE":171,"tecXCHAIN_NO_CLAIM_ID":172,"tecXCHAIN_BAD_CLAIM_ID":173,"tecXCHAIN_CLAIM_NO_QUORUM":174,"tecXCHAIN_PROOF_UNKNOWN_KEY":175,"tecXCHAIN_CREATE_ACCOUNT_NONXRP_ISSUE":176,"tecXCHAIN_WRONG_CHAIN":177,"tecXCHAIN_REWARD_MISMATCH":178,"tecXCHAIN_NO_SIGNERS_LIST":179,"tecXCHAIN_SENDING_ACCOUNT_MISMATCH":180,"tecXCHAIN_INSUFF_CREATE_AMOUNT":181,"tecXCHAIN_ACCOUNT_CREATE_PAST":182,"tecXCHAIN_ACCOUNT_CREATE_TOO_MANY":183,"tecXCHAIN_PAYMENT_FAILED":184,"tecXCHAIN_SELF_COMMIT":185,"tecXCHAIN_BAD_PUBLIC_KEY_ACCOUNT_PAIR":186,"tecINSUF_RESERVE_SELLER":187,"tecIMMUTABLE":188,"tecTOO_MANY_REMARKS":189,"tecHAS_HOOK_STATE":190,"tecLAST_POSSIBLE_ENTRY":255},"TRANSACTION_TYPES":{"Invalid":-1,"Payment":0,"EscrowCreate":1,"EscrowFinish":2,"AccountSet":3,"EscrowCancel":4,"SetRegularKey":5,"NickNameSet":6,"OfferCreate":7,"OfferCancel":8,"Contract":9,"TicketCreate":10,"TicketCancel":11,"SignerListSet":12,"PaymentChannelCreate":13,"PaymentChannelFund":14,"PaymentChannelClaim":15,"CheckCreate":16,"CheckCash":17,"CheckCancel":18,"DepositPreauth":19,"TrustSet":20,"AccountDelete":21,"SetHook":22,"NFTokenMint":25,"NFTokenBurn":26,"NFTokenCreateOffer":27,"NFTokenCancelOffer":28,"NFTokenAcceptOffer":29,"Clawback":30,"URITokenMint":45,"URITokenBurn":46,"URITokenBuy":47,"URITokenCreateSellOffer":48,"URITokenCancelSellOffer":49,"Cron":92,"CronSet":93,"SetRemarks":94,"Remit":95,"GenesisMint":96,"Import":97,"ClaimReward":98,"Invoke":99,"EnableAmendment":100,"SetFee":101,"UNLModify":102,"EmitFailure":103,"UNLReport":104}}');
 
 /***/ }),
 
-/***/ 4171:
+/***/ 2103:
 /***/ ((module) => {
 
 module.exports = JSON.parse('["A","ABE","ACE","ACT","AD","ADA","ADD","AGO","AID","AIM","AIR","ALL","ALP","AM","AMY","AN","ANA","AND","ANN","ANT","ANY","APE","APS","APT","ARC","ARE","ARK","ARM","ART","AS","ASH","ASK","AT","ATE","AUG","AUK","AVE","AWE","AWK","AWL","AWN","AX","AYE","BAD","BAG","BAH","BAM","BAN","BAR","BAT","BAY","BE","BED","BEE","BEG","BEN","BET","BEY","BIB","BID","BIG","BIN","BIT","BOB","BOG","BON","BOO","BOP","BOW","BOY","BUB","BUD","BUG","BUM","BUN","BUS","BUT","BUY","BY","BYE","CAB","CAL","CAM","CAN","CAP","CAR","CAT","CAW","COD","COG","COL","CON","COO","COP","COT","COW","COY","CRY","CUB","CUE","CUP","CUR","CUT","DAB","DAD","DAM","DAN","DAR","DAY","DEE","DEL","DEN","DES","DEW","DID","DIE","DIG","DIN","DIP","DO","DOE","DOG","DON","DOT","DOW","DRY","DUB","DUD","DUE","DUG","DUN","EAR","EAT","ED","EEL","EGG","EGO","ELI","ELK","ELM","ELY","EM","END","EST","ETC","EVA","EVE","EWE","EYE","FAD","FAN","FAR","FAT","FAY","FED","FEE","FEW","FIB","FIG","FIN","FIR","FIT","FLO","FLY","FOE","FOG","FOR","FRY","FUM","FUN","FUR","GAB","GAD","GAG","GAL","GAM","GAP","GAS","GAY","GEE","GEL","GEM","GET","GIG","GIL","GIN","GO","GOT","GUM","GUN","GUS","GUT","GUY","GYM","GYP","HA","HAD","HAL","HAM","HAN","HAP","HAS","HAT","HAW","HAY","HE","HEM","HEN","HER","HEW","HEY","HI","HID","HIM","HIP","HIS","HIT","HO","HOB","HOC","HOE","HOG","HOP","HOT","HOW","HUB","HUE","HUG","HUH","HUM","HUT","I","ICY","IDA","IF","IKE","ILL","INK","INN","IO","ION","IQ","IRA","IRE","IRK","IS","IT","ITS","IVY","JAB","JAG","JAM","JAN","JAR","JAW","JAY","JET","JIG","JIM","JO","JOB","JOE","JOG","JOT","JOY","JUG","JUT","KAY","KEG","KEN","KEY","KID","KIM","KIN","KIT","LA","LAB","LAC","LAD","LAG","LAM","LAP","LAW","LAY","LEA","LED","LEE","LEG","LEN","LEO","LET","LEW","LID","LIE","LIN","LIP","LIT","LO","LOB","LOG","LOP","LOS","LOT","LOU","LOW","LOY","LUG","LYE","MA","MAC","MAD","MAE","MAN","MAO","MAP","MAT","MAW","MAY","ME","MEG","MEL","MEN","MET","MEW","MID","MIN","MIT","MOB","MOD","MOE","MOO","MOP","MOS","MOT","MOW","MUD","MUG","MUM","MY","NAB","NAG","NAN","NAP","NAT","NAY","NE","NED","NEE","NET","NEW","NIB","NIL","NIP","NIT","NO","NOB","NOD","NON","NOR","NOT","NOV","NOW","NU","NUN","NUT","O","OAF","OAK","OAR","OAT","ODD","ODE","OF","OFF","OFT","OH","OIL","OK","OLD","ON","ONE","OR","ORB","ORE","ORR","OS","OTT","OUR","OUT","OVA","OW","OWE","OWL","OWN","OX","PA","PAD","PAL","PAM","PAN","PAP","PAR","PAT","PAW","PAY","PEA","PEG","PEN","PEP","PER","PET","PEW","PHI","PI","PIE","PIN","PIT","PLY","PO","POD","POE","POP","POT","POW","PRO","PRY","PUB","PUG","PUN","PUP","PUT","QUO","RAG","RAM","RAN","RAP","RAT","RAW","RAY","REB","RED","REP","RET","RIB","RID","RIG","RIM","RIO","RIP","ROB","ROD","ROE","RON","ROT","ROW","ROY","RUB","RUE","RUG","RUM","RUN","RYE","SAC","SAD","SAG","SAL","SAM","SAN","SAP","SAT","SAW","SAY","SEA","SEC","SEE","SEN","SET","SEW","SHE","SHY","SIN","SIP","SIR","SIS","SIT","SKI","SKY","SLY","SO","SOB","SOD","SON","SOP","SOW","SOY","SPA","SPY","SUB","SUD","SUE","SUM","SUN","SUP","TAB","TAD","TAG","TAN","TAP","TAR","TEA","TED","TEE","TEN","THE","THY","TIC","TIE","TIM","TIN","TIP","TO","TOE","TOG","TOM","TON","TOO","TOP","TOW","TOY","TRY","TUB","TUG","TUM","TUN","TWO","UN","UP","US","USE","VAN","VAT","VET","VIE","WAD","WAG","WAR","WAS","WAY","WE","WEB","WED","WEE","WET","WHO","WHY","WIN","WIT","WOK","WON","WOO","WOW","WRY","WU","YAM","YAP","YAW","YE","YEA","YES","YET","YOU","ABED","ABEL","ABET","ABLE","ABUT","ACHE","ACID","ACME","ACRE","ACTA","ACTS","ADAM","ADDS","ADEN","AFAR","AFRO","AGEE","AHEM","AHOY","AIDA","AIDE","AIDS","AIRY","AJAR","AKIN","ALAN","ALEC","ALGA","ALIA","ALLY","ALMA","ALOE","ALSO","ALTO","ALUM","ALVA","AMEN","AMES","AMID","AMMO","AMOK","AMOS","AMRA","ANDY","ANEW","ANNA","ANNE","ANTE","ANTI","AQUA","ARAB","ARCH","AREA","ARGO","ARID","ARMY","ARTS","ARTY","ASIA","ASKS","ATOM","AUNT","AURA","AUTO","AVER","AVID","AVIS","AVON","AVOW","AWAY","AWRY","BABE","BABY","BACH","BACK","BADE","BAIL","BAIT","BAKE","BALD","BALE","BALI","BALK","BALL","BALM","BAND","BANE","BANG","BANK","BARB","BARD","BARE","BARK","BARN","BARR","BASE","BASH","BASK","BASS","BATE","BATH","BAWD","BAWL","BEAD","BEAK","BEAM","BEAN","BEAR","BEAT","BEAU","BECK","BEEF","BEEN","BEER","BEET","BELA","BELL","BELT","BEND","BENT","BERG","BERN","BERT","BESS","BEST","BETA","BETH","BHOY","BIAS","BIDE","BIEN","BILE","BILK","BILL","BIND","BING","BIRD","BITE","BITS","BLAB","BLAT","BLED","BLEW","BLOB","BLOC","BLOT","BLOW","BLUE","BLUM","BLUR","BOAR","BOAT","BOCA","BOCK","BODE","BODY","BOGY","BOHR","BOIL","BOLD","BOLO","BOLT","BOMB","BONA","BOND","BONE","BONG","BONN","BONY","BOOK","BOOM","BOON","BOOT","BORE","BORG","BORN","BOSE","BOSS","BOTH","BOUT","BOWL","BOYD","BRAD","BRAE","BRAG","BRAN","BRAY","BRED","BREW","BRIG","BRIM","BROW","BUCK","BUDD","BUFF","BULB","BULK","BULL","BUNK","BUNT","BUOY","BURG","BURL","BURN","BURR","BURT","BURY","BUSH","BUSS","BUST","BUSY","BYTE","CADY","CAFE","CAGE","CAIN","CAKE","CALF","CALL","CALM","CAME","CANE","CANT","CARD","CARE","CARL","CARR","CART","CASE","CASH","CASK","CAST","CAVE","CEIL","CELL","CENT","CERN","CHAD","CHAR","CHAT","CHAW","CHEF","CHEN","CHEW","CHIC","CHIN","CHOU","CHOW","CHUB","CHUG","CHUM","CITE","CITY","CLAD","CLAM","CLAN","CLAW","CLAY","CLOD","CLOG","CLOT","CLUB","CLUE","COAL","COAT","COCA","COCK","COCO","CODA","CODE","CODY","COED","COIL","COIN","COKE","COLA","COLD","COLT","COMA","COMB","COME","COOK","COOL","COON","COOT","CORD","CORE","CORK","CORN","COST","COVE","COWL","CRAB","CRAG","CRAM","CRAY","CREW","CRIB","CROW","CRUD","CUBA","CUBE","CUFF","CULL","CULT","CUNY","CURB","CURD","CURE","CURL","CURT","CUTS","DADE","DALE","DAME","DANA","DANE","DANG","DANK","DARE","DARK","DARN","DART","DASH","DATA","DATE","DAVE","DAVY","DAWN","DAYS","DEAD","DEAF","DEAL","DEAN","DEAR","DEBT","DECK","DEED","DEEM","DEER","DEFT","DEFY","DELL","DENT","DENY","DESK","DIAL","DICE","DIED","DIET","DIME","DINE","DING","DINT","DIRE","DIRT","DISC","DISH","DISK","DIVE","DOCK","DOES","DOLE","DOLL","DOLT","DOME","DONE","DOOM","DOOR","DORA","DOSE","DOTE","DOUG","DOUR","DOVE","DOWN","DRAB","DRAG","DRAM","DRAW","DREW","DRUB","DRUG","DRUM","DUAL","DUCK","DUCT","DUEL","DUET","DUKE","DULL","DUMB","DUNE","DUNK","DUSK","DUST","DUTY","EACH","EARL","EARN","EASE","EAST","EASY","EBEN","ECHO","EDDY","EDEN","EDGE","EDGY","EDIT","EDNA","EGAN","ELAN","ELBA","ELLA","ELSE","EMIL","EMIT","EMMA","ENDS","ERIC","EROS","EVEN","EVER","EVIL","EYED","FACE","FACT","FADE","FAIL","FAIN","FAIR","FAKE","FALL","FAME","FANG","FARM","FAST","FATE","FAWN","FEAR","FEAT","FEED","FEEL","FEET","FELL","FELT","FEND","FERN","FEST","FEUD","FIEF","FIGS","FILE","FILL","FILM","FIND","FINE","FINK","FIRE","FIRM","FISH","FISK","FIST","FITS","FIVE","FLAG","FLAK","FLAM","FLAT","FLAW","FLEA","FLED","FLEW","FLIT","FLOC","FLOG","FLOW","FLUB","FLUE","FOAL","FOAM","FOGY","FOIL","FOLD","FOLK","FOND","FONT","FOOD","FOOL","FOOT","FORD","FORE","FORK","FORM","FORT","FOSS","FOUL","FOUR","FOWL","FRAU","FRAY","FRED","FREE","FRET","FREY","FROG","FROM","FUEL","FULL","FUME","FUND","FUNK","FURY","FUSE","FUSS","GAFF","GAGE","GAIL","GAIN","GAIT","GALA","GALE","GALL","GALT","GAME","GANG","GARB","GARY","GASH","GATE","GAUL","GAUR","GAVE","GAWK","GEAR","GELD","GENE","GENT","GERM","GETS","GIBE","GIFT","GILD","GILL","GILT","GINA","GIRD","GIRL","GIST","GIVE","GLAD","GLEE","GLEN","GLIB","GLOB","GLOM","GLOW","GLUE","GLUM","GLUT","GOAD","GOAL","GOAT","GOER","GOES","GOLD","GOLF","GONE","GONG","GOOD","GOOF","GORE","GORY","GOSH","GOUT","GOWN","GRAB","GRAD","GRAY","GREG","GREW","GREY","GRID","GRIM","GRIN","GRIT","GROW","GRUB","GULF","GULL","GUNK","GURU","GUSH","GUST","GWEN","GWYN","HAAG","HAAS","HACK","HAIL","HAIR","HALE","HALF","HALL","HALO","HALT","HAND","HANG","HANK","HANS","HARD","HARK","HARM","HART","HASH","HAST","HATE","HATH","HAUL","HAVE","HAWK","HAYS","HEAD","HEAL","HEAR","HEAT","HEBE","HECK","HEED","HEEL","HEFT","HELD","HELL","HELM","HERB","HERD","HERE","HERO","HERS","HESS","HEWN","HICK","HIDE","HIGH","HIKE","HILL","HILT","HIND","HINT","HIRE","HISS","HIVE","HOBO","HOCK","HOFF","HOLD","HOLE","HOLM","HOLT","HOME","HONE","HONK","HOOD","HOOF","HOOK","HOOT","HORN","HOSE","HOST","HOUR","HOVE","HOWE","HOWL","HOYT","HUCK","HUED","HUFF","HUGE","HUGH","HUGO","HULK","HULL","HUNK","HUNT","HURD","HURL","HURT","HUSH","HYDE","HYMN","IBIS","ICON","IDEA","IDLE","IFFY","INCA","INCH","INTO","IONS","IOTA","IOWA","IRIS","IRMA","IRON","ISLE","ITCH","ITEM","IVAN","JACK","JADE","JAIL","JAKE","JANE","JAVA","JEAN","JEFF","JERK","JESS","JEST","JIBE","JILL","JILT","JIVE","JOAN","JOBS","JOCK","JOEL","JOEY","JOHN","JOIN","JOKE","JOLT","JOVE","JUDD","JUDE","JUDO","JUDY","JUJU","JUKE","JULY","JUNE","JUNK","JUNO","JURY","JUST","JUTE","KAHN","KALE","KANE","KANT","KARL","KATE","KEEL","KEEN","KENO","KENT","KERN","KERR","KEYS","KICK","KILL","KIND","KING","KIRK","KISS","KITE","KLAN","KNEE","KNEW","KNIT","KNOB","KNOT","KNOW","KOCH","KONG","KUDO","KURD","KURT","KYLE","LACE","LACK","LACY","LADY","LAID","LAIN","LAIR","LAKE","LAMB","LAME","LAND","LANE","LANG","LARD","LARK","LASS","LAST","LATE","LAUD","LAVA","LAWN","LAWS","LAYS","LEAD","LEAF","LEAK","LEAN","LEAR","LEEK","LEER","LEFT","LEND","LENS","LENT","LEON","LESK","LESS","LEST","LETS","LIAR","LICE","LICK","LIED","LIEN","LIES","LIEU","LIFE","LIFT","LIKE","LILA","LILT","LILY","LIMA","LIMB","LIME","LIND","LINE","LINK","LINT","LION","LISA","LIST","LIVE","LOAD","LOAF","LOAM","LOAN","LOCK","LOFT","LOGE","LOIS","LOLA","LONE","LONG","LOOK","LOON","LOOT","LORD","LORE","LOSE","LOSS","LOST","LOUD","LOVE","LOWE","LUCK","LUCY","LUGE","LUKE","LULU","LUND","LUNG","LURA","LURE","LURK","LUSH","LUST","LYLE","LYNN","LYON","LYRA","MACE","MADE","MAGI","MAID","MAIL","MAIN","MAKE","MALE","MALI","MALL","MALT","MANA","MANN","MANY","MARC","MARE","MARK","MARS","MART","MARY","MASH","MASK","MASS","MAST","MATE","MATH","MAUL","MAYO","MEAD","MEAL","MEAN","MEAT","MEEK","MEET","MELD","MELT","MEMO","MEND","MENU","MERT","MESH","MESS","MICE","MIKE","MILD","MILE","MILK","MILL","MILT","MIMI","MIND","MINE","MINI","MINK","MINT","MIRE","MISS","MIST","MITE","MITT","MOAN","MOAT","MOCK","MODE","MOLD","MOLE","MOLL","MOLT","MONA","MONK","MONT","MOOD","MOON","MOOR","MOOT","MORE","MORN","MORT","MOSS","MOST","MOTH","MOVE","MUCH","MUCK","MUDD","MUFF","MULE","MULL","MURK","MUSH","MUST","MUTE","MUTT","MYRA","MYTH","NAGY","NAIL","NAIR","NAME","NARY","NASH","NAVE","NAVY","NEAL","NEAR","NEAT","NECK","NEED","NEIL","NELL","NEON","NERO","NESS","NEST","NEWS","NEWT","NIBS","NICE","NICK","NILE","NINA","NINE","NOAH","NODE","NOEL","NOLL","NONE","NOOK","NOON","NORM","NOSE","NOTE","NOUN","NOVA","NUDE","NULL","NUMB","OATH","OBEY","OBOE","ODIN","OHIO","OILY","OINT","OKAY","OLAF","OLDY","OLGA","OLIN","OMAN","OMEN","OMIT","ONCE","ONES","ONLY","ONTO","ONUS","ORAL","ORGY","OSLO","OTIS","OTTO","OUCH","OUST","OUTS","OVAL","OVEN","OVER","OWLY","OWNS","QUAD","QUIT","QUOD","RACE","RACK","RACY","RAFT","RAGE","RAID","RAIL","RAIN","RAKE","RANK","RANT","RARE","RASH","RATE","RAVE","RAYS","READ","REAL","REAM","REAR","RECK","REED","REEF","REEK","REEL","REID","REIN","RENA","REND","RENT","REST","RICE","RICH","RICK","RIDE","RIFT","RILL","RIME","RING","RINK","RISE","RISK","RITE","ROAD","ROAM","ROAR","ROBE","ROCK","RODE","ROIL","ROLL","ROME","ROOD","ROOF","ROOK","ROOM","ROOT","ROSA","ROSE","ROSS","ROSY","ROTH","ROUT","ROVE","ROWE","ROWS","RUBE","RUBY","RUDE","RUDY","RUIN","RULE","RUNG","RUNS","RUNT","RUSE","RUSH","RUSK","RUSS","RUST","RUTH","SACK","SAFE","SAGE","SAID","SAIL","SALE","SALK","SALT","SAME","SAND","SANE","SANG","SANK","SARA","SAUL","SAVE","SAYS","SCAN","SCAR","SCAT","SCOT","SEAL","SEAM","SEAR","SEAT","SEED","SEEK","SEEM","SEEN","SEES","SELF","SELL","SEND","SENT","SETS","SEWN","SHAG","SHAM","SHAW","SHAY","SHED","SHIM","SHIN","SHOD","SHOE","SHOT","SHOW","SHUN","SHUT","SICK","SIDE","SIFT","SIGH","SIGN","SILK","SILL","SILO","SILT","SINE","SING","SINK","SIRE","SITE","SITS","SITU","SKAT","SKEW","SKID","SKIM","SKIN","SKIT","SLAB","SLAM","SLAT","SLAY","SLED","SLEW","SLID","SLIM","SLIT","SLOB","SLOG","SLOT","SLOW","SLUG","SLUM","SLUR","SMOG","SMUG","SNAG","SNOB","SNOW","SNUB","SNUG","SOAK","SOAR","SOCK","SODA","SOFA","SOFT","SOIL","SOLD","SOME","SONG","SOON","SOOT","SORE","SORT","SOUL","SOUR","SOWN","STAB","STAG","STAN","STAR","STAY","STEM","STEW","STIR","STOW","STUB","STUN","SUCH","SUDS","SUIT","SULK","SUMS","SUNG","SUNK","SURE","SURF","SWAB","SWAG","SWAM","SWAN","SWAT","SWAY","SWIM","SWUM","TACK","TACT","TAIL","TAKE","TALE","TALK","TALL","TANK","TASK","TATE","TAUT","TEAL","TEAM","TEAR","TECH","TEEM","TEEN","TEET","TELL","TEND","TENT","TERM","TERN","TESS","TEST","THAN","THAT","THEE","THEM","THEN","THEY","THIN","THIS","THUD","THUG","TICK","TIDE","TIDY","TIED","TIER","TILE","TILL","TILT","TIME","TINA","TINE","TINT","TINY","TIRE","TOAD","TOGO","TOIL","TOLD","TOLL","TONE","TONG","TONY","TOOK","TOOL","TOOT","TORE","TORN","TOTE","TOUR","TOUT","TOWN","TRAG","TRAM","TRAY","TREE","TREK","TRIG","TRIM","TRIO","TROD","TROT","TROY","TRUE","TUBA","TUBE","TUCK","TUFT","TUNA","TUNE","TUNG","TURF","TURN","TUSK","TWIG","TWIN","TWIT","ULAN","UNIT","URGE","USED","USER","USES","UTAH","VAIL","VAIN","VALE","VARY","VASE","VAST","VEAL","VEDA","VEIL","VEIN","VEND","VENT","VERB","VERY","VETO","VICE","VIEW","VINE","VISE","VOID","VOLT","VOTE","WACK","WADE","WAGE","WAIL","WAIT","WAKE","WALE","WALK","WALL","WALT","WAND","WANE","WANG","WANT","WARD","WARM","WARN","WART","WASH","WAST","WATS","WATT","WAVE","WAVY","WAYS","WEAK","WEAL","WEAN","WEAR","WEED","WEEK","WEIR","WELD","WELL","WELT","WENT","WERE","WERT","WEST","WHAM","WHAT","WHEE","WHEN","WHET","WHOA","WHOM","WICK","WIFE","WILD","WILL","WIND","WINE","WING","WINK","WINO","WIRE","WISE","WISH","WITH","WOLF","WONT","WOOD","WOOL","WORD","WORE","WORK","WORM","WORN","WOVE","WRIT","WYNN","YALE","YANG","YANK","YARD","YARN","YAWL","YAWN","YEAH","YEAR","YELL","YOGA","YOKE"]');
@@ -31517,6 +29195,31 @@ class VaultState {
     const vault = this.vaults[vaultId];
     if (!vault) fail("Vault not found.", "VAULT_NOT_FOUND");
     return vault;
+  }
+
+  getVaultMetadata({ vaultId, owner }) {
+    const vault = this.requireVault(vaultId);
+    if (vault.owner !== owner) fail("Only vault owner can read metadata.", "UNAUTHORIZED");
+    return vault.metadata ?? {};
+  }
+
+  setPasswordBackup({ vaultId, owner, passwordBackup, updatedAt }) {
+    const vault = this.requireVault(vaultId);
+    if (vault.owner !== owner) fail("Only vault owner can update metadata.", "UNAUTHORIZED");
+    vault.metadata = { ...(vault.metadata ?? {}), passwordBackup };
+    if (!vault.metadata.vaultId) vault.metadata.vaultId = vault.id;
+    if (updatedAt !== undefined) vault.metadata.lastUpdated = updatedAt;
+    return vault.metadata;
+  }
+
+  clearPasswordBackup({ vaultId, owner, updatedAt }) {
+    const vault = this.requireVault(vaultId);
+    if (vault.owner !== owner) fail("Only vault owner can update metadata.", "UNAUTHORIZED");
+    if (!vault.metadata) vault.metadata = {};
+    delete vault.metadata.passwordBackup;
+    if (!vault.metadata.vaultId) vault.metadata.vaultId = vault.id;
+    if (updatedAt !== undefined) vault.metadata.lastUpdated = updatedAt;
+    return vault.metadata;
   }
 
   snapshot() {
@@ -31715,8 +29418,8 @@ function isMutableUriTokensEnabled() {
 }
 
 
-// EXTERNAL MODULE: ./node_modules/xrpl/dist/npm/index.js
-var npm = __nccwpck_require__(1235);
+// EXTERNAL MODULE: ./node_modules/xahau/dist/npm/index.js
+var npm = __nccwpck_require__(2365);
 ;// CONCATENATED MODULE: ./src/contract/xrplUtils.js
 
 
@@ -31989,6 +29692,12 @@ async function handleOperation(op, deps = {}, runtimeContext = {}) {
       return success(type, getEntryHandler(payload));
     case "stateDigest":
       return success(type, { digest: state.digest() });
+    case "addPasswordBackup":
+      return success(type, await addPasswordBackupHandler(payload, roundKey));
+    case "removePasswordBackup":
+      return success(type, await removePasswordBackupHandler(payload, roundKey));
+    case "getVaultMetadata":
+      return success(type, getVaultMetadataHandler(payload));
     default:
       fail(`Unknown operation type: ${type}`, "UNKNOWN_OPERATION");
   }
@@ -32002,15 +29711,20 @@ async function createVaultHandler(payload, deps, roundKey) {
   if (vaultType !== "individual") {
     fail("Unsupported vault type.", "UNSUPPORTED_VAULT_TYPE");
   }
-  assertObject(payload.metadata ?? {}, "metadata");
+  const rawMetadata = payload.metadata ?? {};
+  assertObject(rawMetadata, "metadata");
   validateClassicAddress(payload.owner);
   validateHexSalt(payload.salt);
+  const vaultId = buildVaultId(payload.owner, payload.salt);
+  if (rawMetadata.passwordBackup) {
+    validatePasswordBackupEnvelope(rawMetadata.passwordBackup, vaultId);
+  }
   verifySignedPayload({
     payload: {
       type: vaultType,
       owner: payload.owner,
       salt: payload.salt,
-      metadata: payload.metadata ?? {}
+      metadata: rawMetadata
     },
     signature: payload.signature,
     signerPublicKey: payload.signerPublicKey,
@@ -32018,6 +29732,7 @@ async function createVaultHandler(payload, deps, roundKey) {
   });
   enforceRateLimit(payload.owner, roundKey);
 
+  const metadata = normalizeVaultMetadata(rawMetadata, vaultId, roundKey);
   const manifestMint = await mintUriToken({
     xrplClient: deps.xrplClient,
     multisigSigners: deps.multisigSigners ?? [],
@@ -32031,7 +29746,7 @@ async function createVaultHandler(payload, deps, roundKey) {
   const vault = state.createVault({
     owner: payload.owner,
     salt: payload.salt,
-    metadata: payload.metadata ?? {},
+    metadata,
     createdAt: roundKey,
     manifestTokenId: manifestMint.tokenId
   });
@@ -32049,16 +29764,21 @@ async function createVaultHandler(payload, deps, roundKey) {
 
 async function createTeamVaultHandler(payload, deps, roundKey) {
   ensureTeamModeEnabled();
-  assertObject(payload.metadata ?? {}, "metadata");
+  const rawMetadata = payload.metadata ?? {};
+  assertObject(rawMetadata, "metadata");
   validateClassicAddress(payload.owner);
   validateHexSalt(payload.salt);
   validateAddressArray(payload.initialAuthorized ?? [], "initialAuthorized");
+  const vaultId = buildVaultId(payload.owner, payload.salt);
+  if (rawMetadata.passwordBackup) {
+    validatePasswordBackupEnvelope(rawMetadata.passwordBackup, vaultId);
+  }
   verifySignedPayload({
     payload: {
       type: "team",
       owner: payload.owner,
       salt: payload.salt,
-      metadata: payload.metadata ?? {},
+      metadata: rawMetadata,
       initialAuthorized: payload.initialAuthorized ?? []
     },
     signature: payload.signature,
@@ -32078,10 +29798,11 @@ async function createTeamVaultHandler(payload, deps, roundKey) {
   // FUTURE: on membership change -> client re-uploads policy blob and calls
   // updateManifestUri when mutable URI support is available.
 
+  const metadata = normalizeVaultMetadata(rawMetadata, vaultId, roundKey);
   const vault = state.createVault({
     owner: payload.owner,
     salt: payload.salt,
-    metadata: payload.metadata ?? {},
+    metadata,
     createdAt: roundKey,
     manifestTokenId: manifestMint.tokenId,
     type: "team",
@@ -32558,10 +30279,115 @@ function getMyVaultsHandler(payload) {
   return state.getMyVaults(payload.owner, since);
 }
 
+async function addPasswordBackupHandler(payload, roundKey) {
+  assertString(payload.vaultId, "vaultId", 8, 128);
+  assertObject(payload.passwordBackup, "passwordBackup");
+  assertString(payload.actor, "actor", 25, 40);
+  validateClassicAddress(payload.actor);
+  validatePasswordBackupEnvelope(payload.passwordBackup, payload.vaultId);
+
+  const vault = state.requireVault(payload.vaultId);
+  const owner = vault.owner;
+  if (payload.actor !== owner) fail("Only vault owner can set password backup.", "UNAUTHORIZED");
+
+  verifySignedPayload({
+    payload: {
+      vaultId: payload.vaultId,
+      actor: payload.actor,
+      action: "addPasswordBackup",
+      passwordBackup: payload.passwordBackup
+    },
+    signature: payload.signature,
+    signerPublicKey: payload.signerPublicKey,
+    expectedAddress: owner
+  });
+  enforceRateLimit(owner, roundKey);
+
+  state.setPasswordBackup({
+    vaultId: payload.vaultId,
+    owner,
+    passwordBackup: payload.passwordBackup,
+    updatedAt: roundKey
+  });
+  persistState();
+  auditLog("password_backup_added", { vaultId: payload.vaultId, owner, success: true });
+
+  return {
+    success: true
+  };
+}
+
+async function removePasswordBackupHandler(payload, roundKey) {
+  assertString(payload.vaultId, "vaultId", 8, 128);
+  assertString(payload.actor, "actor", 25, 40);
+  validateClassicAddress(payload.actor);
+
+  const vault = state.requireVault(payload.vaultId);
+  const owner = vault.owner;
+  if (payload.actor !== owner) fail("Only vault owner can remove password backup.", "UNAUTHORIZED");
+
+  verifySignedPayload({
+    payload: {
+      vaultId: payload.vaultId,
+      actor: payload.actor,
+      action: "removePasswordBackup"
+    },
+    signature: payload.signature,
+    signerPublicKey: payload.signerPublicKey,
+    expectedAddress: owner
+  });
+  enforceRateLimit(owner, roundKey);
+
+  state.clearPasswordBackup({ vaultId: payload.vaultId, owner, updatedAt: roundKey });
+  persistState();
+  auditLog("password_backup_removed", { vaultId: payload.vaultId, owner, success: true });
+
+  return {
+    success: true
+  };
+}
+
+function getVaultMetadataHandler(payload) {
+  assertString(payload.vaultId, "vaultId", 8, 128);
+  assertString(payload.actor, "actor", 25, 40);
+  validateClassicAddress(payload.actor);
+
+  const vault = state.requireVault(payload.vaultId);
+  const owner = vault.owner;
+  if (payload.actor !== owner) fail("Only vault owner can read metadata.", "UNAUTHORIZED");
+
+  verifySignedPayload({
+    payload: {
+      vaultId: payload.vaultId,
+      actor: payload.actor,
+      action: "getVaultMetadata"
+    },
+    signature: payload.signature,
+    signerPublicKey: payload.signerPublicKey,
+    expectedAddress: owner
+  });
+
+  return {
+    vaultId: payload.vaultId,
+    metadata: vault.metadata ?? {}
+  };
+}
+
 function ensureTeamModeEnabled() {
   if (!ENABLE_TEAM_MODE) {
     fail("Team vaults are not enabled in this deployment.", "TEAM_MODE_DISABLED");
   }
+}
+
+function normalizeVaultMetadata(metadata, vaultId, roundKey) {
+  const normalized = { ...(metadata ?? {}) };
+  if (normalized.vaultId && normalized.vaultId !== vaultId) {
+    fail("metadata.vaultId does not match computed vaultId.", "INVALID_METADATA");
+  }
+  normalized.vaultId = vaultId;
+  if (normalized.blobVersion === undefined) normalized.blobVersion = 1;
+  normalized.lastUpdated = roundKey;
+  return normalized;
 }
 
 function persistState() {
@@ -32653,6 +30479,21 @@ function validateWrappedKeys(wrappedKeys) {
     validateClassicAddress(item.address);
     assertBase64(item.encryptedKey, "wrappedKeys[].encryptedKey");
   }
+}
+
+function validatePasswordBackupEnvelope(passwordBackup, vaultId) {
+  assertObject(passwordBackup, "passwordBackup");
+  if (!Number.isInteger(passwordBackup.version) || passwordBackup.version !== 1) {
+    fail("passwordBackup.version must be 1.", "INVALID_INPUT");
+  }
+  assertString(passwordBackup.vaultId, "passwordBackup.vaultId", 8, 128);
+  if (passwordBackup.vaultId !== vaultId) {
+    fail("passwordBackup.vaultId mismatch.", "INVALID_INPUT");
+  }
+  assertBase64(passwordBackup.salt, "passwordBackup.salt");
+  assertBase64(passwordBackup.nonce, "passwordBackup.nonce");
+  assertBase64(passwordBackup.authTag, "passwordBackup.authTag");
+  assertBase64(passwordBackup.ciphertext, "passwordBackup.ciphertext");
 }
 
 async function bootstrapHotPocketRuntime() {

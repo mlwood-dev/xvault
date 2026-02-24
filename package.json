@@ -27,9 +27,12 @@
     "commander": "latest",
     "hotpocket-js-client": "^0.5.7",
     "hotpocket-nodejs-contract": "^0.7.0",
+    "inquirer": "latest",
     "ripple-keypairs": "latest",
     "secrets.js-grempe": "latest",
-    "xrpl": "^4.6.0"
+    "xahau": "^4.0.0",
+    "xumm": "latest",
+    "zxcvbn": "latest"
   },
   "devDependencies": {
     "jest": "latest",

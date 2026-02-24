@@ -55,7 +55,7 @@ This document is the pre-audit workspace for external security review of XVault.
 
 - Run `npm audit` and record findings/remediation decisions.
 - Manual high-risk dependency review:
-  - `xrpl`
+  - `xahau`
   - `argon2`
   - `argon2-browser`
   - `@noble/curves`

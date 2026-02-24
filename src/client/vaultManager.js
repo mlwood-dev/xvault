@@ -5,8 +5,8 @@ import keypairs from "ripple-keypairs";
  * Revoke (burn) a vault as owner through contract operation.
  *
  * @param {string} vaultId
- * @param {import("xrpl").Client} xrplClient - kept for integration parity/logging.
- * @param {import("xrpl").Wallet} wallet
+ * @param {import("xahau").Client} xrplClient - kept for integration parity/logging.
+ * @param {import("xahau").Wallet} wallet
  * @param {{
  *   submitContractRequest: (op: {type: string, payload: object}) => Promise<any>,
  *   clearVaultCache?: (vaultId: string) => Promise<void> | void
@@ -66,7 +66,7 @@ export async function revokeVault(vaultId, xrplClient, wallet, options) {
   // Unpin associated CIDs via QuickNode API/dashboard to reduce storage costs.
   console.info("Vault revoked; associated IPFS blobs remain pinned until garbage-collected or manually unpinned.");
   if (xrplClient && typeof xrplClient.isConnected === "function") {
-    console.info(`XRPL client connected: ${xrplClient.isConnected()}`);
+    console.info(`Xahau client connected: ${xrplClient.isConnected()}`);
   }
 
   return {

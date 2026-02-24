@@ -96,6 +96,31 @@ export class VaultState {
     return vault;
   }
 
+  getVaultMetadata({ vaultId, owner }) {
+    const vault = this.requireVault(vaultId);
+    if (vault.owner !== owner) fail("Only vault owner can read metadata.", "UNAUTHORIZED");
+    return vault.metadata ?? {};
+  }
+
+  setPasswordBackup({ vaultId, owner, passwordBackup, updatedAt }) {
+    const vault = this.requireVault(vaultId);
+    if (vault.owner !== owner) fail("Only vault owner can update metadata.", "UNAUTHORIZED");
+    vault.metadata = { ...(vault.metadata ?? {}), passwordBackup };
+    if (!vault.metadata.vaultId) vault.metadata.vaultId = vault.id;
+    if (updatedAt !== undefined) vault.metadata.lastUpdated = updatedAt;
+    return vault.metadata;
+  }
+
+  clearPasswordBackup({ vaultId, owner, updatedAt }) {
+    const vault = this.requireVault(vaultId);
+    if (vault.owner !== owner) fail("Only vault owner can update metadata.", "UNAUTHORIZED");
+    if (!vault.metadata) vault.metadata = {};
+    delete vault.metadata.passwordBackup;
+    if (!vault.metadata.vaultId) vault.metadata.vaultId = vault.id;
+    if (updatedAt !== undefined) vault.metadata.lastUpdated = updatedAt;
+    return vault.metadata;
+  }
+
   snapshot() {
     return JSON.parse(JSON.stringify({ vaults: this.vaults }));
   }

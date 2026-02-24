@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { Client, Wallet } from "xrpl";
+import { Client, Wallet } from "xahau";
 import { createWsSubmitter, revokeVault } from "../src/client/vaultManager.js";
 
 /**

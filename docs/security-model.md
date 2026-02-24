@@ -52,6 +52,19 @@ Entry confidentiality:
 - Entry key wrapped per authorized member public key (hybrid envelope in `wrappedKeys`).
 - Membership changes require client-side re-encryption/key-rotation workflow for strict forward secrecy.
 
+## Password Backup Threat Model
+
+Password backup is optional and encrypted client-side. The contract stores only ciphertext metadata.
+
+| Threat | Impact | Mitigation |
+| --- | --- | --- |
+| Weak backup password | Offline brute-force of ciphertext | zxcvbn strength warnings, encourage high-entropy passwords |
+| Metadata scraping | Encrypted backup copied for offline attack | Argon2id (128 MiB) slows guessing; vaultId AAD binds ciphertext |
+| Ciphertext tampering | Decryption fails or returns invalid key | AES-256-GCM auth tag rejects tampering |
+| Xaman device compromise | Master key derivation or signature misuse | Device hygiene, prompt verification, revoke tokens as needed |
+| Backup password reuse | Cross-service compromise leads to offline attack | User education and strength meter warnings |
+| Host compromise during unlock | Master key exposure in memory | Minimize unlock sessions and zeroize key material |
+
 ## Recovery Skeleton (Shamir)
 
 - `generateRecoveryShares` splits recovery secret into threshold shares.

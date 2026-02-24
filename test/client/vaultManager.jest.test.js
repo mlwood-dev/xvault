@@ -1,5 +1,5 @@
 import { describe, expect, jest, test } from "@jest/globals";
-import { Wallet } from "xrpl";
+import { Wallet } from "xahau";
 import { revokeVault } from "../../src/client/vaultManager.js";
 
 describe("vaultManager revoke flow", () => {

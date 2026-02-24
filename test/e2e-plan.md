@@ -47,6 +47,6 @@ This plan covers manual/scripted validation for individual and team flows using 
 
 ## Suggested tooling
 
-- Node scripts using `xrpl.js` for signing and contract calls.
+- Node scripts using `xahau` for signing and contract calls.
 - `curl`/Postman for contract request simulation.
 - Xaman wallet for manual signature checks.

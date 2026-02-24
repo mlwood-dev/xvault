@@ -5,19 +5,19 @@ All examples use the current SDK prototype (`src/sdk/xvaultClient.js`) and repre
 ## Shared Setup
 
 ```js
-import { Client, Wallet } from "xrpl";
+import { Client, Wallet } from "xahau";
 import { deriveRootKey } from "../src/crypto/vaultCrypto.js";
 import { createXVaultClient } from "../src/sdk/xvaultClient.js";
 
-const xrplClient = new Client("wss://xahau-testnet.example");
-await xrplClient.connect();
+const xahauClient = new Client("wss://xahau-testnet.example");
+await xahauClient.connect();
 
 const wallet = Wallet.fromSeed("s████████████████████████████");
 const vaultSaltCache = new Map();
 
 const sdk = createXVaultClient({
   hotpocketWsUrl: "ws://localhost:8081",
-  xrplClient,
+  xrplClient: xahauClient,
   wallet,
   quicknodeConfig: {
     apiKey: process.env.QUICKNODE_IPFS_API_KEY,
@@ -128,6 +128,6 @@ xvault revoke --vault <vault-id>
 
 ```js
 await sdk.close();
-if (xrplClient.isConnected()) await xrplClient.disconnect();
+if (xahauClient.isConnected()) await xahauClient.disconnect();
 ```
 

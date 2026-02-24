@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import crypto from "node:crypto";
 import fs from "node:fs";
-import { VaultState } from "./state.js";
+import { VaultState, buildVaultId } from "./state.js";
 import { loadStateFromFs, saveStateToFs } from "./stateStore.js";
 import { assertValidCid, buildGatewayFetchUrl } from "./cidUtils.js";
 import { getGatewayBaseUrl, isMutableUriTokensEnabled, isTeamModeEnabled } from "./config.js";
@@ -62,6 +62,12 @@ export async function handleOperation(op, deps = {}, runtimeContext = {}) {
       return success(type, getEntryHandler(payload));
     case "stateDigest":
       return success(type, { digest: state.digest() });
+    case "addPasswordBackup":
+      return success(type, await addPasswordBackupHandler(payload, roundKey));
+    case "removePasswordBackup":
+      return success(type, await removePasswordBackupHandler(payload, roundKey));
+    case "getVaultMetadata":
+      return success(type, getVaultMetadataHandler(payload));
     default:
       fail(`Unknown operation type: ${type}`, "UNKNOWN_OPERATION");
   }
@@ -75,15 +81,20 @@ async function createVaultHandler(payload, deps, roundKey) {
   if (vaultType !== "individual") {
     fail("Unsupported vault type.", "UNSUPPORTED_VAULT_TYPE");
   }
-  assertObject(payload.metadata ?? {}, "metadata");
+  const rawMetadata = payload.metadata ?? {};
+  assertObject(rawMetadata, "metadata");
   validateClassicAddress(payload.owner);
   validateHexSalt(payload.salt);
+  const vaultId = buildVaultId(payload.owner, payload.salt);
+  if (rawMetadata.passwordBackup) {
+    validatePasswordBackupEnvelope(rawMetadata.passwordBackup, vaultId);
+  }
   verifySignedPayload({
     payload: {
       type: vaultType,
       owner: payload.owner,
       salt: payload.salt,
-      metadata: payload.metadata ?? {}
+      metadata: rawMetadata
     },
     signature: payload.signature,
     signerPublicKey: payload.signerPublicKey,
@@ -91,6 +102,7 @@ async function createVaultHandler(payload, deps, roundKey) {
   });
   enforceRateLimit(payload.owner, roundKey);
 
+  const metadata = normalizeVaultMetadata(rawMetadata, vaultId, roundKey);
   const manifestMint = await mintUriToken({
     xrplClient: deps.xrplClient,
     multisigSigners: deps.multisigSigners ?? [],
@@ -104,7 +116,7 @@ async function createVaultHandler(payload, deps, roundKey) {
   const vault = state.createVault({
     owner: payload.owner,
     salt: payload.salt,
-    metadata: payload.metadata ?? {},
+    metadata,
     createdAt: roundKey,
     manifestTokenId: manifestMint.tokenId
   });
@@ -122,16 +134,21 @@ async function createVaultHandler(payload, deps, roundKey) {
 
 async function createTeamVaultHandler(payload, deps, roundKey) {
   ensureTeamModeEnabled();
-  assertObject(payload.metadata ?? {}, "metadata");
+  const rawMetadata = payload.metadata ?? {};
+  assertObject(rawMetadata, "metadata");
   validateClassicAddress(payload.owner);
   validateHexSalt(payload.salt);
   validateAddressArray(payload.initialAuthorized ?? [], "initialAuthorized");
+  const vaultId = buildVaultId(payload.owner, payload.salt);
+  if (rawMetadata.passwordBackup) {
+    validatePasswordBackupEnvelope(rawMetadata.passwordBackup, vaultId);
+  }
   verifySignedPayload({
     payload: {
       type: "team",
       owner: payload.owner,
       salt: payload.salt,
-      metadata: payload.metadata ?? {},
+      metadata: rawMetadata,
       initialAuthorized: payload.initialAuthorized ?? []
     },
     signature: payload.signature,
@@ -151,10 +168,11 @@ async function createTeamVaultHandler(payload, deps, roundKey) {
   // FUTURE: on membership change -> client re-uploads policy blob and calls
   // updateManifestUri when mutable URI support is available.
 
+  const metadata = normalizeVaultMetadata(rawMetadata, vaultId, roundKey);
   const vault = state.createVault({
     owner: payload.owner,
     salt: payload.salt,
-    metadata: payload.metadata ?? {},
+    metadata,
     createdAt: roundKey,
     manifestTokenId: manifestMint.tokenId,
     type: "team",
@@ -631,10 +649,115 @@ function getMyVaultsHandler(payload) {
   return state.getMyVaults(payload.owner, since);
 }
 
+async function addPasswordBackupHandler(payload, roundKey) {
+  assertString(payload.vaultId, "vaultId", 8, 128);
+  assertObject(payload.passwordBackup, "passwordBackup");
+  assertString(payload.actor, "actor", 25, 40);
+  validateClassicAddress(payload.actor);
+  validatePasswordBackupEnvelope(payload.passwordBackup, payload.vaultId);
+
+  const vault = state.requireVault(payload.vaultId);
+  const owner = vault.owner;
+  if (payload.actor !== owner) fail("Only vault owner can set password backup.", "UNAUTHORIZED");
+
+  verifySignedPayload({
+    payload: {
+      vaultId: payload.vaultId,
+      actor: payload.actor,
+      action: "addPasswordBackup",
+      passwordBackup: payload.passwordBackup
+    },
+    signature: payload.signature,
+    signerPublicKey: payload.signerPublicKey,
+    expectedAddress: owner
+  });
+  enforceRateLimit(owner, roundKey);
+
+  state.setPasswordBackup({
+    vaultId: payload.vaultId,
+    owner,
+    passwordBackup: payload.passwordBackup,
+    updatedAt: roundKey
+  });
+  persistState();
+  auditLog("password_backup_added", { vaultId: payload.vaultId, owner, success: true });
+
+  return {
+    success: true
+  };
+}
+
+async function removePasswordBackupHandler(payload, roundKey) {
+  assertString(payload.vaultId, "vaultId", 8, 128);
+  assertString(payload.actor, "actor", 25, 40);
+  validateClassicAddress(payload.actor);
+
+  const vault = state.requireVault(payload.vaultId);
+  const owner = vault.owner;
+  if (payload.actor !== owner) fail("Only vault owner can remove password backup.", "UNAUTHORIZED");
+
+  verifySignedPayload({
+    payload: {
+      vaultId: payload.vaultId,
+      actor: payload.actor,
+      action: "removePasswordBackup"
+    },
+    signature: payload.signature,
+    signerPublicKey: payload.signerPublicKey,
+    expectedAddress: owner
+  });
+  enforceRateLimit(owner, roundKey);
+
+  state.clearPasswordBackup({ vaultId: payload.vaultId, owner, updatedAt: roundKey });
+  persistState();
+  auditLog("password_backup_removed", { vaultId: payload.vaultId, owner, success: true });
+
+  return {
+    success: true
+  };
+}
+
+function getVaultMetadataHandler(payload) {
+  assertString(payload.vaultId, "vaultId", 8, 128);
+  assertString(payload.actor, "actor", 25, 40);
+  validateClassicAddress(payload.actor);
+
+  const vault = state.requireVault(payload.vaultId);
+  const owner = vault.owner;
+  if (payload.actor !== owner) fail("Only vault owner can read metadata.", "UNAUTHORIZED");
+
+  verifySignedPayload({
+    payload: {
+      vaultId: payload.vaultId,
+      actor: payload.actor,
+      action: "getVaultMetadata"
+    },
+    signature: payload.signature,
+    signerPublicKey: payload.signerPublicKey,
+    expectedAddress: owner
+  });
+
+  return {
+    vaultId: payload.vaultId,
+    metadata: vault.metadata ?? {}
+  };
+}
+
 function ensureTeamModeEnabled() {
   if (!ENABLE_TEAM_MODE) {
     fail("Team vaults are not enabled in this deployment.", "TEAM_MODE_DISABLED");
   }
+}
+
+function normalizeVaultMetadata(metadata, vaultId, roundKey) {
+  const normalized = { ...(metadata ?? {}) };
+  if (normalized.vaultId && normalized.vaultId !== vaultId) {
+    fail("metadata.vaultId does not match computed vaultId.", "INVALID_METADATA");
+  }
+  normalized.vaultId = vaultId;
+  if (normalized.blobVersion === undefined) normalized.blobVersion = 1;
+  normalized.lastUpdated = roundKey;
+  return normalized;
 }
 
 function persistState() {
@@ -726,6 +849,21 @@ function validateWrappedKeys(wrappedKeys) {
     validateClassicAddress(item.address);
     assertBase64(item.encryptedKey, "wrappedKeys[].encryptedKey");
   }
+}
+
+function validatePasswordBackupEnvelope(passwordBackup, vaultId) {
+  assertObject(passwordBackup, "passwordBackup");
+  if (!Number.isInteger(passwordBackup.version) || passwordBackup.version !== 1) {
+    fail("passwordBackup.version must be 1.", "INVALID_INPUT");
+  }
+  assertString(passwordBackup.vaultId, "passwordBackup.vaultId", 8, 128);
+  if (passwordBackup.vaultId !== vaultId) {
+    fail("passwordBackup.vaultId mismatch.", "INVALID_INPUT");
+  }
+  assertBase64(passwordBackup.salt, "passwordBackup.salt");
+  assertBase64(passwordBackup.nonce, "passwordBackup.nonce");
+  assertBase64(passwordBackup.authTag, "passwordBackup.authTag");
+  assertBase64(passwordBackup.ciphertext, "passwordBackup.ciphertext");
 }
 
 async function bootstrapHotPocketRuntime() {

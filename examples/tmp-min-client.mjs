@@ -1,5 +1,5 @@
 import keypairs from "ripple-keypairs";
-import { Wallet } from "xrpl";
+import { Wallet } from "xahau";
 import HotPocket from "hotpocket-js-client";
 import { hashForSigning } from "../src/contract/xrplUtils.js";
 

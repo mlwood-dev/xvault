@@ -1,6 +1,6 @@
 import { webcrypto } from "node:crypto";
 import { afterEach, describe, expect, jest, test } from "@jest/globals";
-import { Wallet } from "xrpl";
+import { Wallet } from "xahau";
 import keypairs from "ripple-keypairs";
 import { createIsolatedStateFile } from "../mocks/mockHotPocketState.js";
 import { prepareEntryPayload } from "../../src/crypto/vaultCrypto.js";

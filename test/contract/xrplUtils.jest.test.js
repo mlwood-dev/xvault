@@ -1,7 +1,7 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { createMockMultisigSigner, createMockXrplClient } from "../mocks/mockXrpl.js";
 
-jest.unstable_mockModule("xrpl", () => ({
+jest.unstable_mockModule("xahau", () => ({
   convertStringToHex: (value) => Buffer.from(value, "utf8").toString("hex"),
   deriveAddress: () => "rMockAddress",
   isValidClassicAddress: () => true,
@@ -32,7 +32,7 @@ describe("xrplUtils transaction stubs", () => {
     expect(result.tokenId).toBeTruthy();
   });
 
-  test("burnUriToken supports submitted mode with mocked xrpl client", async () => {
+  test("burnUriToken supports submitted mode with mocked Xahau client", async () => {
     const xrplClient = createMockXrplClient();
     const signer = createMockMultisigSigner();
     const result = await burnUriToken({

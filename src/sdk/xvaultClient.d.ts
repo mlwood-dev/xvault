@@ -1,4 +1,4 @@
-import type { Client, Wallet } from "xrpl";
+import type { Client, Wallet } from "xahau";
 
 export interface VaultSummary {
   vaultId: string;
@@ -21,7 +21,7 @@ export interface RecoveryShare {
 
 export interface XVaultClientConfig {
   hotpocketWsUrl: string;
-  xrplClient: Client;
+  xrplClient: Client; // Xahau client
   wallet: Wallet;
   quicknodeConfig: {
     apiKey?: string;

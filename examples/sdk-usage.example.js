@@ -1,4 +1,4 @@
-import { Client, Wallet } from "xrpl";
+import { Client, Wallet } from "xahau";
 import { deriveRootKey } from "../src/crypto/vaultCrypto.js";
 import { createXVaultClient } from "../src/sdk/xvaultClient.js";
 

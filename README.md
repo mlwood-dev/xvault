@@ -51,7 +51,7 @@ flowchart LR
 - npm
 - Access to:
   - HotPocket contract endpoint (`ws://...`)
-  - Xahau/XRPL WebSocket endpoint (`wss://...`)
+  - Xahau WebSocket endpoint (`wss://...`)
   - QuickNode IPFS credentials (API key + gateway URL)
 
 ### Install
@@ -84,6 +84,9 @@ See `examples/sdk-usage.example.js` and `docs/usage-examples.md`.
 
 ```bash
 xvault create-vault --type individual
+xvault create-vault --type individual --with-backup
+xvault add-backup-password --vault-id <vaultId>
+xvault remove-backup-password --vault-id <vaultId>
 xvault add-entry --vault <vaultId> --service github --username alice --password 'secret'
 xvault list
 xvault revoke --vault <vaultId>
@@ -111,6 +114,8 @@ Warning: Use testnet first; mainnet deployment requires audit.
 
 - Contract handlers and validation rules: `docs/contract-api.md`
 - SDK factory and method reference: `docs/sdk-api.md`
+- Key derivation & backup flow: `docs/key-derivation.md`
+- CLI command reference: `docs/cli-reference.md`
 - End-to-end flow examples: `docs/usage-examples.md`
 - Security assumptions and invariants: `docs/security-model.md`
 - Deployment guidance (dev + production): `docs/deployment.md`

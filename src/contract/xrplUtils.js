@@ -5,7 +5,7 @@ import {
   multisign,
   verifyKeypairSignature,
   convertStringToHex
-} from "xrpl";
+} from "xahau";
 import { fail } from "./errors.js";
 
 export const URITOKEN_BURNABLE_FLAG = 0x00000001;

@@ -39,8 +39,8 @@ const DEFAULT_RECOVERY_PREFIX = "xvault:recovery";
 /**
  * @typedef {object} XVaultClientConfig
  * @property {string} hotpocketWsUrl
- * @property {import("xrpl").Client} xrplClient
- * @property {import("xrpl").Wallet} wallet
+ * @property {import("xahau").Client} xrplClient - Xahau client
+ * @property {import("xahau").Wallet} wallet
  * @property {{ apiKey?: string, apiBase?: string, gateway: string, fetchImpl?: typeof fetch }} quicknodeConfig
  * @property {boolean} [enableTeamMode]
  * @property {(ctx: { vaultId: string, type: "individual" | "team" }) => Promise<Uint8Array>} [rootKeyProvider]

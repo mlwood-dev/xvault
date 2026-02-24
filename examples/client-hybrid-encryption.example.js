@@ -1,4 +1,4 @@
-import { Client } from "xrpl";
+import { Client } from "xahau";
 import { deriveRootKey, prepareEntryPayload } from "../src/crypto/vaultCrypto.js";
 import { getPublicKeyFromAddress } from "../src/crypto/xrplPubkey.js";
 

@@ -20,7 +20,7 @@ This guide does not introduce new code features or speculative operations stacks
 
 - Node.js `>=20`
 - npm
-- `xrpl.js` tooling for validation scripts and wallet checks
+- `xahau` tooling for validation scripts and wallet checks
 - Evernode tooling:
   - `evdevkit` (local and dev workflows)
   - Evernode CLI (cluster lease and deployment operations)
@@ -94,7 +94,7 @@ Set contract environment values on each host/cluster config:
 | `XVAULT_STATE_FILE` | host persistent path | deterministic state persistence |
 | `ENABLE_TEAM_MODE` | `true` | enables team lifecycle handlers |
 | `ENABLE_MUTABLE_URITOKENS` | `false` unless explicitly testing mutable path | manifest update behavior |
-| `XVAULT_DEV_XRPL_FALLBACK` | `false` in production-like tests | fail hard on XRPL submission errors |
+| `XVAULT_DEV_XRPL_FALLBACK` | `false` in production-like tests | fail hard on Xahau submission errors |
 | `QUICKNODE_GATEWAY` | your QuickNode gateway | fetch URL composition |
 
 Client/SDK runtime environment:
@@ -150,7 +150,7 @@ Submit a signed `createVault` payload and confirm:
 
 ## 3) Ledger and storage sanity
 
-- Confirm URI token mint/burn behavior using `xrpl.js` account/token queries.
+- Confirm URI token mint/burn behavior using `xahau` account/token queries.
 - Confirm CID is retrievable from configured QuickNode gateway.
 
 ## Cluster Testing Procedures
@@ -253,7 +253,7 @@ Verify:
 
 - SDK/CLI for functional flows
 - `wscat` for raw WS payload checks
-- `xrpl.js` scripts for ledger/token verification
+- `xahau` scripts for ledger/token verification
 - Jest/Vitest for repeatable assertion baseline
 
 ## Expected Failure Modes and Mitigations
@@ -277,7 +277,7 @@ Use this table during rollout and test sign-off.
 | Individual lifecycle | Create/add/list/get/revoke succeeds | SDK flow + WS response checks | Pending |
 | Team lifecycle | Invite/accept/add/remove/deny works correctly | SDK flow + unauthorized read check | Pending |
 | Recovery skeleton | 3-of-5 shares combine and recover root client-side | SDK `enableRecovery` + `recoverVault` | Pending |
-| Revocation + burns | Vault removed and burn operations visible | Contract response + `xrpl.js` ledger query | Pending |
+| Revocation + burns | Vault removed and burn operations visible | Contract response + `xahau` ledger query | Pending |
 | IPFS integration | CIDs resolve via gateway; unpin process documented | Gateway fetch + QuickNode API check | Pending |
 | Fault tolerance | One node down, quorum continues | Controlled node stop + continued writes | Pending |
 | Signature enforcement | Forged signature rejected | Raw WS negative test | Pending |

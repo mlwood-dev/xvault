@@ -1,11 +1,11 @@
-import { isValidClassicAddress } from "xrpl";
+import { isValidClassicAddress } from "xahau";
 
 /**
  * Resolve a Xahau/XRPL account public key from ledger account_info.
  * Returns null if account exists but has no signing pubkey set.
  *
  * @param {string} address
- * @param {import("xrpl").Client} xrplClient
+ * @param {import("xahau").Client} xrplClient
  * @returns {Promise<string|null>}
  */
 export async function getPublicKeyFromAddress(address, xrplClient) {
@@ -15,7 +15,7 @@ export async function getPublicKeyFromAddress(address, xrplClient) {
     throw error;
   }
   if (!xrplClient || typeof xrplClient.request !== "function") {
-    const error = new Error("xrplClient with request() is required.");
+    const error = new Error("Client with request() is required.");
     error.code = "INVALID_CLIENT";
     throw error;
   }

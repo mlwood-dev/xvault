@@ -19,8 +19,8 @@ Creates an SDK instance that orchestrates contract requests, client-side crypto,
 | Field | Type | Required | Description |
 |---|---|---:|---|
 | `hotpocketWsUrl` | `string` | yes | WebSocket endpoint for contract operations |
-| `xrplClient` | `xrpl.Client` | yes | XRPL client used for account/public-key lookups and parity in flows |
-| `wallet` | `xrpl.Wallet` | yes | Caller wallet used for signatures (`classicAddress/publicKey/privateKey`) |
+| `xrplClient` | `xahau.Client` | yes | Xahau client used for account/public-key lookups |
+| `wallet` | `xahau.Wallet` | yes | Caller wallet used for signatures (`classicAddress/publicKey/privateKey`) |
 | `quicknodeConfig` | `object` | yes | QuickNode IPFS config |
 | `quicknodeConfig.apiKey` | `string` | no | API key override (fallback to env in IPFS module) |
 | `quicknodeConfig.apiBase` | `string` | no | QuickNode base URL override |
@@ -37,16 +37,16 @@ Creates an SDK instance that orchestrates contract requests, client-side crypto,
 ### Example
 
 ```js
-import { Client, Wallet } from "xrpl";
+import { Client, Wallet } from "xahau";
 import { createXVaultClient } from "../src/sdk/xvaultClient.js";
 
-const xrplClient = new Client("wss://xahau-testnet.example");
-await xrplClient.connect();
+const xahauClient = new Client("wss://xahau-testnet.example");
+await xahauClient.connect();
 
 const wallet = Wallet.fromSeed("s████████████████████████████");
 const client = createXVaultClient({
   hotpocketWsUrl: "ws://localhost:8081",
-  xrplClient,
+  xrplClient: xahauClient,
   wallet,
   quicknodeConfig: {
     apiKey: process.env.QUICKNODE_IPFS_API_KEY,
@@ -109,7 +109,7 @@ Promise<{ tokenId: string; cid: string }>
 ### Notes
 
 - Individual vaults use root key directly.
-- Team vaults require `getTeamAuthorizedAddresses()` and XRPL public key lookups for wrapping.
+- Team vaults require `getTeamAuthorizedAddresses()` and Xahau public key lookups for wrapping.
 
 ## `getEntry(vaultId, entryIndexOrTokenId)`
 

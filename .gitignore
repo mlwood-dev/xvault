@@ -1,4 +1,5 @@
 .env
+.cursorignore
 
 /bin
 /node_modules
