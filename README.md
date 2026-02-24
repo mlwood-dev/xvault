@@ -91,6 +91,18 @@ xvault revoke --vault <vaultId>
 
 CLI supports configuration from local `.env` and `~/.xvault/config.json`.
 
+## Xaman xApp Client (Web)
+
+A mobile-first xApp web client is available in `xapp/` to connect users from Xaman directly to an XVault service and start vault operations.
+
+Highlights:
+
+- xApp-style aware theming using `xAppStyle` (`light`, `dark`, `moonlight`, `royal`)
+- xApp OTT-based service session handshake (`/session/xaman`)
+- Vault management UI for create/list/add-entry/revoke flows
+
+See `xapp/README.md` for service API expectations and deployment details.
+
 ## Local Cluster Notes
 
 Use Evernode dev tooling to run a local contract cluster and point the SDK `hotpocketWsUrl` to that endpoint. Contract-side cluster specifics are documented in `docs/deployment.md`.

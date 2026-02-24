@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>XVault xApp Client</title>
+    <link rel="stylesheet" href="https://use.typekit.net/vtt7ckl.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script>
+      (function applyXamanTheme() {
+        var params = new URLSearchParams(window.location.search);
+        var style = (params.get("xAppStyle") || "dark").toLowerCase();
+        var valid = ["light", "dark", "moonlight", "royal"];
+        var resolvedStyle = valid.indexOf(style) > -1 ? style : "light";
+        var link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = "https://xumm.app/assets/themes/xapp/xumm-" + resolvedStyle + "/bootstrap.min.css";
+        document.head.appendChild(link);
+        document.documentElement.setAttribute("data-xapp-style", resolvedStyle);
+      })();
+    </script>
+    <script defer src="https://xumm.app/assets/cdn/xumm-xapp-sdk.min.js"></script>
+    <script type="module" defer src="./app.js"></script>
+  </head>
+  <body>
+    <main class="xapp-shell">
+      <header class="xapp-header card">
+        <div>
+          <p class="eyebrow">XVault on Xaman</p>
+          <h1>XVault xApp Client</h1>
+          <p id="theme-label" class="muted"></p>
+        </div>
+        <span id="connection-pill" class="status-pill status-offline">Disconnected</span>
+      </header>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+      <section class="card">
+        <h2>Connect to XVault Service</h2>
+        <form id="connect-form" class="stack">
+          <label for="service-url">Service base URL</label>
+          <input
+            id="service-url"
+            name="serviceUrl"
+            type="url"
+            autocomplete="off"
+            required
+            placeholder="https://xvault.example.com/v1"
+          />
+          <button id="connect-button" type="submit">Connect</button>
+        </form>
+        <p id="connect-hint" class="muted">
+          Open this URL inside Xaman xApp context to auto-authenticate with the OTT token.
+        </p>
+        <dl class="session-grid">
+          <div>
+            <dt>Account</dt>
+            <dd id="session-account">Not connected</dd>
+          </div>
+          <div>
+            <dt>Network</dt>
+            <dd id="session-network">Unknown</dd>
+          </div>
+          <div>
+            <dt>Session</dt>
+            <dd id="session-state">Idle</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card gated" data-gated="true">
+        <h2>Create Vault</h2>
+        <form id="create-vault-form" class="stack">
+          <label for="vault-type">Vault type</label>
+          <select id="vault-type" name="vaultType">
+            <option value="individual">Individual</option>
+            <option value="team">Team</option>
+          </select>
+          <button id="create-vault-button" type="submit">Create vault</button>
+        </form>
+      </section>
+
+      <section class="card gated" data-gated="true">
+        <h2>Vaults</h2>
+        <p id="vault-empty" class="muted">No vaults yet. Create your first vault to get started.</p>
+        <ul id="vault-list" class="vault-list"></ul>
+      </section>
+    </main>
+  </body>
+</html>

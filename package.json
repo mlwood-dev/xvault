@@ -17,7 +17,9 @@
     "start": "npm run build && hpdevkit deploy dist",
     "test": "vitest run --exclude \"test/**/*.jest.test.js\"",
     "test:watch": "vitest",
-    "test:jest": "NODE_OPTIONS='--experimental-vm-modules --max-old-space-size=8192' jest --runInBand --watchman=false"
+    "test:jest": "NODE_OPTIONS='--experimental-vm-modules --max-old-space-size=8192' jest --runInBand --watchman=false",
+    "xapp:serve": "npx --yes serve xapp -l 4173",
+    "xapp:check": "node --check xapp/app.js"
   },
   "dependencies": {
     "@noble/curves": "latest",
